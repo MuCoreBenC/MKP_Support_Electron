@@ -1,0 +1,3153 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme-mode="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>支撑面改善工具 (MKP Support)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       MKP Support - 支撑面改善工具
+       ============================================================
+       
+       文件概述：
+       本文件是一个单页面应用(SPA)，用于3D打印机支撑面参数管理和校准。
+       主要功能包括：机型选择、预设下载、偏移校准、参数修改、版本控制。
+       
+       目录结构：
+       1. CSS变量定义 (第28-43行) - 全局颜色和阴影变量
+       2. 基础样式 (第45-95行) - 通用组件样式
+       3. 侧边栏动画 (第100-170行) - 折叠/展开动画效果
+       4. 动画关键帧 (第175-200行) - 淡入、缩放等动画
+       5. 组件样式 (第205-320行) - 各种UI组件样式
+       6. HTML结构 (第325-985行) - 页面DOM结构
+       7. JavaScript逻辑 (第990-1960行) - 业务逻辑代码
+       
+       【侧边栏宽度调整指南】
+       ============================================
+       如需修改侧边栏宽度，请修改以下位置：
+       
+       1. 展开状态宽度 (当前216px)：
+          - 第624行: style="width: 216px;" (sidebarWrapper的style属性)
+          - 第626行: class="w-[216px]" (sidebar的class)
+          - 第1244行: wrapper.style.width = '216px'; (toggleSidebar函数中)
+       
+       2. 折叠状态宽度 (当前72px)：
+          - CSS中 .sidebar-wrapper-collapsed 和 .sidebar-collapsed 的 width: 72px
+          - 第1238行: wrapper.style.width = '72px'; (toggleSidebar函数中)
+       
+       3. 修改方法：
+          a) 修改展开宽度：将上述"216px"和"w-[216px]"改为目标值
+             例如：改为288px，则修改为 style="width: 288px;" 和 class="w-72"
+          b) 修改折叠宽度：修改CSS中的"72px"为目标值
+             例如：改为64px，则修改所有"72px"为"64px"
+          c) 注意：折叠宽度需要能容纳图标，建议不小于64px
+       
+       4. 宽度对照表 (Tailwind CSS)：
+          w-36 = 144px | w-48 = 192px | w-54 = 216px | w-64 = 256px | w-72 = 288px
+          w-16 = 64px  | w-18 = 72px  | w-20 = 80px
+       ============================================
+    ============================================================ */
+
+    /* ==================== 1. CSS变量定义 ==================== */
+    /* 
+     * 全局CSS变量定义
+     * 作用：统一管理颜色、阴影等样式变量，便于主题切换和维护
+     * 修改方法：直接修改对应的颜色值即可全局生效
+     */
+    :root {
+      --bg-page: #F5F6F8;           /* 页面背景色 */
+      --bg-card: #FFFFFF;           /* 卡片背景色 */
+      --bg-input: #F9FAFB;          /* 输入框背景色 */
+      --bg-disabled: #F3F4F6;       /* 禁用状态背景色 */
+      --border: #E5E7EB;            /* 边框颜色 */
+      --border-focus: #3B82F6;      /* 聚焦时边框颜色 */
+      --text-primary: #111827;      /* 主要文字颜色 */
+      --text-secondary: #6B7280;    /* 次要文字颜色 */
+      --text-muted: #9CA3AF;        /* 弱化文字颜色 */
+      --accent-blue: #3B82F6;       /* 主题蓝色 */
+      --accent-blue-light: #EFF6FF; /* 浅蓝色背景 */
+      --accent-green: #10B981;      /* 成功状态绿色 */
+      --accent-yellow: #F59E0B;     /* 警告状态黄色 */
+      --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);    /* 卡片阴影 */
+      --shadow-hover: 0 4px 12px rgba(0,0,0,0.08);                               /* 悬停阴影 */
+      --shadow-button: 0 2px 4px rgba(59,130,246,0.25);                          /* 按钮阴影 */
+      
+      /* 版本专属主题色 */
+      --theme-standard-text: #3B82F6;
+      --theme-standard-bg: #EFF6FF;
+      --theme-quick-text: #F59E0B;
+      --theme-quick-bg: #FFFBEB;
+      --theme-lite-text: #A855F7;
+      --theme-lite-bg: #FAF5FF;
+    }
+
+    /* ==================== 隐藏滚动条样式 ==================== */
+    /*
+     * 完全隐藏滚动条并移除空间占用
+     * 解决布局抖动问题：滚动条出现/消失会导致容器宽度变化
+     * 
+     * 兼容性说明：
+     * - scrollbar-width: none - Firefox 完全隐藏
+     * - ::-webkit-scrollbar { display: none } - Chrome/Safari/Edge 完全隐藏
+     */
+    
+    /* 全局隐藏滚动条 - Firefox */
+    * {
+      scrollbar-width: none;
+    }
+    
+    /* Webkit浏览器完全隐藏滚动条 */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* ==================== 2. 基础样式 ==================== */
+    /* 全局字体和盒模型设置 */
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      box-sizing: border-box;
+    }
+
+    /* 页面主体样式 */
+    body {
+      background: var(--bg-page);
+      color: var(--text-primary);
+      margin: 0;
+      min-height: 100vh;
+      min-width: 720px;  /* 最小窗口宽度，防止内容挤压变形 */
+    }
+
+    /* 最小尺寸警告提示 */
+    .size-warning {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      color: white;
+    }
+    .size-warning-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+    }
+    .size-warning-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .size-warning-text {
+      font-size: 14px;
+      color: #9CA3AF;
+    }
+
+    /* ============================================================
+       折叠面板（Accordion）标准复用方案
+       ============================================================
+       
+       使用方法：
+       1. 最外层容器添加 class="collapse-item"
+       2. 点击头部添加 onclick="toggleCollapse(this)"
+       3. 隐藏内容外框添加 class="collapse-wrapper"
+       4. 隐藏内容内框添加 class="collapse-inner"
+       
+       示例结构：
+       <div class="collapse-item">
+         <button onclick="toggleCollapse(this)">点击展开</button>
+         <div class="collapse-wrapper">
+           <div class="collapse-inner">
+             这里是隐藏的内容
+           </div>
+         </div>
+       </div>
+       
+       优点：
+       - 使用 CSS Grid 0fr/1fr 技术，无需 JS 计算高度
+       - 支持任意高度的内容
+       - 自动处理淡入淡出和位移动画
+       - 可在任何页面复用
+    ============================================================ */
+    
+    /* 1. 动画容器 */
+    .collapse-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .collapse-wrapper.is-expanded {
+      grid-template-rows: 1fr;
+    }
+    
+    /* 2. 内部内容区 */
+    .collapse-inner {
+      min-height: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    .collapse-wrapper.is-expanded .collapse-inner {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* 3. 箭头旋转动画复用 */
+    .collapse-icon {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .collapse-icon.is-rotated {
+      transform: rotate(180deg);
+    }
+    
+    /* 折叠按钮箭头旋转动画 - 兼容旧版 */
+    .collapse-arrow {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .collapse-item.expanded .collapse-arrow {
+      transform: rotate(180deg);
+    }
+
+    /* 卡片阴影样式 */
+    .card-shadow {
+      box-shadow: var(--shadow-card);
+    }
+    .card-shadow:hover {
+      box-shadow: var(--shadow-hover);
+    }
+
+    /* 主按钮样式 - 蓝色背景，带阴影和悬停效果 */
+    .btn-primary {
+      background: var(--accent-blue);
+      color: white;
+      box-shadow: var(--shadow-button);
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #2563EB;
+      transform: translateY(-1px);
+    }
+    .btn-primary:disabled {
+      background: #D1D5DB;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* 次要按钮样式 - 白色背景，带边框 */
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    /* 输入框样式 */
+    .input-field {
+      background: var(--bg-input);
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus {
+      outline: none;
+      background: var(--bg-card);
+      border-color: var(--border-focus);
+    }
+    .input-readonly {
+      background: var(--bg-disabled);
+      color: var(--text-secondary);
+    }
+
+    /* 自定义滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F3F4F6;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 4px;
+      border: 2px solid #F3F4F6;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
+    }
+
+    /* ==================== 3. 侧边栏丝滑折叠核心动画 ==================== */
+    /*
+     * 侧边栏折叠动画说明
+     * --------------------------
+     * 实现原理：
+     * 1. 使用CSS transition实现平滑过渡，而非display:none
+     * 2. 通过opacity控制元素显示/隐藏
+     * 3. 使用max-width实现品牌名的"卷帘门"效果
+     * 4. 使用cubic-bezier缓动函数实现更自然的动画
+     * 
+     * 【折叠宽度修改位置】
+     * 下面的 width: 72px 即为折叠后的侧边栏宽度
+     * 如需修改，请同时修改以下位置：
+     * - 本文件第152行: width: 72px !important;
+     * - HTML中sidebarWrapper的style属性
+     * - toggleSidebar函数中的wrapper.style.width = '72px'
+     */
+    
+    /* 侧边栏容器过渡动画 - 控制宽度变化的平滑过渡 */
+    .sidebar-wrapper, #sidebar {
+      transition: width 0.35s cubic-bezier(0.2, 0, 0, 1);
+    }
+    
+    /* 【折叠状态宽度】修改这里的72px可改变折叠后的侧边栏宽度 */
+    .sidebar-wrapper-collapsed, .sidebar-collapsed {
+      width: 72px !important;
+    }
+
+    /* 侧边栏文字过渡 - 控制文字的淡入淡出 */
+    .sidebar-text {
+      transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+      white-space: nowrap;
+      opacity: 1;
+    }
+
+    /* 侧边栏内容区域过渡 */
+    .sidebar-content {
+      transition: padding 0.3s ease;
+    }
+    .sidebar-collapsed .sidebar-content {
+      padding: 8px 4px;
+    }
+
+    /* 机型标签过渡 */
+    .sidebar-model-label {
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+    .sidebar-collapsed .sidebar-model-label {
+      opacity: 0;
+    }
+
+    /* --- 机型信息折叠专属动画 --- */
+    /*
+     * 品牌名折叠动画
+     * 原理：通过max-width从120px变为0px，实现"卷帘门"效果
+     * 优点：避免使用display:none导致的瞬间消失
+     */
+    #sidebarBrand {
+      max-width: 120px;
+      opacity: 1;
+    }
+    .sidebar-collapsed #sidebarBrand {
+      max-width: 0px;
+      opacity: 0;
+    }
+
+    /* 品牌名和机型名之间的间距 */
+    #sidebarBrandSpace {
+      width: 4px;
+    }
+    .sidebar-collapsed #sidebarBrandSpace {
+      width: 0px;
+    }
+
+    /* === 侧边栏按钮颜色与居中全局强制接管 === */
+    #sidebar button {
+      color: var(--text-secondary); /* 强制统一灰色，解决第一个图标发黑变粗问题 */
+      transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
+      overflow: hidden;
+    }
+    #sidebar button:hover { color: var(--text-primary); }
+    #sidebar button.active { color: var(--accent-blue); }
+    html.dark #sidebar button.active { color: #60A5FA; }
+
+    /* 完美的 Flex 居中，抛弃容易算错的 padding */
+    .sidebar-collapsed #sidebar button {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      justify-content: center !important;
+      gap: 0 !important;
+    }
+    /* 彻底抹除折叠后的文字残留空间 */
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .user-info {
+      opacity: 0 !important;
+      max-width: 0 !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* 导航项过渡 */
+    .nav-item {
+      transition: background-color 0.2s ease;
+    }
+
+    /* 用户信息区域过渡 */
+    .user-info {
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+      opacity: 1;
+    }
+
+    /* 确保图标不会被压缩 */
+    .nav-item svg, .sidebar-content .flex-shrink-0 {
+      flex-shrink: 0;
+    }
+    /* ==================== 侧边栏丝滑折叠核心动画结束 ==================== */
+
+    /* ==================== 4. 动画关键帧定义 ==================== */
+    /* 淡入动画 - 从下方滑入并渐显 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* 缩放动画 - 从小到大并渐显 */
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    /* 淡出动画 - 渐隐 */
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    /* 动画类 - 应用上述关键帧 */
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+    .animate-scale-in {
+      animation: scaleIn 0.2s ease forwards;
+    }
+    .animate-fade-out {
+      animation: fadeOut 0.2s ease forwards;
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+
+    /* 旋转动画 - 用于加载指示器 */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* ==================== 5. 组件样式 ==================== */
+    /* 工具提示样式 */
+    .tooltip {
+      position: fixed;
+      background: #1F2937;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      max-width: 280px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    /* 选择卡片样式 - 用于机型选择等 */
+    .select-card {
+      border: 2px solid var(--border);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .select-card:hover {
+      border-color: #D1D5DB;
+    }
+    .select-card.selected {
+      border-color: var(--accent-blue);
+      background: var(--accent-blue-light);
+    }
+
+    /* 禁用的打印机卡片样式 */
+    .printer-card-disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .printer-card-disabled img {
+      filter: grayscale(100%);
+    }
+
+    /* 收藏星星图标样式 */
+    .star-icon {
+      transition: all 0.2s ease;
+    }
+    .star-icon.favorited {
+      color: var(--accent-yellow);
+      fill: var(--accent-yellow);
+    }
+    .star-icon.not-favorited {
+      color: #D1D5DB;
+      stroke-dasharray: 2 1;
+    }
+
+    /* 品牌卡片样式 */
+    .brand-card {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .brand-card:hover {
+      background: #F9FAFB;
+    }
+    .brand-card.active {
+      background: var(--accent-blue-light);
+      border-color: var(--accent-blue);
+    }
+    .brand-card.favorited {
+      order: -1;
+    }
+
+    /* 右键菜单样式 */
+    .context-menu {
+      position: fixed;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 160px;
+      overflow: hidden;
+    }
+    .context-menu-item {
+      padding: 10px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .context-menu-item:hover {
+      background: #F3F4F6;
+    }
+
+    /* 版本卡片样式 */
+    .version-card {
+      transition: all 0.2s ease;
+    }
+    .version-card:hover {
+      background: #F9FAFB;
+    }
+
+    /* 导航项样式 - 侧边栏菜单按钮 */
+    .nav-item {
+      transition: all 0.15s ease;
+    }
+    .nav-item:hover {
+      background: #F3F4F6;
+    }
+    .nav-item.active {
+      background: var(--accent-blue-light);
+      color: var(--accent-blue);
+    }
+
+    /* 引导步骤样式 - 新手引导的步骤指示器 */
+    .step-item {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .step-item.active .step-number {
+      background: var(--accent-blue);
+      color: white;
+    }
+    .step-item.active .step-text {
+      color: var(--accent-blue);
+    }
+    .step-item.completed .step-number {
+      background: var(--accent-green);
+      color: white;
+    }
+    .step-item.completed .step-text {
+      color: var(--accent-green);
+    }
+
+    /* macOS风格列表 */
+    .model-list-item {
+      padding: 6px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .model-list-item:hover {
+      background: #F5F5F7;
+    }
+    .model-list-item.selected {
+      background: var(--accent-blue-light);
+    }
+    .model-list-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .macos-list {
+      background: white;
+      border: 1px solid #D1D1D6;
+      border-radius: 6px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* 极致舒适的 VS Code 级暗黑模式配色 (已补充高亮状态的暗黑适配) */
+    html.dark {
+      --bg-page: #1E1E1E;
+      --bg-card: #252526;
+      --bg-input: #3C3C3C;
+      --bg-disabled: #2A2D2E; /* 新增：修复只读输入框等禁用元素的白底问题 */
+      --border: #3E3E42;
+      --text-primary: #D4D4D4;
+      --text-secondary: #858585;
+      
+      /* 修复：将原本刺眼的纯色浅亮底，替换为极具质感的半透明色，提升文字对比度 */
+      --accent-blue-light: rgba(59, 130, 246, 0.15);
+      
+      /* 修复：版本专属主题色的暗黑适配，杜绝暗黑模式下的白底 */
+      --theme-standard-bg: rgba(59, 130, 246, 0.15);
+      --theme-standard-text: #60A5FA;
+      --theme-quick-bg: rgba(245, 158, 11, 0.15);
+      --theme-quick-text: #FBBF24;
+      --theme-lite-bg: rgba(168, 85, 247, 0.15);
+      --theme-lite-text: #C084FC;
+    }
+
+    html.dark body { background-color: var(--bg-page); color: var(--text-primary); }
+    html.dark .bg-white { background-color: var(--bg-card) !important; }
+    html.dark .bg-gray-50 { background-color: var(--bg-page) !important; }
+    html.dark .bg-gray-100 { background-color: #333333 !important; }
+    html.dark .border-gray-100, html.dark .border-gray-200 { border-color: var(--border) !important; }
+    html.dark .text-gray-900, html.dark .text-gray-800 { color: var(--text-primary) !important; }
+    html.dark .text-gray-700, html.dark .text-gray-600, html.dark .text-gray-500, html.dark .text-gray-400 { color: var(--text-secondary) !important; }
+
+    html.dark .card-shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; }
+
+    /* 彻底修复暗黑模式下所有悬停白底刺眼问题 */
+    html.dark .hover\:bg-gray-50:hover,
+    html.dark .hover\:bg-gray-100:hover,
+    html.dark .nav-item:hover,
+    html.dark .brand-card:hover,
+    html.dark .version-card:hover,
+    html.dark .model-list-item:hover,
+    html.dark .context-menu-item:hover {
+      background-color: #2A2D2E !important;
+    }
+
+    /* 顺手修复机型选择卡片悬停时的刺眼白边框 */
+    html.dark .select-card:hover {
+      border-color: #4B4B4B !important;
+    }
+
+    html.dark .btn-primary:disabled { background-color: #333333 !important; color: #666666 !important; }
+
+    /* ================= View Transitions 动画核心 (完美修复版) ================= */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+      mix-blend-mode: normal;
+    }
+    ::view-transition-old(root) { z-index: 1; }
+    ::view-transition-new(root) { z-index: 2; }
+
+    /* ================= 外观设置卡片三态自动高亮 ================= */
+    .mode-btn-light, .mode-btn-dark, .mode-btn-system { border-color: transparent; background-color: transparent; }
+    .mode-text-light, .mode-text-dark, .mode-text-system { color: var(--text-secondary); }
+
+    /* 通用选中状态 (浅色模式下的蓝框和浅蓝底) */
+    html[data-theme-mode="light"] .mode-btn-light,
+    html[data-theme-mode="dark"] .mode-btn-dark,
+    html[data-theme-mode="system"] .mode-btn-system {
+      border-color: var(--accent-blue) !important;
+      background-color: var(--accent-blue-light) !important;
+    }
+    html[data-theme-mode="light"] .mode-text-light,
+    html[data-theme-mode="dark"] .mode-text-dark,
+    html[data-theme-mode="system"] .mode-text-system {
+      color: var(--accent-blue) !important;
+    }
+
+    /* 暗黑模式下的选中状态微调 (避免深色模式下的底色刺眼) */
+    html.dark[data-theme-mode="light"] .mode-btn-light,
+    html.dark[data-theme-mode="dark"] .mode-btn-dark,
+    html.dark[data-theme-mode="system"] .mode-btn-system {
+      background-color: rgba(59, 130, 246, 0.15) !important;
+    }
+    html.dark[data-theme-mode="light"] .mode-text-light,
+    html.dark[data-theme-mode="dark"] .mode-text-dark,
+    html.dark[data-theme-mode="system"] .mode-text-system {
+      color: #60A5FA !important;
+    }
+
+    /* ================= 终极排版接管：强制所有页面绝对居中且左边缘像素级对齐 ================= */
+    .page > div,
+    .page > p {
+      /* 强制统一为 4xl 尺寸 (896px)，这个宽度既能保证文字页面的阅读舒适度，又能完美容纳机型页面的栅格布局 */
+      max-width: 56rem !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      width: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 新手引导页 -->
+  <div id="onboarding" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-8">
+    <div class="bg-white rounded-2xl card-shadow w-[520px] max-h-[90vh] animate-scale-in flex flex-col overflow-hidden">
+      <!-- 头部 -->
+      <div class="p-5 pb-3 flex-shrink-0">
+        <div class="text-center mb-4">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mb-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+          </div>
+          <h1 class="text-lg font-semibold text-gray-900">支撑面改善工具</h1>
+          <p class="text-[11px] text-gray-400 mt-0.5">MKP Support</p>
+        </div>
+
+        <!-- 步骤条 -->
+        <div class="flex items-center justify-center">
+          <div class="flex items-center step-item active" id="step1" onclick="goToStep(1)">
+            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-xs font-medium step-number">1</div>
+            <span class="ml-1.5 text-xs font-medium step-text">环境检测</span>
+          </div>
+          <div class="w-12 h-px bg-gray-200 mx-2"></div>
+          <div class="flex items-center step-item" id="step2" onclick="goToStep(2)">
+            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 text-xs font-medium step-number">2</div>
+            <span class="ml-1.5 text-xs text-gray-400 step-text">选择机型</span>
+          </div>
+          <div class="w-12 h-px bg-gray-200 mx-2"></div>
+          <div class="flex items-center step-item" id="step3" onclick="goToStep(3)">
+            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 text-xs font-medium step-number">3</div>
+            <span class="ml-1.5 text-xs text-gray-400 step-text">基础参数</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 内容区域 -->
+      <div class="flex-1 overflow-y-auto px-5 py-2 min-h-0">
+        <!-- 步骤1：环境检测 -->
+        <div id="stepContent1" class="step-content">
+          <div class="bg-gray-50 rounded-xl p-4">
+            <div class="flex items-center justify-center mb-3">
+              <svg class="w-4 h-4 text-blue-500 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-sm text-gray-600">正在检测系统中已安装的切片软件路径...</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" value="C:\Program Files\Bambu Studio" class="input-field input-readonly flex-1 px-3 py-2 rounded-lg text-sm" readonly>
+              <button onclick="manualSelectPath()" class="btn-secondary px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 whitespace-nowrap">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                手动选择
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 步骤2：选择机型 -->
+        <div id="stepContent2" class="step-content hidden">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-sm font-medium text-gray-700">选择您的打印机</span>
+            <span id="selectedModelBadge" class="hidden px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium"></span>
+          </div>
+          
+          <div class="flex gap-3">
+            <div class="w-28 flex-shrink-0">
+              <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">品牌</div>
+              <div class="macos-list" style="height: 180px; overflow-y: auto;">
+                <div id="wizardBrandList"></div>
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">机型</div>
+              <div class="macos-list" style="height: 180px; overflow-y: auto;">
+                <div id="wizardModelList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 步骤3：基础参数 -->
+        <div id="stepContent3" class="step-content hidden">
+          <div class="text-sm font-medium text-gray-700 mb-3">当前机型偏移参数</div>
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+              <div class="text-[10px] text-gray-400 mb-0.5">X 偏移</div>
+              <div class="text-xl font-bold text-gray-700" id="wizardXOffset">--</div>
+              <div class="text-[10px] text-gray-400">mm</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+              <div class="text-[10px] text-gray-400 mb-0.5">Y 偏移</div>
+              <div class="text-xl font-bold text-gray-700" id="wizardYOffset">--</div>
+              <div class="text-[10px] text-gray-400">mm</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+              <div class="text-[10px] text-gray-400 mb-0.5">Z 偏移</div>
+              <div class="text-xl font-bold text-gray-700" id="wizardZOffset">--</div>
+              <div class="text-[10px] text-gray-400">mm</div>
+            </div>
+          </div>
+          <div class="text-[10px] text-gray-400 text-center">以上参数仅供参考，请在实际使用中进行校准</div>
+        </div>
+      </div>
+
+      <!-- 底部 -->
+      <div class="p-5 pt-3 flex-shrink-0 border-t border-gray-50">
+        <div class="flex items-center justify-between">
+          <button id="leftBtn" onclick="skipOnboarding()" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+            跳过引导
+          </button>
+          <button id="rightBtn" onclick="goToStep(2)" class="btn-primary px-5 py-2 rounded-lg text-sm font-medium">下一步</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右键菜单 -->
+  <div id="contextMenu" class="context-menu hidden">
+    <div class="context-menu-item" id="contextMenuFavorite">
+      <span id="contextMenuFavoriteText">收藏此机型</span>
+    </div>
+  </div>
+
+  <!-- 主应用界面 -->
+  <div id="mainApp" class="flex h-screen">
+    <!-- 左侧边栏容器 -->
+    <!-- 【展开宽度】修改这里的width和w-[216px]可改变展开后的侧边栏宽度，当前为216px -->
+    <div id="sidebarWrapper" class="sidebar-wrapper relative flex-shrink-0" style="width: 216px;">
+      <aside id="sidebar" class="w-[216px] h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out overflow-hidden">
+        <!-- 汉堡菜单按钮 -->
+        <div class="sidebar-header-bar px-3 py-2 border-b border-gray-100 flex items-center">
+          <button onclick="toggleSidebar()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-100 transition-colors" title="折叠侧边栏">
+            <svg id="menuIcon" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+            </svg>
+            <span class="sidebar-text font-semibold text-gray-800">MKP Support</span>
+          </button>
+        </div>
+
+        <div class="py-4 sidebar-content border-b border-gray-100 flex flex-col items-center justify-center min-h-[84px] cursor-default pointer-events-none">
+          <div class="flex items-center justify-center whitespace-nowrap overflow-hidden transition-all duration-300">
+            <span id="sidebarBrand" class="text-sm font-medium text-gray-500 transition-all duration-300 overflow-hidden inline-block align-middle">Bambu Lab</span>
+            <span id="sidebarBrandSpace" class="transition-all duration-300 inline-block"></span>
+            <span id="sidebarModelName" class="text-sm font-bold text-gray-900 transition-all duration-300 inline-block align-middle">A1</span>
+          </div>
+          <div class="mt-1.5 flex items-center justify-center overflow-hidden w-full">
+            <span id="sidebarVersionBadge" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-400 whitespace-nowrap transition-colors duration-300">未选择</span>
+          </div>
+        </div>
+
+      <nav class="flex-1 px-3 py-2">
+        <div class="space-y-1">
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left active" data-page="home">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l3 3m-3-3H4.5m0 0l-3 3m3-3l-3-3"/>
+            </svg>
+            <span class="sidebar-text">选择机型</span>
+          </button>
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="download">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <span class="sidebar-text">下载预设</span>
+          </button>
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="calibrate">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
+            </svg>
+            <span class="sidebar-text">校准偏移</span>
+          </button>
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="params">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="sidebar-text">修改参数</span>
+          </button>
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="versions">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/>
+            </svg>
+            <span class="sidebar-text">版本控制</span>
+          </button>
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="faq">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
+            </svg>
+            <span class="sidebar-text">常见问题</span>
+          </button>
+          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="about">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
+            </svg>
+            <span class="sidebar-text">关于软件</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="px-3 py-3 border-t border-gray-100 flex flex-col gap-1">
+        <button onclick="toggleDarkMode(event)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-50 transition-colors">
+          <svg class="w-5 h-5 flex-shrink-0 dark-icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+          </svg>
+          <span class="sidebar-text">外观模式</span>
+        </button>
+        
+        <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-50 transition-colors" data-page="theme">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+          </svg>
+          <span class="sidebar-text">主题颜色</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+    <!-- 右侧主内容区 -->
+    <main class="flex-1 overflow-hidden flex flex-col">
+      <!-- 选择机型页面 -->
+      <div id="page-home" class="page flex-1 overflow-y-auto p-8">
+        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">选择机型</h1>
+          <div class="flex items-center gap-3">
+            <button onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2">
+              <span>下一步</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="max-w-6xl">
+          <div class="grid grid-cols-12 gap-6">
+          <!-- 左侧品牌列表 -->
+          <div class="col-span-4">
+            <div class="bg-white rounded-xl card-shadow p-4">
+              <div class="flex items-center justify-between mb-4">
+                <div class="text-sm font-medium text-gray-700">品牌列表</div>
+              </div>
+              <div id="brandList" class="space-y-2">
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧机型展示 -->
+          <div class="col-span-8">
+            <div class="bg-white rounded-xl card-shadow p-4">
+              <div class="flex items-center justify-between mb-4 w-full">
+                <div class="flex items-center gap-2 truncate pr-4 shrink">
+                  <span id="currentBrandTitle" class="text-sm font-medium text-gray-700 truncate">拓竹 - Bambu版</span>
+                </div>
+                <div class="flex items-center gap-3 flex-1 justify-end min-w-0">
+                  <div class="relative flex-1 max-w-[200px] min-w-[120px]">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                    </svg>
+                    <input type="text" id="printerSearch" placeholder="搜索机型..." class="input-field pl-9 pr-4 py-2 rounded-lg text-sm w-full" oninput="filterPrinters()">
+                  </div>
+                  <select id="printerSort" class="input-field px-3 py-2 rounded-lg text-sm flex-shrink-0" onchange="sortPrinters()">
+                    <option value="default">默认排序</option>
+                    <option value="alpha">字母排序</option>
+                    <option value="favorite">收藏优先</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="printerGrid" class="grid grid-cols-3 gap-4">
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 下载预设页面 -->
+      <div id="page-download" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">配置您的模型预设</h1>
+          <div class="flex items-center gap-3 relative">
+            <button onclick="document.querySelector('[data-page=\'home\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
+              <span>上一步</span>
+            </button>
+            <button id="downloadBtn" onclick="document.querySelector('[data-page=\'calibrate\']').click()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2" disabled>
+              <span>下一步</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </button>
+            <div id="downloadHintWrapper" class="absolute -bottom-6 right-1 flex items-center gap-1 text-amber-500 transition-opacity duration-300">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="text-[11px]">请完成选项</span>
+            </div>
+          </div>
+        </div>
+        <div class="max-w-4xl flex flex-col h-full">
+          <p class="text-sm text-gray-500 mb-6">选择版本类型和发布日期以获取对应的预设配置</p>
+
+          <div class="max-w-4xl space-y-8 flex-1">
+            <!-- 步骤一：选择版本类型 -->
+            <div>
+              <div class="flex items-center gap-3 mb-4">
+                <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <div>
+                  <h2 class="text-base font-semibold text-gray-900">选择版本类型</h2>
+                  <p class="text-xs text-gray-500">根据您的打印机配置选择合适的版本</p>
+                </div>
+              </div>
+
+              <!-- 版本卡片 - 垂直单列布局 -->
+              <div class="flex flex-col gap-3">
+                <!-- 标准版 -->
+                <div class="version-card group bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:border-blue-300 hover:shadow-sm" data-version="standard" onclick="selectVersion(this, 'standard')">
+                  <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-standard-bg); color: var(--theme-standard-text)">
+                      <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-gray-900">标准版</span>
+                      </div>
+                      <p class="text-sm text-gray-500 truncate">v3原版，适合到手即用追求稳定的用户</p>
+                    </div>
+                    <div class="check-indicator w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0 transition-all duration-200">
+                      <svg class="w-4 h-4 text-white opacity-0 transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 快拆版 -->
+                <div class="version-card group bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:border-orange-300 hover:shadow-sm" data-version="quick" onclick="selectVersion(this, 'quick')">
+                  <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-quick-bg); color: var(--theme-quick-text)">
+                      <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+                      </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-gray-900">快拆版</span>
+                      </div>
+                      <p class="text-sm text-gray-500 truncate">v3快拆版，适合自行打印安装的用户</p>
+                    </div>
+                    <div class="check-indicator w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0 transition-all duration-200">
+                      <svg class="w-4 h-4 text-white opacity-0 transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Lite版 -->
+                <div class="version-card group bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-sm" data-version="lite" onclick="selectVersion(this, 'lite')">
+                  <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-lite-bg); color: var(--theme-lite-text)">
+                      <div class="flex items-center justify-center w-full h-full">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-gray-900">Lite版</span>
+                      </div>
+                      <p class="text-sm text-gray-500 truncate">适合P系列，以及其他品牌CoreXY打印机</p>
+                    </div>
+                    <div class="check-indicator w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0 transition-all duration-200">
+                      <svg class="w-4 h-4 text-white opacity-0 transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 步骤二：选择发布日期 -->
+            <div>
+              <div class="flex items-center gap-3 mb-4">
+                <svg id="step2Badge" class="w-6 h-6 text-gray-400 flex-shrink-0 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+                <div>
+                  <h2 class="text-base font-semibold text-gray-900">选择发布日期</h2>
+                  <p class="text-xs text-gray-500">选择预设文件的发布版本</p>
+                </div>
+              </div>
+
+              <!-- 高级居中卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div class="flex flex-col items-center">
+                  <div class="w-full max-w-md">
+                    <label class="block text-sm font-medium text-gray-700 mb-2 text-center">发布日期</label>
+                    <div id="dateSelector" class="relative transition-opacity duration-200">
+                      <!-- 日历图标 -->
+                      <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+                        </svg>
+                      </div>
+                      <!-- 自定义下拉选择器 -->
+                      <select id="dateSelect" class="appearance-none w-full pl-12 pr-10 py-3.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-400 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" disabled>
+                        <option value="">请先选择模型版本</option>
+                        <option value="2024-10-24">2024-10-24 (最新)</option>
+                        <option value="2024-10-15">2024-10-15</option>
+                      </select>
+                      <!-- 自定义向下箭头 -->
+                      <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-3 text-center">选择版本类型后将自动加载可用日期</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 校准偏移页面 -->
+      <div id="page-calibrate" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">校准偏移</h1>
+          <div class="flex items-center gap-3">
+            <button onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
+              <span>上一步</span>
+            </button>
+          </div>
+        </div>
+        <div class="max-w-4xl">
+          <div class="bg-white rounded-xl card-shadow p-5 mb-5">
+            <div class="text-sm font-medium text-gray-700 mb-3">粘贴到:工艺->其他->后处理脚本</div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="scriptPath" class="input-field input-readonly flex-1 px-4 py-2.5 rounded-lg text-sm" readonly title="后处理脚本路径" placeholder="请先选择机型和版本">
+              <button id="scriptCopyBtn" onclick="copyPath()" class="btn-secondary px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed" title="复制路径" disabled>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl card-shadow p-5 mb-5" id="zCalibrationCard">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-sm font-medium text-gray-700">Z轴偏移校准</div>
+              <button id="zOpenBtn" onclick="openZModel()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>打开校准模型</span>
+              </button>
+            </div>
+            
+            <div id="zCalibrationArea">
+              <div id="zProgress" class="hidden mb-4">
+                <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 100%"></div>
+                </div>
+              </div>
+              
+              <div id="zPlaceholder" class="h-32 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+                </svg>
+                <span class="text-sm text-gray-400">点击打开按钮加载视觉校准网格</span>
+              </div>
+              
+              <div id="zGridSelector" class="hidden">
+                <div class="flex flex-col items-center">
+                  <div class="flex items-center justify-center gap-1 mb-4" id="zGrid">
+                  </div>
+                  <div class="flex items-center justify-center gap-4 py-4">
+                    <div class="text-center">
+                      <div class="text-xs text-gray-400 mb-1">原值</div>
+                      <div class="text-3xl font-semibold text-gray-400" id="zOriginal">3.3</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                      <div id="zBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-600 mb-1">-0.2</div>
+                      <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                      </svg>
+                    </div>
+                    <div class="text-center">
+                      <div class="text-xs text-gray-400 mb-1">修改后</div>
+                      <div class="text-3xl font-bold text-blue-600" id="zNewValue">3.1</div>
+                    </div>
+                  </div>
+                  <div class="flex justify-center mt-4">
+                    <button onclick="saveZOffset()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium">保存并应用 Z 轴偏移</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl card-shadow p-5" id="xyCalibrationCard">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-sm font-medium text-gray-700">XY轴偏移校准</div>
+              <button id="xyOpenBtn" onclick="openXYModel()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>打开校准模型</span>
+              </button>
+            </div>
+            
+            <div id="xyCalibrationArea">
+              <div id="xyProgress" class="hidden mb-4">
+                <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 100%"></div>
+                </div>
+              </div>
+              
+              <div id="xyPlaceholder" class="h-48 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+                </svg>
+                <span class="text-sm text-gray-400">点击打开按钮加载视觉校准网格</span>
+              </div>
+              
+              <div id="xyGridSelector" class="hidden">
+                <div class="flex items-end justify-center gap-2 py-8">
+                  <div id="xyGrid" class="flex-shrink-0">
+                  </div>
+                </div>
+                <div class="flex justify-center mt-4 pb-2">
+                  <button onclick="saveXYOffset()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium">保存并应用 XY 轴偏移</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 修改参数页面 -->
+      <div id="page-params" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">修改参数</h1>
+          <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            直接编辑 .toml 文本
+          </button>
+        </div>
+        <div class="max-w-4xl">
+          <div class="bg-white rounded-xl card-shadow p-5 mb-5">
+            <div class="text-sm font-medium text-gray-700 mb-4">运动控制</div>
+            <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <label class="text-sm text-gray-600">X轴最大速度</label>
+                </div>
+                <div class="relative">
+                  <input type="number" value="500" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-14">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">mm/s</span>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <label class="text-sm text-gray-600">Y轴最大速度</label>
+                </div>
+                <div class="relative">
+                  <input type="number" value="500" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-14">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">mm/s</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl card-shadow p-5">
+            <div class="text-sm font-medium text-gray-700 mb-4">挤出系统</div>
+            <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <label class="text-sm text-gray-600">挤出机温度</label>
+                </div>
+                <div class="relative">
+                  <input type="number" value="210" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-10">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">°C</span>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <label class="text-sm text-gray-600">热床温度</label>
+                </div>
+                <div class="relative">
+                  <input type="number" value="60" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-10">
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">°C</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 版本控制页面 -->
+      <div id="page-versions" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">版本控制</h1>
+          <button onclick="checkForUpdates()" class="btn-primary px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            检查更新
+          </button>
+        </div>
+        <div class="max-w-4xl">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="relative flex-1">
+              <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+              </svg>
+              <input type="text" id="versionSearch" placeholder="搜索版本号或更新描述..." class="input-field w-full pl-11 pr-4 py-2.5 rounded-xl text-sm">
+            </div>
+            <button onclick="toggleExpandMore()" class="btn-secondary px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span id="expandBtnText">历史版本</span>
+            </button>
+          </div>
+
+          <div id="versionList" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- 常见问题页面 -->
+      <div id="page-faq" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="max-w-3xl mx-auto">
+          <div class="h-12 mb-6 shrink-0 w-full flex flex-col justify-center">
+            <h1 class="text-2xl font-bold text-gray-900 tracking-tight">常见问题</h1>
+          </div>
+          <p class="text-sm text-gray-500 mb-6">以下是用户最常遇到的问题及解决方案</p>
+
+          <!-- FAQ 搜索框 -->
+          <div class="relative mb-6">
+            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" id="faqSearch" placeholder="搜索问题..." class="input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm" oninput="filterFaq(this.value)">
+          </div>
+
+          <!-- FAQ列表 - 由 JavaScript 动态渲染 -->
+          <div id="faqList" class="space-y-3"></div>
+
+          <!-- 底部提示 -->
+          <div class="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
+              </svg>
+              <div>
+                <div class="text-sm font-medium text-blue-900">没有找到您的问题？</div>
+                <div class="text-sm text-blue-700 mt-1">请加入我们的QQ群或查看视频教程获取更多帮助</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 关于软件页面 -->
+      <div id="page-about" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-semibold text-gray-900">支撑面改善工具</h1>
+            <p class="text-sm text-gray-400 mt-1">MKP Support</p>
+            <p class="text-gray-500 mt-3">致力于为 3D 打印爱好者提供最精准的校准方案</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl card-shadow p-5">
+              <div class="text-sm font-medium text-gray-700 mb-4">核心作者</div>
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-lg font-medium">MK</div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">MKP Team</div>
+                  <div class="text-sm text-gray-500 mb-2">3D打印技术开发</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl card-shadow p-5">
+              <div class="text-sm font-medium text-gray-700 mb-4">社区资源</div>
+              <div class="grid grid-cols-2 gap-3">
+                <button class="p-3 rounded-xl border border-gray-100 text-left hover:border-blue-200 transition-all">
+                  <span class="text-sm font-medium text-gray-700">QQ 群</span>
+                  <div class="text-xs text-gray-400">123456789</div>
+                </button>
+                <button class="p-3 rounded-xl border border-gray-100 text-left hover:border-blue-200 transition-all">
+                  <span class="text-sm font-medium text-gray-700">视频教程</span>
+                  <div class="text-xs text-gray-400">Bilibili</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主题设置页面 -->
+      <div id="page-theme" class="page flex-1 overflow-y-auto p-8 hidden">
+        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">外观与主题</h1>
+        </div>
+        <div class="max-w-4xl">
+          <p class="text-sm text-gray-500 mb-6">自定义软件的全局界面风格及预设卡片的强调色。</p>
+
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6">
+            <div class="text-sm font-semibold text-gray-900 mb-4">外观设置</div>
+            <div class="grid grid-cols-3 gap-4 max-w-[540px]">
+              <button onclick="setThemeMode('light')" class="mode-btn-light flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer relative z-10">
+                <div class="w-full h-16 rounded-lg bg-[#f3f4f6] border border-[#e5e7eb] overflow-hidden flex flex-col">
+                  <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb]"></div>
+                  <div class="flex-1 flex"><div class="w-1/3 bg-[#f9fafb] border-r border-[#e5e7eb]"></div><div class="flex-1 bg-[#ffffff]"></div></div>
+                </div>
+                <span class="mode-text-light text-sm font-medium">白天</span>
+              </button>
+
+              <button onclick="setThemeMode('dark')" class="mode-btn-dark flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer relative z-10">
+                <div class="w-full h-16 rounded-lg bg-[#1a1a1a] border border-[#333] overflow-hidden flex flex-col">
+                  <div class="h-3 bg-[#222] border-b border-[#333]"></div>
+                  <div class="flex-1 flex"><div class="w-1/3 bg-[#111] border-r border-[#333]"></div><div class="flex-1 bg-[#1a1a1a]"></div></div>
+                </div>
+                <span class="mode-text-dark text-sm font-medium">夜间</span>
+              </button>
+
+              <button onclick="setThemeMode('system')" class="mode-btn-system flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer relative z-10">
+                <div class="w-full h-16 rounded-lg border border-[#e5e7eb] overflow-hidden flex">
+                  <div class="flex-1 bg-[#f3f4f6] flex flex-col border-r border-[#e5e7eb]">
+                    <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb]"></div>
+                    <div class="flex-1 bg-[#ffffff]"></div>
+                  </div>
+                  <div class="flex-1 bg-[#1a1a1a] flex flex-col">
+                    <div class="h-3 bg-[#222] border-b border-[#333]"></div>
+                    <div class="flex-1 bg-[#1a1a1a]"></div>
+                  </div>
+                </div>
+                <span class="mode-text-system text-sm font-medium">跟随系统</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6">
+            <div class="text-sm font-semibold text-gray-900 mb-1">版本专属主题色</div>
+            <p class="text-xs text-gray-500 mb-6">为不同预设版本指定专属颜色，实时同步所有页面和侧边栏状态。</p>
+            
+            <div class="space-y-5">
+              <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style="background: var(--theme-standard-bg); color: var(--theme-standard-text)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+                  </div>
+                  <span class="text-sm font-medium text-gray-700">标准版外观</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="setVersionTheme('standard', '#3B82F6', '#EFF6FF')" class="w-6 h-6 rounded-full bg-blue-500 hover:scale-110 transition-transform shadow-sm"></button>
+                  <button onclick="setVersionTheme('standard', '#10B981', '#D1FAE5')" class="w-6 h-6 rounded-full bg-emerald-500 hover:scale-110 transition-transform shadow-sm"></button>
+                  <button onclick="setVersionTheme('standard', '#F43F5E', '#FFE4E6')" class="w-6 h-6 rounded-full bg-rose-500 hover:scale-110 transition-transform shadow-sm"></button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border-t border-gray-100">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style="background: var(--theme-quick-bg); color: var(--theme-quick-text)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  </div>
+                  <span class="text-sm font-medium text-gray-700">快拆版外观</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="setVersionTheme('quick', '#F59E0B', '#FFFBEB')" class="w-6 h-6 rounded-full bg-amber-500 hover:scale-110 transition-transform shadow-sm"></button>
+                  <button onclick="setVersionTheme('quick', '#06B6D4', '#CCFBF1')" class="w-6 h-6 rounded-full bg-cyan-500 hover:scale-110 transition-transform shadow-sm"></button>
+                  <button onclick="setVersionTheme('quick', '#8B5CF6', '#F3E8FF')" class="w-6 h-6 rounded-full bg-violet-500 hover:scale-110 transition-transform shadow-sm"></button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border-t border-gray-100">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style="background: var(--theme-lite-bg); color: var(--theme-lite-text)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6"/></svg>
+                  </div>
+                  <span class="text-sm font-medium text-gray-700">Lite版外观</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="setVersionTheme('lite', '#A855F7', '#FAF5FF')" class="w-6 h-6 rounded-full bg-purple-500 hover:scale-110 transition-transform shadow-sm"></button>
+                  <button onclick="setVersionTheme('lite', '#3B82F6', '#EFF6FF')" class="w-6 h-6 rounded-full bg-blue-500 hover:scale-110 transition-transform shadow-sm"></button>
+                  <button onclick="setVersionTheme('lite', '#F97316', '#FFF7ED')" class="w-6 h-6 rounded-full bg-orange-500 hover:scale-110 transition-transform shadow-sm"></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="tooltip" class="tooltip"></div>
+
+  <script>
+    /* ============================================================
+       JavaScript 业务逻辑
+       ============================================================
+       
+       代码结构：
+       1. 数据定义 (第1095-1155行) - 品牌和机型数据
+       2. 状态管理 (第1160-1175行) - 全局状态变量
+       3. 侧边栏功能 (第1180-1200行) - 折叠/展开控制
+       4. 初始化函数 (第1205-1215行) - 页面初始化
+       5. 引导页功能 (第1220-1325行) - 新手引导流程
+       6. 品牌相关功能 (第1330-1415行) - 品牌列表渲染和选择
+       7. 机型相关功能 (第1420-1545行) - 机型列表渲染和选择
+       8. 右键菜单功能 (第1550-1585行) - 收藏等操作
+       9. 版本控制功能 (第1590-1705行) - 版本列表和下载
+       10. 导航功能 (第1710-1745行) - 页面切换
+       11. 校准功能 (第1750-1915行) - Z轴和XY轴校准
+       12. 事件监听 (第1920-1945行) - DOM事件绑定
+    ============================================================ */
+
+    // ==================== 1. 数据定义 ====================
+    /*
+     * 品牌数据
+     * @property {string} id - 品牌唯一标识符
+     * @property {string} name - 品牌中文名称（用于品牌列表显示）
+     * @property {string} shortName - 品牌英文短名（用于侧边栏显示）
+     * @property {string} subtitle - 品牌副标题
+     * @property {boolean} favorite - 是否收藏
+     */
+    const brands = [
+      { id: 'bambu', name: '拓竹', shortName: 'Bambu Lab', subtitle: 'Bambu版', favorite: true },
+      { id: 'creality', name: '创想三维', shortName: 'Creality', subtitle: '', favorite: false },
+      { id: 'prusa', name: '快造科技', shortName: 'Prusa', subtitle: '', favorite: false },
+      { id: 'anycubic', name: '纵维立方', shortName: 'Anycubic', subtitle: 'Klipper版', favorite: false },
+      { id: 'diy', name: 'DIY', shortName: 'DIY', subtitle: '', favorite: false },
+    ];
+
+    /*
+     * 机型数据（按品牌分组）
+     * @property {string} id - 机型唯一标识符
+     * @property {string} name - 机型完整名称
+     * @property {string} shortName - 机型缩写（用于侧边栏显示）
+     * @property {string} image - 机型图片URL
+     * @property {boolean} favorite - 是否收藏
+     * @property {boolean} disabled - 是否禁用（开发中的机型）
+     * @property {number} xOffset - X轴默认偏移值(mm)
+     * @property {number} yOffset - Y轴默认偏移值(mm)
+     * @property {number} zOffset - Z轴默认偏移值(mm)
+     * @property {string[]} supportedVersions - 支持的版本类型
+     * @property {Object} scriptPaths - 各版本对应的后处理脚本路径
+     */
+    const printersByBrand = {
+      bambu: [
+        { id: 'a1', name: 'Bambu Lab A1', shortName: 'A1', image: '/static/images/Bambu Lab A1.png', favorite: true, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.30, supportedVersions: ['standard', 'quick'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1standard.toml" --Gcode', quick: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1quick.toml" --Gcode' } },
+        { id: 'a1mini', name: 'Bambu Lab A1 mini', shortName: 'A1mini', image: '/static/images/Bambu Lab A1mini.png', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.25, supportedVersions: ['standard', 'quick'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1ministandard.toml" --Gcode', quick: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1miniquick.toml" --Gcode' } },
+        { id: 'p1s', name: 'Bambu Lab P1S', shortName: 'P1S', image: '/static/images/Bambu Lab P1S.png', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.35, supportedVersions: ['lite'], scriptPaths: { lite: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\P1Slite.toml" --Gcode' } },
+        { id: 'x1', name: 'Bambu Lab X1', shortName: 'X1', image: '/static/images/Bambu Lab X1C.png', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.40, supportedVersions: ['lite'], scriptPaths: { lite: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\X1lite.toml" --Gcode' } },
+        { id: 'p2s', name: 'Bambu Lab P2S', shortName: 'P2S', image: '/static/images/Bambu Lab P2S.png', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.30, supportedVersions: ['lite'], scriptPaths: { lite: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\P2Slite.toml" --Gcode' } },
+      ],
+      creality: [
+        { id: 'k1c', name: 'Creality K1C', shortName: 'K1C', image: 'https://picsum.photos/seed/k1c/200/150', favorite: false, disabled: true, xOffset: 0.00, yOffset: 0.00, zOffset: 0.00, supportedVersions: [], scriptPaths: {} },
+        { id: 'k2c', name: 'Creality K2C', shortName: 'K2C', image: 'https://picsum.photos/seed/k2c/200/150', favorite: false, disabled: true, xOffset: 0.00, yOffset: 0.00, zOffset: 0.00, supportedVersions: [], scriptPaths: {} },
+      ],
+      prusa: [],
+      anycubic: [
+        { id: 's1c', name: 'Anycubic S1C', shortName: 'S1C', image: 'https://picsum.photos/seed/s1c/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 2.80, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\S1Cstandard.toml" --Gcode' } },
+      ],
+      diy: [
+        { id: 'voron24', name: 'VORON 2.4', shortName: 'V2.4', image: 'https://picsum.photos/seed/voron24/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 2.50, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\Voron24standard.toml" --Gcode' } },
+        { id: 'vorontrident', name: 'VORON Trident', shortName: 'Trident', image: 'https://picsum.photos/seed/vorontrident/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 2.45, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\VoronTridentstandard.toml" --Gcode' } },
+        { id: 'custom', name: '自定义机型', shortName: '自定义', image: 'https://picsum.photos/seed/custom/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 0.00, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\Customstandard.toml" --Gcode' } },
+      ],
+    };
+
+    /*
+     * 版本历史数据
+     * @property {string} version - 版本号
+     * @property {string} date - 发布日期
+     * @property {string} desc - 版本描述
+     * @property {string} status - 版本状态（RUNNING/Beta/Legacy）
+     * @property {boolean} current - 是否为当前版本
+     * @property {string[]} details - 更新详情列表
+     */
+    const versions = [
+      { version: 'v2.4.0-stable', date: '2024-05-20', desc: '优化了 Z 轴校准算法，提升精度', status: 'RUNNING', current: true, details: ['新增自动 Z 偏移检测功能', '优化校准算法，精度提升 15%', '修复多机型切换时的数据丢失问题', '更新用户界面交互体验'] },
+      { version: 'v2.3.9-beta', date: '2024-05-15', desc: '新增 XY 轴联合校准功能', status: 'Beta', current: false, details: ['新增 XY 轴联合校准模式', '优化预设下载速度', '修复部分机型识别问题'] },
+      { version: 'v2.3.8-stable', date: '2024-05-10', desc: '修复已知问题，提升稳定性', status: 'Legacy', current: false, details: ['修复启动时的闪退问题', '优化内存占用', '更新多语言支持'] },
+      { version: 'v2.3.5-stable', date: '2024-04-28', desc: '重构参数管理模块', status: 'Legacy', current: false, details: ['重构参数管理架构', '新增参数导入导出功能', '优化参数搜索功能'] },
+      { version: 'v2.3.0-stable', date: '2024-04-15', desc: '新增快拆版预设支持', status: 'Legacy', current: false, details: ['新增快拆版预设模板', '支持自定义预设管理', '优化预设加载速度'] },
+      { version: 'v2.2.0-stable', date: '2024-03-20', desc: '优化界面交互体验', status: 'Legacy', current: false, details: ['全新界面设计', '优化操作流程', '新增暗色主题支持'] },
+    ];
+
+    // ==================== 2. 状态管理 ====================
+    /*
+     * 全局状态变量说明
+     * --------------------------
+     * selectedVersion: 当前选中的版本类型（standard/quick/lite）
+     * selectedDate: 当前选中的日期
+     * selectedPrinter: 当前选中的机型ID
+     * selectedBrand: 当前选中的品牌ID
+     * currentPrinterSupportedVersions: 当前机型支持的版本列表
+     * contextMenuTarget: 右键菜单的目标对象
+     * currentStep: 引导页当前步骤
+     * wizardSelectedBrand: 引导页选中的品牌
+     * wizardSelectedPrinter: 引导页选中的机型
+     * versionsExpanded: 版本列表是否展开
+     * sidebarCollapsed: 侧边栏是否折叠
+     */
+    let selectedVersion = null;
+    let selectedDate = null;
+    let selectedPrinter = 'a1';
+    let selectedBrand = 'bambu';
+    let currentPrinterSupportedVersions = ['standard', 'quick'];
+    let contextMenuTarget = null;
+    let currentStep = 1;
+    let wizardSelectedBrand = 'bambu';
+    let wizardSelectedPrinter = null;
+    let versionsExpanded = false;
+    const INITIAL_DISPLAY_COUNT = 3;
+    let sidebarCollapsed = false;
+
+    // ==================== 3. 侧边栏功能 ====================
+    /*
+     * toggleSidebar() - 切换侧边栏折叠/展开状态
+     * 
+     * 功能说明：
+     * 1. 切换sidebarCollapsed状态标志
+     * 2. 添加/移除CSS类控制样式变化
+     * 3. 修改wrapper的width属性实现宽度动画
+     * 
+     * 【宽度修改说明】
+     * 如需修改侧边栏宽度，请修改以下位置的数值：
+     * - 展开宽度：wrapper.style.width = '288px'（第1205行）
+     * - 折叠宽度：wrapper.style.width = '72px'（第1202行）
+     * 同时需要修改CSS中的.sidebar-wrapper-collapsed和.sidebar-collapsed
+     */
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const wrapper = document.getElementById('sidebarWrapper');
+      sidebarCollapsed = !sidebarCollapsed;
+      if (sidebarCollapsed) {
+        sidebar.classList.add('sidebar-collapsed');
+        wrapper.classList.add('sidebar-wrapper-collapsed');
+        wrapper.style.width = '72px';  // 【折叠宽度】修改这里可改变折叠后的宽度
+      } else {
+        sidebar.classList.remove('sidebar-collapsed');
+        wrapper.classList.remove('sidebar-wrapper-collapsed');
+        wrapper.style.width = '216px'; // 【展开宽度】修改这里可改变展开后的宽度
+      }
+    }
+
+    /*
+     * toggleFaq(button) - 展开/折叠FAQ答案（使用通用折叠方案）
+     * @param {HTMLElement} button - 点击的问题按钮
+     * 功能：切换答案的显示/隐藏状态，带平滑动画
+     */
+    function toggleFaq(button) {
+      const item = button.closest('.collapse-item');
+      if (item) {
+        const wrapper = item.querySelector('.collapse-wrapper');
+        if (wrapper) {
+          wrapper.classList.toggle('is-expanded');
+        }
+      }
+    }
+
+    /*
+     * FAQ 数据数组
+     * 包含所有常见问题及其答案
+     */
+    const faqData = [
+      {
+        question: '如何开始使用支撑面改善工具？',
+        answer: `<p>1. 首先在<span class="text-blue-600 font-medium">选择机型</span>页面选择您的3D打印机型号</p>
+          <p>2. 进入<span class="text-blue-600 font-medium">下载预设</span>页面，选择对应的版本并下载预设文件</p>
+          <p>3. 在切片软件中配置后处理脚本路径</p>
+          <p>4. 进行Z轴和XY轴校准，获取最佳打印效果</p>`
+      },
+      {
+        question: 'Z轴偏移校准的原理是什么？',
+        answer: `<p>Z轴偏移校准用于调整打印头与打印床之间的距离。正确的Z轴偏移可以确保：</p>
+          <p>• 第一层能够牢固粘附在打印床上</p>
+          <p>• 支撑结构能够正确生成</p>
+          <p>• 打印表面光滑平整</p>
+          <p class="text-gray-500 italic">建议每次更换打印床或喷嘴后都重新校准Z轴偏移。</p>`
+      },
+      {
+        question: 'XY轴偏移校准有什么作用？',
+        answer: `<p>XY轴偏移校准用于调整支撑结构与模型之间的水平位置关系。主要作用包括：</p>
+          <p>• 确保支撑结构位于正确的位置</p>
+          <p>• 提高支撑与模型的接触精度</p>
+          <p>• 减少支撑拆除后的残留痕迹</p>`
+      },
+      {
+        question: '后处理脚本如何配置？',
+        answer: `<p>在Bambu Studio或OrcaSlicer中配置后处理脚本：</p>
+          <p>1. 打开切片软件，进入<span class="text-blue-600 font-medium">工艺 → 其他</span></p>
+          <p>2. 找到<span class="text-blue-600 font-medium">后处理脚本容器</span>选项</p>
+          <p>3. 将显示的脚本路径复制粘贴到输入框中</p>
+          <p>4. 保存设置并重新切片即可生效</p>`
+      },
+      {
+        question: '标准版和快拆版有什么区别？',
+        answer: `<p><span class="font-medium text-gray-900">标准版：</span>适用于标准配置的打印机，提供完整的支撑面优化功能</p>
+          <p><span class="font-medium text-gray-900">快拆版：</span>适用于使用快拆喷嘴的打印机，针对快拆结构进行了优化</p>
+          <p class="text-gray-500 italic">请根据您的打印机实际配置选择对应版本。</p>`
+      },
+      {
+        question: '如何更新到最新版本？',
+        answer: `<p>1. 进入<span class="text-blue-600 font-medium">版本控制</span>页面</p>
+          <p>2. 点击右上角的<span class="text-blue-600 font-medium">检查更新</span>按钮</p>
+          <p>3. 如果有新版本，点击下载即可获取最新功能</p>
+          <p class="text-gray-500 italic">建议定期检查更新以获取最新的优化和功能。</p>`
+      },
+      {
+        question: '校准后打印效果不理想怎么办？',
+        answer: `<p>如果校准后效果仍不理想，请检查以下几点：</p>
+          <p>• 确认选择的机型和版本是否正确</p>
+          <p>• 检查打印床是否水平</p>
+          <p>• 确认耗材干燥且质量良好</p>
+          <p>• 尝试微调偏移参数（每次调整0.05mm）</p>
+          <p>• 如问题持续，请联系技术支持获取帮助</p>`
+      }
+    ];
+
+    /*
+     * generateFaqItemHtml(item) - 生成单个FAQ项HTML
+     * @param {Object} item - FAQ数据对象
+     * @returns {string} HTML字符串
+     */
+    function generateFaqItemHtml(item) {
+      return `
+        <div class="collapse-item faq-item bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <button class="faq-question w-full px-5 py-4 flex items-center justify-between text-left" onclick="toggleFaq(this)">
+            <span class="font-medium text-gray-900">${item.question}</span>
+            <svg class="collapse-arrow w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="collapse-wrapper">
+            <div class="collapse-inner">
+              <div class="px-5 pb-4">
+                <div class="text-sm text-gray-600 leading-relaxed space-y-2">
+                  ${item.answer}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /*
+     * filterFaq(keyword) - 过滤FAQ列表
+     * @param {string} keyword - 搜索关键词
+     * 功能：根据关键词过滤FAQ，匹配问题和答案内容
+     */
+    function filterFaq(keyword) {
+      const list = document.getElementById('faqList');
+      const lowerKeyword = keyword.toLowerCase().trim();
+      
+      if (!lowerKeyword) {
+        list.innerHTML = faqData.map(item => generateFaqItemHtml(item)).join('');
+        return;
+      }
+      
+      const filtered = faqData.filter(item => 
+        item.question.toLowerCase().includes(lowerKeyword) ||
+        item.answer.toLowerCase().includes(lowerKeyword)
+      );
+      
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-12 text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm">未找到相关问题</p>
+            <p class="text-xs text-gray-400 mt-1">请尝试其他关键词</p>
+          </div>
+        `;
+      } else {
+        list.innerHTML = filtered.map(item => generateFaqItemHtml(item)).join('');
+      }
+    }
+
+    /*
+     * toggleCollapse(element) - 通用折叠面板切换函数
+     * @param {HTMLElement} element - 触发元素（按钮或头部）
+     * 
+     * 使用场景：
+     * - FAQ 展开/收起
+     * - 高级设置面板
+     * - 侧边栏子菜单
+     * - 任何需要平滑展开/收起的内容
+     * 
+     * 工作原理：
+     * 1. 查找最近的 collapse-item 父容器
+     * 2. 切换 collapse-wrapper 的 is-expanded 类
+     * 3. CSS 自动处理动画效果
+     */
+    function toggleCollapse(element) {
+      const item = element.closest('.collapse-item');
+      if (item) {
+        const wrapper = item.querySelector('.collapse-wrapper');
+        if (wrapper) {
+          wrapper.classList.toggle('is-expanded');
+        }
+        // 同时切换 collapse-item 的 expanded 类（用于箭头旋转）
+        item.classList.toggle('expanded');
+      }
+    }
+
+    /*
+     * expandCollapse(element) - 展开折叠面板
+     * @param {HTMLElement} element - 触发元素
+     */
+    function expandCollapse(element) {
+      const item = element.closest('.collapse-item');
+      if (item) {
+        const wrapper = item.querySelector('.collapse-wrapper');
+        if (wrapper) {
+          wrapper.classList.add('is-expanded');
+        }
+        item.classList.add('expanded');
+      }
+    }
+
+    /*
+     * collapseCollapse(element) - 收起折叠面板
+     * @param {HTMLElement} element - 触发元素
+     */
+    function collapseCollapse(element) {
+      const item = element.closest('.collapse-item');
+      if (item) {
+        const wrapper = item.querySelector('.collapse-wrapper');
+        if (wrapper) {
+          wrapper.classList.remove('is-expanded');
+        }
+        item.classList.remove('expanded');
+      }
+    }
+
+    // ==================== 4. 初始化 ====================
+    /*
+     * init() - 页面初始化函数
+     * 
+     * 功能说明：
+     * 在页面加载时调用，初始化各个模块：
+     * - 渲染品牌列表
+     * - 渲染机型列表
+     * - 渲染版本列表
+     * - 绑定导航事件
+     * - 绑定右键菜单事件
+     * - 渲染引导页品牌列表
+     * - 更新版本列表显示状态
+     */
+    function init() {
+      renderBrands();
+      renderPrinters(selectedBrand);
+      renderVersions();
+      bindNavigation();
+      bindContextMenu();
+      renderWizardBrands();
+      updateVersionListForPrinter();
+      filterFaq('');
+    }
+
+    // ==================== 5. 引导页功能 ====================
+    /*
+     * skipOnboarding() - 跳过新手引导
+     * 功能：添加淡出动画后隐藏引导页
+     */
+    function skipOnboarding() {
+      const onboarding = document.getElementById('onboarding');
+      onboarding.classList.add('animate-fade-out');
+      setTimeout(() => {
+        onboarding.style.display = 'none';
+      }, 200);
+    }
+
+    /*
+     * finishOnboarding() - 完成新手引导
+     * 功能：
+     * 1. 获取引导页中选择的品牌和机型
+     * 2. 更新全局状态变量
+     * 3. 更新侧边栏显示的品牌和机型名称
+     * 4. 重新渲染品牌和机型列表
+     * 5. 关闭引导页
+     */
+    function finishOnboarding() {
+      if (wizardSelectedPrinter) {
+        selectBrand(wizardSelectedBrand);
+        selectPrinter(wizardSelectedPrinter);
+      }
+      skipOnboarding();
+    }
+
+    /*
+     * goToStep(step) - 引导页步骤切换
+     * @param {number} step - 目标步骤（1-3）
+     * 
+     * 步骤说明：
+     * - 步骤1：环境检测
+     * - 步骤2：选择机型
+     * - 步骤3：基础参数确认
+     * 
+     * 功能：
+     * 1. 更新步骤指示器的样式
+     * 2. 显示/隐藏对应的步骤内容
+     * 3. 更新底部按钮的文字和点击事件
+     */
+    function goToStep(step) {
+      if (step < 1) step = 1;
+      if (step > 3) { finishOnboarding(); return; }
+      
+      currentStep = step;
+      
+      for (let i = 1; i <= 3; i++) {
+        const stepEl = document.getElementById(`step${i}`);
+        const contentEl = document.getElementById(`stepContent${i}`);
+        stepEl.classList.remove('active', 'completed');
+        contentEl.classList.add('hidden');
+        if (i < step) stepEl.classList.add('completed');
+        else if (i === step) { stepEl.classList.add('active'); contentEl.classList.remove('hidden'); }
+      }
+      
+      const leftBtn = document.getElementById('leftBtn');
+      const rightBtn = document.getElementById('rightBtn');
+      
+      if (step === 1) {
+        leftBtn.textContent = '跳过引导';
+        leftBtn.onclick = skipOnboarding;
+        rightBtn.textContent = '下一步';
+        rightBtn.disabled = false;
+        rightBtn.onclick = () => goToStep(2);
+      } else if (step === 2) {
+        leftBtn.textContent = '上一步';
+        leftBtn.onclick = () => goToStep(1);
+        rightBtn.textContent = '下一步';
+        rightBtn.disabled = !wizardSelectedPrinter;
+        rightBtn.onclick = () => goToStep(3);
+      } else if (step === 3) {
+        leftBtn.textContent = '上一步';
+        leftBtn.onclick = () => goToStep(2);
+        rightBtn.textContent = '开始使用';
+        rightBtn.disabled = false;
+        rightBtn.onclick = finishOnboarding;
+      }
+    }
+
+    function manualSelectPath() {
+      alert('请选择切片软件安装路径');
+    }
+
+    function renderWizardBrands() {
+      const list = document.getElementById('wizardBrandList');
+      list.innerHTML = brands.map(brand => `
+        <div class="model-list-item ${brand.id === wizardSelectedBrand ? 'selected' : ''}" onclick="selectWizardBrand('${brand.id}')">
+          <span class="text-xs">${brand.name}</span>
+        </div>
+      `).join('');
+      renderWizardModels(wizardSelectedBrand);
+    }
+
+    function selectWizardBrand(brandId) {
+      wizardSelectedBrand = brandId;
+      wizardSelectedPrinter = null;
+      updateSelectedBadge();
+      if (currentStep === 2) document.getElementById('rightBtn').disabled = true;
+      renderWizardBrands();
+    }
+
+    /*
+     * renderWizardModels(brandId) - 渲染引导页机型列表
+     * @param {string} brandId - 品牌ID
+     * 功能：根据选中的品牌渲染对应的机型列表
+     */
+    function renderWizardModels(brandId) {
+      const list = document.getElementById('wizardModelList');
+      const printers = printersByBrand[brandId] || [];
+      if (printers.length === 0) { 
+        list.innerHTML = `<div class="p-3 text-center text-gray-400 text-xs">暂未支持</div>`; 
+        return; 
+      }
+      list.innerHTML = printers.map(p => `
+        <div class="model-list-item ${p.id === wizardSelectedPrinter ? 'selected' : ''} ${p.disabled ? 'disabled' : ''}" ${!p.disabled ? `onclick="selectWizardModel('${p.id}')"` : ''}>
+          <div class="flex items-center justify-between">
+            <span class="text-xs">${p.name}</span>
+            ${p.disabled ? '<span class="text-[10px] text-gray-400">开发中</span>' : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /*
+     * selectWizardModel(printerId) - 引导页选择机型
+     * @param {string} printerId - 机型ID
+     * 功能：
+     * 1. 更新选中的机型ID
+     * 2. 重新渲染机型列表
+     * 3. 更新选中徽章
+     * 4. 显示该机型的默认偏移参数
+     */
+    function selectWizardModel(printerId) {
+      wizardSelectedPrinter = printerId;
+      const printers = printersByBrand[wizardSelectedBrand] || [];
+      const printer = printers.find(p => p.id === printerId);
+      if (printer) {
+        renderWizardModels(wizardSelectedBrand);
+        updateSelectedBadge();
+        document.getElementById('rightBtn').disabled = false;
+        document.getElementById('wizardXOffset').textContent = printer.xOffset.toFixed(2);
+        document.getElementById('wizardYOffset').textContent = printer.yOffset.toFixed(2);
+        document.getElementById('wizardZOffset').textContent = printer.zOffset.toFixed(2);
+      }
+    }
+
+    /*
+     * updateSelectedBadge() - 更新选中机型徽章
+     * 功能：在引导页显示当前选中的机型名称
+     */
+    function updateSelectedBadge() {
+      const badge = document.getElementById('selectedModelBadge');
+      if (wizardSelectedPrinter) {
+        const printers = printersByBrand[wizardSelectedBrand] || [];
+        const printer = printers.find(p => p.id === wizardSelectedPrinter);
+        if (printer) { badge.textContent = printer.name; badge.classList.remove('hidden'); return; }
+      }
+      badge.classList.add('hidden');
+    }
+
+    // ==================== 6. 品牌相关功能 ====================
+    /*
+     * renderBrands() - 渲染品牌列表
+     * 功能：
+     * 1. 将收藏的品牌排在前面
+     * 2. 为每个品牌生成卡片HTML
+     * 3. 绑定点击和右键菜单事件
+     */
+    function renderBrands() {
+      const list = document.getElementById('brandList');
+      const sortedBrands = [...brands].sort((a, b) => {
+        if (a.favorite && !b.favorite) return -1;
+        if (!a.favorite && b.favorite) return 1;
+        return 0;
+      });
+      
+      list.innerHTML = sortedBrands.map(brand => `
+        <div class="brand-card rounded-xl p-3 border border-gray-100 ${brand.id === selectedBrand ? 'active' : ''} ${brand.favorite ? 'favorited' : ''}" 
+             onclick="selectBrand('${brand.id}')" 
+             oncontextmenu="showBrandContextMenu(event, '${brand.id}')">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-sm text-gray-800">${brand.name}</span>
+                ${brand.favorite ? `
+                  <svg class="w-3.5 h-3.5 star-icon favorited" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                  </svg>
+                ` : ''}
+              </div>
+              ${brand.subtitle ? `<span class="text-xs text-gray-400">${brand.subtitle}</span>` : ''}
+            </div>
+            <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /*
+     * selectBrand(brandId) - 选择品牌
+     * @param {string} brandId - 品牌ID
+     * 功能：
+     * 1. 更新全局选中品牌
+     * 2. 更新页面标题
+     * 3. 重新渲染品牌和机型列表
+     */
+    function selectBrand(brandId) {
+      selectedBrand = brandId;
+      const brand = brands.find(b => b.id === brandId);
+      
+      const titleEl = document.getElementById('currentBrandTitle');
+      if (brand.subtitle) {
+        titleEl.textContent = `${brand.name} - ${brand.subtitle}`;
+      } else {
+        titleEl.textContent = brand.name;
+      }
+      
+      renderBrands();
+      renderPrinters(brandId);
+    }
+
+    /*
+     * showBrandContextMenu(event, brandId) - 显示品牌右键菜单
+     * @param {Event} event - 鼠标事件
+     * @param {string} brandId - 品牌ID
+     * 功能：显示收藏/取消收藏的右键菜单
+     */
+    function showBrandContextMenu(event, brandId) {
+      event.preventDefault();
+      const brand = brands.find(b => b.id === brandId);
+      
+      const menu = document.getElementById('contextMenu');
+      const menuText = document.getElementById('contextMenuFavoriteText');
+      menuText.textContent = brand.favorite ? '取消收藏' : '收藏此品牌';
+      
+      contextMenuTarget = { type: 'brand', id: brandId };
+      menu.style.left = event.clientX + 'px';
+      menu.style.top = event.clientY + 'px';
+      menu.classList.remove('hidden');
+    }
+
+    // ==================== 7. 机型相关功能 ====================
+    /*
+     * renderPrinters(brandId) - 渲染机型列表
+     * @param {string} brandId - 品牌ID
+     * 功能：
+     * 1. 根据品牌获取机型列表
+     * 2. 为每个机型生成卡片HTML
+     * 3. 处理禁用状态的机型（开发中）
+     * 4. 绑定点击和右键菜单事件
+     */
+    function renderPrinters(brandId) {
+      const grid = document.getElementById('printerGrid');
+      const printers = printersByBrand[brandId] || [];
+      
+      if (printers.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-3 py-16 text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div class="text-gray-500 mb-2">暂未支持</div>
+            <div class="text-sm text-gray-400">敬请期待</div>
+          </div>
+        `;
+        return;
+      }
+      
+      grid.innerHTML = printers.map(p => `
+        <div class="select-card rounded-xl p-3 flex flex-col h-full ${p.id === selectedPrinter ? 'selected' : ''} ${p.disabled ? 'printer-card-disabled' : ''}" 
+             ${!p.disabled ? `onclick="selectPrinter('${p.id}')"` : ''}
+             oncontextmenu="showPrinterContextMenu(event, '${p.id}')">
+          <div class="relative flex-shrink-0">
+            <div class="aspect-video bg-transparent rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+              <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
+            </div>
+            ${p.disabled ? `<div class="absolute top-2 left-2 px-2 py-1 rounded bg-gray-200 text-xs text-gray-500">开发中</div>` : ''}
+            <div class="absolute top-2 right-2">
+              <svg class="w-4 h-4 star-icon ${p.favorite ? 'favorited' : 'not-favorited'}"
+                   fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="text-sm font-medium text-gray-700 text-center flex-1 flex items-center justify-center">${p.name}</div>
+        </div>
+      `).join('');
+    }
+
+    /*
+     * selectPrinter(id) - 选择机型
+     * @param {string} id - 机型ID
+     * 功能：
+     * 1. 更新全局选中机型
+     * 2. 更新侧边栏显示的品牌和机型名称
+     * 3. 更新当前机型支持的版本列表
+     * 4. 重置版本选择状态
+     * 5. 更新校准页面的脚本路径
+     */
+    function selectPrinter(id) {
+      selectedPrinter = id;
+      const printers = printersByBrand[selectedBrand] || [];
+      const printer = printers.find(p => p.id === id);
+      
+      if (printer && !printer.disabled) {
+        const brand = brands.find(b => b.id === selectedBrand);
+        document.getElementById('sidebarBrand').textContent = brand ? (brand.shortName || brand.name) : '';
+        document.getElementById('sidebarModelName').textContent = printer.shortName || printer.name;
+        currentPrinterSupportedVersions = printer.supportedVersions || ['standard'];
+        
+        // === 彻底重置预设下载页面的所有状态 ===
+        selectedVersion = null;
+        
+        // 1. 重置所有版本卡片的边框、背景和打勾图标
+        document.querySelectorAll('#page-download .version-card[data-version]').forEach(card => {
+          card.classList.remove('selected');
+          card.style.borderColor = '#E5E7EB';
+          const indicator = card.querySelector('.check-indicator');
+          if (indicator) {
+            indicator.style.backgroundColor = 'transparent';
+            indicator.style.borderColor = '#E5E7EB';
+            const svg = indicator.querySelector('svg');
+            if (svg) svg.classList.add('opacity-0');
+          }
+        });
+        
+        // 2. 重置日期下拉框
+        const dateSelect = document.getElementById('dateSelect');
+        if (dateSelect) {
+          dateSelect.disabled = true;
+          dateSelect.value = '';
+          dateSelect.classList.add('text-gray-400', 'cursor-not-allowed', 'bg-gray-50');
+          dateSelect.classList.remove('text-gray-900', 'bg-white', 'cursor-pointer');
+        }
+        
+        // 3. 重置日期步骤前的日历图标颜色
+        const step2Badge = document.getElementById('step2Badge');
+        if (step2Badge) {
+          step2Badge.classList.add('text-gray-400');
+          step2Badge.classList.remove('text-blue-500');
+        }
+        
+        // 4. 重置全局其他关联组件
+        updateSidebarVersionBadge(null);
+        updateDownloadButton();
+        updateCalibratePageScript();
+        
+        // 如果已经在下载预设页面，立即刷新可用卡片的显示/隐藏
+        if (typeof updateVersionListForPrinter === 'function') {
+          updateVersionListForPrinter();
+        }
+        
+        renderPrinters(selectedBrand);
+      }
+    }
+
+    function showPrinterContextMenu(event, printerId) {
+      event.preventDefault();
+      const printers = printersByBrand[selectedBrand] || [];
+      const printer = printers.find(p => p.id === printerId);
+      
+      if (!printer || printer.disabled) return;
+      
+      const menu = document.getElementById('contextMenu');
+      const menuText = document.getElementById('contextMenuFavoriteText');
+      menuText.textContent = printer.favorite ? '取消收藏' : '收藏此机型';
+      
+      contextMenuTarget = { type: 'printer', id: printerId };
+      menu.style.left = event.clientX + 'px';
+      menu.style.top = event.clientY + 'px';
+      menu.classList.remove('hidden');
+    }
+
+    function filterPrinters() {
+      const search = document.getElementById('printerSearch').value.toLowerCase();
+      const printers = printersByBrand[selectedBrand] || [];
+      const filtered = printers.filter(p => p.name.toLowerCase().includes(search));
+      
+      const grid = document.getElementById('printerGrid');
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-3 py-8 text-center text-gray-400">未找到匹配的机型</div>`;
+        return;
+      }
+      
+      grid.innerHTML = filtered.map(p => `
+        <div class="select-card rounded-xl p-3 flex flex-col h-full ${p.id === selectedPrinter ? 'selected' : ''} ${p.disabled ? 'printer-card-disabled' : ''}"
+             ${!p.disabled ? `onclick="selectPrinter('${p.id}')"` : ''}
+             oncontextmenu="showPrinterContextMenu(event, '${p.id}')">
+          <div class="relative flex-shrink-0">
+            <div class="aspect-video bg-transparent rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+              <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
+            </div>
+            ${p.disabled ? `<div class="absolute top-2 left-2 px-2 py-1 rounded bg-gray-200 text-xs text-gray-500">开发中</div>` : ''}
+            <div class="absolute top-2 right-2">
+              <svg class="w-4 h-4 star-icon ${p.favorite ? 'favorited' : 'not-favorited'}"
+                   fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="text-sm font-medium text-gray-700 text-center flex-1 flex items-center justify-center">${p.name}</div>
+        </div>
+      `).join('');
+    }
+
+    function sortPrinters() {
+      const sortType = document.getElementById('printerSort').value;
+      const printers = printersByBrand[selectedBrand] || [];
+      
+      let sorted = [...printers];
+      if (sortType === 'alpha') {
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortType === 'favorite') {
+        sorted.sort((a, b) => {
+          if (a.favorite && !b.favorite) return -1;
+          if (!a.favorite && b.favorite) return 1;
+          return 0;
+        });
+      }
+      
+      const grid = document.getElementById('printerGrid');
+      grid.innerHTML = sorted.map(p => `
+        <div class="select-card rounded-xl p-3 flex flex-col h-full ${p.id === selectedPrinter ? 'selected' : ''} ${p.disabled ? 'printer-card-disabled' : ''}"
+             ${!p.disabled ? `onclick="selectPrinter('${p.id}')"` : ''}
+             oncontextmenu="showPrinterContextMenu(event, '${p.id}')">
+          <div class="relative flex-shrink-0">
+            <div class="aspect-video bg-transparent rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+              <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
+            </div>
+            ${p.disabled ? `<div class="absolute top-2 left-2 px-2 py-1 rounded bg-gray-200 text-xs text-gray-500">开发中</div>` : ''}
+            <div class="absolute top-2 right-2">
+              <svg class="w-4 h-4 star-icon ${p.favorite ? 'favorited' : 'not-favorited'}"
+                   fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="text-sm font-medium text-gray-700 text-center flex-1 flex items-center justify-center">${p.name}</div>
+        </div>
+      `).join('');
+    }
+
+    // ==================== 右键菜单 ====================
+    function bindContextMenu() {
+      document.addEventListener('click', () => {
+        document.getElementById('contextMenu').classList.add('hidden');
+      });
+      
+      document.getElementById('contextMenuFavorite').addEventListener('click', () => {
+        if (!contextMenuTarget) return;
+        
+        if (contextMenuTarget.type === 'brand') {
+          const brand = brands.find(b => b.id === contextMenuTarget.id);
+          if (brand) {
+            brand.favorite = !brand.favorite;
+            renderBrands();
+          }
+        } else if (contextMenuTarget.type === 'printer') {
+          const printers = printersByBrand[selectedBrand] || [];
+          const printer = printers.find(p => p.id === contextMenuTarget.id);
+          if (printer) {
+            printer.favorite = !printer.favorite;
+            renderPrinters(selectedBrand);
+          }
+        }
+        
+        document.getElementById('contextMenu').classList.add('hidden');
+      });
+    }
+
+    // ==================== 版本控制 ====================
+    function checkForUpdates() {
+      alert('当前已是最新版本！');
+    }
+    
+    /*
+     * generateVersionCardHtml(v) - 生成单个版本卡片HTML
+     * @param {Object} v - 版本数据对象
+     * @returns {string} HTML字符串
+     */
+    function generateVersionCardHtml(v) {
+      return `
+        <div class="collapse-item version-card bg-white rounded-xl card-shadow overflow-hidden mb-3">
+          <div class="p-4 cursor-pointer hover:bg-gray-50 transition-colors" onclick="toggleCollapse(this)">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                ${v.current ? `
+                  <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                ` : `
+                  <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                `}
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-medium text-gray-900">${v.version}</span>
+                    <span class="text-xs text-gray-400">${v.date}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium ${
+                      v.status === 'RUNNING' ? 'bg-blue-100 text-blue-700' :
+                      v.status === 'Beta' ? 'bg-amber-100 text-amber-700' :
+                      'bg-gray-100 text-gray-600'
+                    }">${v.status}</span>
+                  </div>
+                  <div class="text-sm text-gray-500 mt-0.5">${v.desc}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+                <button onclick="event.stopPropagation(); downloadVersion('${v.version}')" class="btn-primary px-3 py-1.5 rounded-lg text-xs font-medium relative z-10">下载</button>
+                <div class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center transition-colors">
+                  <svg class="collapse-icon w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="collapse-wrapper">
+            <div class="collapse-inner bg-gray-50 border-t border-gray-100">
+              <div class="p-4">
+                <ul class="space-y-1.5">
+                  ${v.details.map(d => `<li class="flex items-start gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>${d}</span></li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderVersions(filter = '') {
+      const list = document.getElementById('versionList');
+      const filtered = versions.filter(v => v.version.toLowerCase().includes(filter.toLowerCase()) || v.desc.toLowerCase().includes(filter.toLowerCase()));
+      
+      const isSearching = filter.trim() !== '';
+      const showCount = isSearching ? filtered.length : INITIAL_DISPLAY_COUNT;
+      
+      const initialItems = filtered.slice(0, showCount);
+      const extraItems = filtered.slice(showCount);
+
+      let html = initialItems.map(v => generateVersionCardHtml(v)).join('');
+
+      if (extraItems.length > 0) {
+        html += `
+          <div id="extraVersionsWrapper" class="collapse-wrapper ${versionsExpanded ? 'is-expanded' : ''}">
+            <div class="collapse-inner mt-1">
+              ${extraItems.map(v => generateVersionCardHtml(v)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      list.innerHTML = html;
+      updateExpandButton();
+    }
+
+    function downloadVersion(version) {
+      alert(`正在下载 ${version}...`);
+    }
+
+    function toggleExpandMore() {
+      versionsExpanded = !versionsExpanded;
+      const wrapper = document.getElementById('extraVersionsWrapper');
+      if (wrapper) {
+        if (versionsExpanded) {
+          wrapper.classList.add('is-expanded');
+        } else {
+          wrapper.classList.remove('is-expanded');
+        }
+      }
+      updateExpandButton();
+    }
+
+    function updateExpandButton() {
+      const btnText = document.getElementById('expandBtnText');
+      if (!btnText) return;
+      if (versionsExpanded) {
+        btnText.textContent = '收起历史';
+      } else {
+        btnText.textContent = '历史版本';
+      }
+    }
+
+    // ==================== 导航 ====================
+    function bindNavigation() {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          
+          const page = item.dataset.page;
+          document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+          document.getElementById(`page-${page}`).classList.remove('hidden');
+          
+          if (page === 'download') {
+            updateVersionListForPrinter();
+          }
+        });
+      });
+    }
+
+    function updateVersionListForPrinter() {
+      // 修复：原先的选择器不存在，改用更精确的属性选择器
+      const cards = document.querySelectorAll('#page-download .version-card[data-version]');
+      if (!cards.length) return;
+      
+      cards.forEach(card => {
+        const versionType = card.dataset.version;
+        const isSupported = currentPrinterSupportedVersions.includes(versionType);
+        
+        if (isSupported) {
+          // 恢复显示
+          card.style.display = '';
+        } else {
+          // 强制物理隐藏
+          card.style.display = 'none';
+          
+          // 如果被隐藏的版本正好是当前选中的，强制清空当前选择状态
+          if (selectedVersion === versionType) {
+            card.classList.remove('selected');
+            card.style.borderColor = '#E5E7EB';
+            const indicator = card.querySelector('.check-indicator');
+            if (indicator) {
+              indicator.style.backgroundColor = 'transparent';
+              indicator.style.borderColor = '#E5E7EB';
+              const svg = indicator.querySelector('svg');
+              if (svg) svg.classList.add('opacity-0');
+            }
+            
+            selectedVersion = null;
+            const dateSelect = document.getElementById('dateSelect');
+            if (dateSelect) {
+              dateSelect.disabled = true;
+              dateSelect.classList.add('text-gray-400', 'cursor-not-allowed', 'bg-gray-50');
+              dateSelect.classList.remove('text-gray-900', 'bg-white', 'cursor-pointer');
+              dateSelect.value = "";
+            }
+            
+            const step2Badge = document.getElementById('step2Badge');
+            if (step2Badge) {
+              step2Badge.classList.add('text-gray-400');
+              step2Badge.classList.remove('text-blue-500');
+            }
+            
+            updateSidebarVersionBadge(null);
+            updateDownloadButton();
+            updateCalibratePageScript();
+          }
+        }
+      });
+    }
+
+    /*
+     * selectVersion(el, type) - 选择版本类型
+     * @param {HTMLElement} el - 点击的卡片元素
+     * @param {string} type - 版本类型（standard/quick/lite）
+     * 功能：
+     * 1. 更新选中状态的视觉样式
+     * 2. 启用日期选择器
+     * 3. 更新下一步按钮状态
+     * 4. 更新侧边栏版本徽章
+     * 5. 更新校准页面的脚本路径
+     */
+    function selectVersion(el, type) {
+      if (el.classList.contains('opacity-40')) return;
+      
+      // 重置所有卡片边框为灰色
+      document.querySelectorAll('[data-version]').forEach(card => {
+        card.style.borderColor = '#E5E7EB';
+        card.classList.remove('selected');
+        
+        const indicator = card.querySelector('.check-indicator');
+        if (indicator) {
+          indicator.style.backgroundColor = 'transparent';
+          indicator.style.borderColor = '#E5E7EB';
+          const svg = indicator.querySelector('svg');
+          if (svg) svg.classList.add('opacity-0');
+        }
+      });
+      
+      // 设置当前选中卡片，使用对应版本的动态 CSS 变量
+      el.classList.add('selected');
+      el.style.borderColor = `var(--theme-${type}-text)`;
+      
+      const indicator = el.querySelector('.check-indicator');
+      if (indicator) {
+        indicator.style.backgroundColor = `var(--theme-${type}-text)`;
+        indicator.style.borderColor = `var(--theme-${type}-text)`;
+        const svg = indicator.querySelector('svg');
+        if (svg) svg.classList.remove('opacity-0');
+      }
+      
+      selectedVersion = type;
+      
+      // 启用日期选择器
+      const dateSelect = document.getElementById('dateSelect');
+      dateSelect.disabled = false;
+      dateSelect.classList.remove('text-gray-400', 'cursor-not-allowed', 'bg-gray-50');
+      dateSelect.classList.add('text-gray-900', 'bg-white', 'cursor-pointer');
+      
+      // 更新步骤2徽章
+      const step2Badge = document.getElementById('step2Badge');
+      if (step2Badge) {
+        step2Badge.classList.remove('text-gray-400');
+        step2Badge.classList.add('text-blue-500');
+      }
+      
+      document.getElementById('dateSelector').style.opacity = '1';
+      updateDownloadButton();
+      updateSidebarVersionBadge(type);
+      updateCalibratePageScript();
+    }
+
+    function updateCalibratePageScript() {
+      const scriptInput = document.getElementById('scriptPath');
+      const scriptBtn = document.getElementById('scriptCopyBtn');
+      
+      const printers = printersByBrand[selectedBrand] || [];
+      const printer = printers.find(p => p.id === selectedPrinter);
+      
+      if (printer && selectedVersion && printer.scriptPaths && printer.scriptPaths[selectedVersion]) {
+        scriptInput.value = printer.scriptPaths[selectedVersion];
+        scriptBtn.disabled = false;
+        scriptBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        scriptInput.value = '';
+        scriptInput.placeholder = '请先选择机型和版本';
+        scriptBtn.disabled = true;
+        scriptBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+    
+    /*
+     * setVersionTheme(version, textHex, bgHex) - 动态设置版本主题色
+     * @param {string} version - 版本类型 (standard/quick/lite)
+     * @param {string} textHex - 文字颜色十六进制值
+     * @param {string} bgHex - 背景颜色十六进制值
+     */
+    function setVersionTheme(version, textHex, bgHex) {
+      document.documentElement.style.setProperty(`--theme-${version}-text`, textHex);
+      document.documentElement.style.setProperty(`--theme-${version}-bg`, bgHex);
+      if (selectedVersion === version) updateSidebarVersionBadge(version);
+    }
+
+    function updateSidebarVersionBadge(type) {
+      const badge = document.getElementById('sidebarVersionBadge');
+      
+      // 核心修复：每次赋值时，确保清空可能引发暗黑模式覆盖的 bg-gray-100
+      badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors duration-300';
+      
+      if (type === 'standard') {
+        badge.textContent = '标准版';
+        badge.style.color = 'var(--theme-standard-text)';
+        badge.style.backgroundColor = 'var(--theme-standard-bg)';
+      } else if (type === 'quick') {
+        badge.textContent = '快拆版';
+        badge.style.color = 'var(--theme-quick-text)';
+        badge.style.backgroundColor = 'var(--theme-quick-bg)';
+      } else if (type === 'lite') {
+        badge.textContent = 'Lite版';
+        badge.style.color = 'var(--theme-lite-text)';
+        badge.style.backgroundColor = 'var(--theme-lite-bg)';
+      } else {
+        // 只有在未选择状态下，才加上灰底灰字
+        badge.classList.add('bg-gray-100', 'text-gray-400');
+        badge.textContent = '未选择';
+        badge.style.color = '';
+        badge.style.backgroundColor = '';
+      }
+    }
+
+    function updateDownloadButton() {
+      const btn = document.getElementById('downloadBtn');
+      const hintWrapper = document.getElementById('downloadHintWrapper');
+      const dateVal = document.getElementById('dateSelect').value;
+      
+      if (selectedVersion && dateVal) {
+        btn.disabled = false;
+        if (hintWrapper) hintWrapper.style.opacity = '0';
+      } else {
+        btn.disabled = true;
+        if (hintWrapper) hintWrapper.style.opacity = '1';
+      }
+    }
+
+    function copyPath() {
+      const input = document.getElementById('scriptPath');
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value);
+      }
+    }
+
+    let selectedZIndex = 0;
+    let selectedXIndex = 0;
+    let selectedYIndex = 0;
+
+    function openZModel() {
+      const progress = document.getElementById('zProgress');
+      const placeholder = document.getElementById('zPlaceholder');
+      const gridSelector = document.getElementById('zGridSelector');
+      const grid = document.getElementById('zGrid');
+      const btn = document.getElementById('zOpenBtn');
+      
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+      let countdown = 10;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<span class="text-sm">${countdown}秒后可再次操作</span>`;
+      
+      const timer = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          btn.innerHTML = `<span class="text-sm">${countdown}秒后可再次操作</span>`;
+        } else {
+          clearInterval(timer);
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+          btn.innerHTML = originalText;
+        }
+      }, 1000);
+      
+      progress.classList.remove('hidden');
+      placeholder.classList.add('hidden');
+      
+      setTimeout(() => {
+        progress.classList.add('hidden');
+        gridSelector.classList.remove('hidden');
+        
+        grid.innerHTML = '';
+        for (let i = -5; i <= 5; i++) {
+          const label = i > 0 ? `+${(i * 0.1).toFixed(1)}` : `${(i * 0.1).toFixed(1)}`;
+          const isZero = i === 0;
+          const cell = document.createElement('div');
+          cell.className = `flex flex-col items-center justify-center w-14 h-16 rounded-lg border-2 cursor-pointer transition-all ${isZero ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300 bg-white'}`;
+          cell.dataset.index = i;
+          cell.onclick = () => selectZCell(i, cell);
+          cell.innerHTML = `
+            <div class="text-lg font-bold ${isZero ? 'text-blue-600' : 'text-gray-700'}">${label}</div>
+            ${isZero ? '<div class="w-2 h-2 bg-blue-500 rounded-full mt-1"></div>' : ''}
+          `;
+          grid.appendChild(cell);
+        }
+      }, 500);
+    }
+
+    function selectZCell(index, element) {
+      document.querySelectorAll('#zGrid > div').forEach(el => {
+        el.classList.remove('border-blue-500', 'bg-blue-50');
+        el.classList.add('border-gray-200', 'bg-white');
+        const text = el.querySelector('div:first-child');
+        if (text) text.classList.remove('text-blue-600');
+        if (text) text.classList.add('text-gray-700');
+      });
+      element.classList.remove('border-gray-200', 'bg-white');
+      element.classList.add('border-blue-500', 'bg-blue-50');
+      const text = element.querySelector('div:first-child');
+      if (text) text.classList.remove('text-gray-700');
+      if (text) text.classList.add('text-blue-600');
+      
+      selectedZIndex = index;
+      const offset = index * 0.1;
+      const original = 3.3;
+      const newValue = original + offset;
+      
+      const badge = document.getElementById('zBadge');
+      badge.textContent = offset >= 0 ? `+${offset.toFixed(1)}` : offset.toFixed(1);
+      badge.classList.remove('hidden');
+      badge.className = `text-xs font-medium px-2 py-0.5 rounded-full mb-1 ${offset > 0 ? 'bg-red-100 text-red-600' : offset < 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`;
+      
+      document.getElementById('zNewValue').textContent = newValue.toFixed(1);
+    }
+
+    function saveZOffset() {
+      const offset = selectedZIndex * 0.1;
+      const newValue = 3.3 + offset;
+      alert(`Z轴偏移已保存：${newValue.toFixed(1)} mm`);
+    }
+
+    function openXYModel() {
+      const progress = document.getElementById('xyProgress');
+      const placeholder = document.getElementById('xyPlaceholder');
+      const gridSelector = document.getElementById('xyGridSelector');
+      const grid = document.getElementById('xyGrid');
+      const btn = document.getElementById('xyOpenBtn');
+      
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+      let countdown = 10;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<span class="text-sm">${countdown}秒后可再次操作</span>`;
+      
+      const timer = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          btn.innerHTML = `<span class="text-sm">${countdown}秒后可再次操作</span>`;
+        } else {
+          clearInterval(timer);
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+          btn.innerHTML = originalText;
+        }
+      }, 1000);
+      
+      progress.classList.remove('hidden');
+      placeholder.classList.add('hidden');
+      
+      setTimeout(() => {
+        progress.classList.add('hidden');
+        gridSelector.classList.remove('hidden');
+        
+        grid.innerHTML = '';
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-end gap-2';
+        
+        const yAxisContainer = document.createElement('div');
+        yAxisContainer.className = 'bg-transparent rounded-lg p-1 mb-10';
+        const yAxis = document.createElement('div');
+        yAxis.className = 'flex flex-col gap-1';
+        for (let i = 5; i >= -5; i--) {
+          const isZero = i === 0;
+          const cell = document.createElement('div');
+          cell.className = `flex items-center justify-center w-10 h-3 rounded cursor-pointer transition-all mt-1 ${isZero ? 'bg-green-500' : 'bg-gray-200 hover:bg-green-300'}`;
+          cell.dataset.axis = 'y';
+          cell.dataset.index = i;
+          cell.onclick = () => selectYCell(i, cell);
+          if (isZero) {
+            cell.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+          }
+          yAxis.appendChild(cell);
+        }
+        yAxisContainer.appendChild(yAxis);
+        
+        const rightColumn = document.createElement('div');
+        rightColumn.className = 'flex flex-col gap-2';
+        
+        const resultCards = document.createElement('div');
+        resultCards.className = 'space-y-3';
+        resultCards.innerHTML = `
+          <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+            <div class="text-xs text-gray-400 mb-1">X轴偏移结果</div>
+            <div class="flex items-center justify-center gap-3">
+              <div class="text-center">
+                <div class="text-xs text-gray-400">当前值</div>
+                <div class="text-xl font-semibold text-gray-400" id="xOriginal">0.00</div>
+              </div>
+              <div class="flex flex-col items-center">
+                <div id="xBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-600 mb-1">+0.4</div>
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                </svg>
+              </div>
+              <div class="text-center">
+                <div class="text-xs text-gray-400">计算结果</div>
+                <div class="text-xl font-bold text-blue-600" id="xNewValue">0.40</div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+            <div class="text-xs text-gray-400 mb-1">Y轴偏移结果</div>
+            <div class="flex items-center justify-center gap-3">
+              <div class="text-center">
+                <div class="text-xs text-gray-400">当前值</div>
+                <div class="text-xl font-semibold text-gray-400" id="yOriginal">0.00</div>
+              </div>
+              <div class="flex flex-col items-center">
+                <div id="yBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-600 mb-1">+0.2</div>
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                </svg>
+              </div>
+              <div class="text-center">
+                <div class="text-xs text-gray-400">计算结果</div>
+                <div class="text-xl font-bold text-blue-600" id="yNewValue">0.20</div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        const xAxisContainer = document.createElement('div');
+        xAxisContainer.className = 'bg-transparent rounded-lg p-1 ';
+        const xAxis = document.createElement('div');
+        xAxis.className = 'flex gap-1';
+        for (let i = -5; i <= 5; i++) {
+          const isZero = i === 0;
+          const cell = document.createElement('div');
+          cell.className = `flex items-center justify-center w-3 h-10 rounded cursor-pointer transition-all ml-2 ${isZero ? 'bg-purple-500' : 'bg-gray-200 hover:bg-purple-300'}`;
+          cell.dataset.axis = 'x';
+          cell.dataset.index = i;
+          cell.onclick = () => selectXCell(i, cell);
+          if (isZero) {
+            cell.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+          }
+          xAxis.appendChild(cell);
+        }
+        xAxisContainer.appendChild(xAxis);
+        
+        rightColumn.appendChild(resultCards);
+        rightColumn.appendChild(xAxisContainer);
+        
+        wrapper.appendChild(yAxisContainer);
+        wrapper.appendChild(rightColumn);
+        grid.appendChild(wrapper);
+      }, 500);
+    }
+
+    function selectXCell(index, element) {
+      document.querySelectorAll('[data-axis="x"]').forEach(el => {
+        el.classList.remove('bg-purple-500');
+        el.classList.add('bg-gray-200');
+        const isZero = el.dataset.index === '0';
+        el.innerHTML = isZero ? '<div class="w-2 h-2 bg-white rounded-full"></div>' : '';
+      });
+      element.classList.remove('bg-gray-200');
+      element.classList.add('bg-purple-500');
+      
+      selectedXIndex = index;
+      const offset = index * 0.2;
+      const original = 0.00;
+      const newValue = original + offset;
+      
+      const badge = document.getElementById('xBadge');
+      badge.textContent = offset >= 0 ? `+${offset.toFixed(1)}` : offset.toFixed(1);
+      badge.classList.remove('hidden');
+      badge.className = `text-xs font-medium px-2 py-0.5 rounded-full mb-1 ${offset > 0 ? 'bg-red-100 text-red-600' : offset < 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`;
+      
+      document.getElementById('xNewValue').textContent = newValue.toFixed(2);
+    }
+
+    function selectYCell(index, element) {
+      document.querySelectorAll('[data-axis="y"]').forEach(el => {
+        el.classList.remove('bg-green-500');
+        el.classList.add('bg-gray-200');
+        const isZero = el.dataset.index === '0';
+        el.innerHTML = isZero ? '<div class="w-2 h-2 bg-white rounded-full"></div>' : '';
+      });
+      element.classList.remove('bg-gray-200');
+      element.classList.add('bg-green-500');
+      
+      selectedYIndex = index;
+      const offset = index * 0.2;
+      const original = 0.00;
+      const newValue = original + offset;
+      
+      const badge = document.getElementById('yBadge');
+      badge.textContent = offset >= 0 ? `+${offset.toFixed(1)}` : offset.toFixed(1);
+      badge.classList.remove('hidden');
+      badge.className = `text-xs font-medium px-2 py-0.5 rounded-full mb-1 ${offset > 0 ? 'bg-red-100 text-red-600' : offset < 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`;
+      
+      document.getElementById('yNewValue').textContent = newValue.toFixed(2);
+    }
+
+    function saveXYOffset() {
+      const xOffset = selectedXIndex * 0.2;
+      const yOffset = selectedYIndex * 0.2;
+      alert(`XY轴偏移已保存：X=${xOffset.toFixed(2)} mm, Y=${yOffset.toFixed(2)} mm`);
+    }
+
+    // 初始化版本搜索
+    document.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('versionSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          versionsExpanded = true;
+          renderVersions(e.target.value);
+        });
+      }
+      
+      // 日期选择器事件
+      const dateSelect = document.getElementById('dateSelect');
+      if (dateSelect) {
+        dateSelect.addEventListener('change', updateDownloadButton);
+      }
+    });
+
+    init();
+
+    // ==================== 12. 窗口尺寸限制 ====================
+    /*
+     * 窗口最小尺寸检测
+     * 最小宽度：1024px
+     * 最小高度：600px
+     * 当窗口小于最小尺寸时，显示警告提示
+     */
+    const MIN_WIDTH = 720;
+    const MIN_HEIGHT = 540;
+
+    function checkWindowSize() {
+      const warning = document.getElementById('sizeWarning');
+      if (window.innerWidth < MIN_WIDTH || window.innerHeight < MIN_HEIGHT) {
+        warning.style.display = 'flex';
+      } else {
+        warning.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('resize', checkWindowSize);
+    checkWindowSize();
+
+    // ==================== 外观主题三态控制系统 ====================
+    let currentThemeMode = 'light';
+
+    // 1. 核心状态分配器
+    function setThemeMode(mode, event) {
+      currentThemeMode = mode;
+      document.documentElement.setAttribute('data-theme-mode', mode);
+
+      // 如果选择跟随系统，则检测系统偏好；否则直接使用选择的模式
+      const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      applyThemeWithTransition(isDark, event, true);
+    }
+
+    // 2. 侧边栏按钮兼容逻辑（强制切换具体的明暗）
+    function toggleDarkMode(event) {
+      const isDark = document.documentElement.classList.contains('dark');
+      setThemeMode(isDark ? 'light' : 'dark', event);
+    }
+
+    // 3. 原生圆形扩散动画渲染器
+    function applyThemeWithTransition(isDark, event, forceApply = false) {
+      const html = document.documentElement;
+      const currentlyDark = html.classList.contains('dark');
+      
+      if (currentlyDark === isDark && !forceApply) return;
+
+      const toggleTheme = () => {
+        html.classList.toggle('dark', isDark);
+        const icon = document.querySelector('.dark-icon-sun path');
+        if (icon) {
+          if (isDark) {
+             icon.setAttribute('d', 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z');
+          } else {
+             icon.setAttribute('d', 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z');
+          }
+        }
+      };
+
+      if (!event || !document.startViewTransition) {
+        toggleTheme();
+        return;
+      }
+
+      const x = event && event.clientX !== undefined ? event.clientX : window.innerWidth / 2;
+      const y = event && event.clientY !== undefined ? event.clientY : window.innerHeight / 2;
+      const endRadius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+
+      const transition = document.startViewTransition(() => {
+        toggleTheme();
+      });
+
+      transition.ready.then(() => {
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+          { duration: 400, easing: "ease-out", pseudoElement: "::view-transition-new(root)" }
+        );
+      });
+    }
+
+    // 4. 监听系统级夜间模式切换
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (currentThemeMode === 'system') {
+        applyThemeWithTransition(e.matches, null, false);
+      }
+    });
+
+    // 初始化防御
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!document.documentElement.hasAttribute('data-theme-mode')) {
+        document.documentElement.setAttribute('data-theme-mode', 'light');
+      }
+    });
+  </script>
+
+  <!-- 最小尺寸警告提示 -->
+  <div id="sizeWarning" class="size-warning" style="display: none;">
+    <svg class="size-warning-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
+    </svg>
+    <div class="size-warning-title">窗口太小了</div>
+    <div class="size-warning-text">请将窗口放大至至少 720 × 540 像素以获得最佳体验</div>
+  </div>
+
+  <script id="theme-manager">
+    window.currentThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'light';
+
+    // 核心动画执行器（将所有视觉改变打包到一起，防止动画被浏览器取消）
+    window.executeThemeTransition = function(mode, isDark, event) {
+      const html = document.documentElement;
+
+      // 把所有的 DOM 改变全部集中在这个函数里
+      const applyDOMChanges = () => {
+        window.currentThemeMode = mode;
+        html.setAttribute('data-theme-mode', mode);
+        html.classList.toggle('dark', isDark);
+
+        const icon = document.querySelector('.dark-icon-sun path');
+        if (icon) {
+          if (isDark) {
+             icon.setAttribute('d', 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z');
+          } else {
+             icon.setAttribute('d', 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z');
+          }
+        }
+      };
+
+      if (!document.startViewTransition) {
+        applyDOMChanges();
+        return;
+      }
+
+      // 智能获取扩散圆心坐标（鼠标点击位置 或 屏幕正中心）
+      const x = (event && event.clientX !== undefined) ? event.clientX : window.innerWidth / 2;
+      const y = (event && event.clientY !== undefined) ? event.clientY : window.innerHeight / 2;
+      const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+
+      const transition = document.startViewTransition(() => {
+        applyDOMChanges();
+      });
+
+      transition.ready.then(() => {
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+          { duration: 400, easing: "ease-out", pseudoElement: "::view-transition-new(root)" }
+        );
+      });
+    };
+
+    // 1. 卡片点击分发器
+    window.setThemeMode = function(mode, event) {
+      if (window.currentThemeMode === mode) return;
+      const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      window.executeThemeTransition(mode, isDark, event);
+    };
+
+    // 2. 侧边栏按钮兼容逻辑
+    window.toggleDarkMode = function(event) {
+      const isDark = document.documentElement.classList.contains('dark');
+      window.setThemeMode(isDark ? 'light' : 'dark', event);
+    };
+
+    // 3. 监听系统级夜间模式自动切换
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (window.currentThemeMode === 'system') {
+        window.executeThemeTransition('system', e.matches, null);
+      }
+    });
+
+    // 初始化防御机制
+    if (!document.documentElement.hasAttribute('data-theme-mode')) {
+      document.documentElement.setAttribute('data-theme-mode', 'light');
+    }
+  </script>
+</body>
+</html>
