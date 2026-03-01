@@ -1548,50 +1548,8 @@
      * @property {string} subtitle - 品牌副标题
      * @property {boolean} favorite - 是否收藏
      */
-    const brands = [
-      { id: 'bambu', name: '拓竹', shortName: 'Bambu Lab', subtitle: 'Bambu版', favorite: true },
-      { id: 'creality', name: '创想三维', shortName: 'Creality', subtitle: '', favorite: false },
-      { id: 'prusa', name: '快造科技', shortName: 'Prusa', subtitle: '', favorite: false },
-      { id: 'anycubic', name: '纵维立方', shortName: 'Anycubic', subtitle: 'Klipper版', favorite: false },
-      { id: 'diy', name: 'DIY', shortName: 'DIY', subtitle: '', favorite: false },
-    ];
-
-    /*
-     * 机型数据（按品牌分组）
-     * @property {string} id - 机型唯一标识符
-     * @property {string} name - 机型完整名称
-     * @property {string} shortName - 机型缩写（用于侧边栏显示）
-     * @property {string} image - 机型图片URL
-     * @property {boolean} favorite - 是否收藏
-     * @property {boolean} disabled - 是否禁用（开发中的机型）
-     * @property {number} xOffset - X轴默认偏移值(mm)
-     * @property {number} yOffset - Y轴默认偏移值(mm)
-     * @property {number} zOffset - Z轴默认偏移值(mm)
-     * @property {string[]} supportedVersions - 支持的版本类型
-     * @property {Object} scriptPaths - 各版本对应的后处理脚本路径
-     */
-    const printersByBrand = {
-      bambu: [
-        { id: 'a1', name: 'Bambu Lab A1', shortName: 'A1', image: '/static/images/Bambu Lab A1.webp', favorite: true, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.30, supportedVersions: ['standard', 'quick'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1standard.toml" --Gcode', quick: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1quick.toml" --Gcode' } },
-        { id: 'a1mini', name: 'Bambu Lab A1 mini', shortName: 'A1mini', image: '/static/images/Bambu Lab A1mini.webp', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.25, supportedVersions: ['standard', 'quick'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1ministandard.toml" --Gcode', quick: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\A1miniquick.toml" --Gcode' } },
-        { id: 'p1s', name: 'Bambu Lab P1S', shortName: 'P1S', image: '/static/images/Bambu Lab P1S.webp', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.35, supportedVersions: ['lite'], scriptPaths: { lite: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\P1Slite.toml" --Gcode' } },
-        { id: 'x1', name: 'Bambu Lab X1', shortName: 'X1', image: '/static/images/Bambu Lab X1C.webp', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.40, supportedVersions: ['lite'], scriptPaths: { lite: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\X1lite.toml" --Gcode' } },
-        { id: 'p2s', name: 'Bambu Lab P2S', shortName: 'P2S', image: '/static/images/Bambu Lab P2S.webp', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 3.30, supportedVersions: ['lite'], scriptPaths: { lite: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\P2Slite.toml" --Gcode' } },
-      ],
-      creality: [
-        { id: 'k1c', name: 'Creality K1C', shortName: 'K1C', image: 'https://picsum.photos/seed/k1c/200/150', favorite: false, disabled: true, xOffset: 0.00, yOffset: 0.00, zOffset: 0.00, supportedVersions: [], scriptPaths: {} },
-        { id: 'k2c', name: 'Creality K2C', shortName: 'K2C', image: 'https://picsum.photos/seed/k2c/200/150', favorite: false, disabled: true, xOffset: 0.00, yOffset: 0.00, zOffset: 0.00, supportedVersions: [], scriptPaths: {} },
-      ],
-      prusa: [],
-      anycubic: [
-        { id: 's1c', name: 'Anycubic S1C', shortName: 'S1C', image: 'https://picsum.photos/seed/s1c/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 2.80, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\S1Cstandard.toml" --Gcode' } },
-      ],
-      diy: [
-        { id: 'voron24', name: 'VORON 2.4', shortName: 'V2.4', image: 'https://picsum.photos/seed/voron24/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 2.50, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\Voron24standard.toml" --Gcode' } },
-        { id: 'vorontrident', name: 'VORON Trident', shortName: 'Trident', image: 'https://picsum.photos/seed/vorontrident/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 2.45, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\VoronTridentstandard.toml" --Gcode' } },
-        { id: 'custom', name: '自定义机型', shortName: '自定义', image: 'https://picsum.photos/seed/custom/200/150', favorite: false, disabled: false, xOffset: 0.00, yOffset: 0.00, zOffset: 0.00, supportedVersions: ['standard'], scriptPaths: { standard: '"D:\\MKPSupport Ver.Wisteria\\main.exe" --Toml "C:\\Users\\WZY\\Documents\\MKPSupport\\Customstandard.toml" --Gcode' } },
-      ],
-    };
+    let brands = [];
+    let printersByBrand = {};
 
     /*
      * 版本历史数据
@@ -1877,14 +1835,23 @@
      * - 更新版本列表显示状态
      */
     function init() {
-      renderBrands();
-      renderPrinters(selectedBrand);
-      renderVersions();
-      bindNavigation();
-      bindContextMenu();
-      renderWizardBrands();
-      updateVersionListForPrinter();
-      filterFaq('');
+      fetch('/api/printers')
+        .then(response => response.json())
+        .then(data => {
+          brands = data.brands;
+          printersByBrand = data.printersByBrand;
+          renderBrands();
+          renderPrinters(selectedBrand);
+          renderVersions();
+          bindNavigation();
+          bindContextMenu();
+          renderWizardBrands();
+          updateVersionListForPrinter();
+          filterFaq('');
+        })
+        .catch(error => {
+          console.error('加载机型数据失败:', error);
+        });
     }
 
     // ==================== 5. 引导页功能 ====================

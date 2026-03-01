@@ -1,0 +1,29 @@
+{
+  "brands": [
+    { "id": "bambu", "name": "拓竹", "shortName": "Bambu Lab", "subtitle": "Bambu版", "favorite": true },
+    { "id": "creality", "name": "创想三维", "shortName": "Creality", "subtitle": "", "favorite": false },
+    { "id": "prusa", "name": "快造科技", "shortName": "Prusa", "subtitle": "", "favorite": false },
+    { "id": "anycubic", "name": "纵维立方", "shortName": "Anycubic", "subtitle": "Klipper版", "favorite": false },
+    { "id": "diy", "name": "DIY", "shortName": "DIY", "subtitle": "", "favorite": false }
+  ],
+  "printersByBrand": {
+    "bambu": [
+      { "id": "a1", "name": "Bambu Lab A1", "shortName": "A1", "image": "/static/images/a1.webp", "favorite": true, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 3.30, "supportedVersions": ["standard", "quick"], "scriptPaths": { "standard": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\A1standard.toml\" --Gcode", "quick": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\A1quick.toml\" --Gcode" } },
+      { "id": "a1mini", "name": "Bambu Lab A1 mini", "shortName": "A1mini", "image": "/static/images/a1mini.webp", "favorite": false, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 3.25, "supportedVersions": ["standard", "quick"], "scriptPaths": { "standard": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\A1ministandard.toml\" --Gcode", "quick": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\A1miniquick.toml\" --Gcode" } },
+      { "id": "p1s", "name": "Bambu Lab P1S", "shortName": "P1S", "image": "/static/images/p1s.webp", "favorite": false, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 3.35, "supportedVersions": ["lite"], "scriptPaths": { "lite": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\P1Slite.toml\" --Gcode" } },
+      { "id": "x1", "name": "Bambu Lab X1", "shortName": "X1", "image": "/static/images/x1.webp", "favorite": false, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 3.40, "supportedVersions": ["lite"], "scriptPaths": { "lite": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\X1lite.toml\" --Gcode" } },
+      { "id": "p2s", "name": "Bambu Lab P2S", "shortName": "P2S", "image": "/static/images/p2s.webp", "favorite": false, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 3.30, "supportedVersions": ["lite"], "scriptPaths": { "lite": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\P2Slite.toml\" --Gcode" } }
+    ],
+    "creality": [
+      { "id": "k1c", "name": "Creality K1C", "shortName": "K1C", "image": "/static/images/k1c.webp", "favorite": false, "disabled": true, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 0.00, "supportedVersions": [], "scriptPaths": {} },
+      { "id": "k2c", "name": "Creality K2C", "shortName": "K2C", "image": "/static/images/k2c.webp", "favorite": false, "disabled": true, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 0.00, "supportedVersions": [], "scriptPaths": {} }
+    ],
+    "prusa": [],
+    "anycubic": [
+      { "id": "s1c", "name": "Anycubic S1C", "shortName": "S1C", "image": "/static/images/s1c.webp", "favorite": false, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 2.80, "supportedVersions": ["standard"], "scriptPaths": { "standard": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\S1Cstandard.toml\" --Gcode" } }
+    ],
+    "diy": [
+      { "id": "voron24", "name": "VORON 2.4", "shortName": "V2.4", "image": "/static/images/voron24.webp", "favorite": false, "disabled": false, "xOffset": 0.00, "yOffset": 0.00, "zOffset": 2.50, "supportedVersions": ["standard"], "scriptPaths": { "standard": "\"D:\\MKPSupport Ver.Wisteria\\main.exe\" --Toml \"C:\\Users\\WZY\\Documents\\MKPSupport\\Voron24standard.toml\" --Gcode" } }
+    ]
+  }
+}
