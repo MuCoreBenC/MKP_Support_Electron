@@ -1,0 +1,59 @@
+<!-- 修改参数页面 -->
+<div id="page-params" class="page flex-1 overflow-y-auto p-8 hidden">
+  <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">修改参数</h1>
+    <button class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+      直接编辑 .toml 文本
+    </button>
+  </div>
+  <div class="max-w-4xl">
+    <div class="bg-white rounded-xl card-shadow p-5 mb-5">
+      <div class="text-sm font-medium text-gray-700 mb-4">运动控制</div>
+      <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <label class="text-sm text-gray-600">X轴最大速度</label>
+          </div>
+          <div class="relative">
+            <input type="number" value="500" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-14">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">mm/s</span>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <label class="text-sm text-gray-600">Y轴最大速度</label>
+          </div>
+          <div class="relative">
+            <input type="number" value="500" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-14">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">mm/s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl card-shadow p-5">
+      <div class="text-sm font-medium text-gray-700 mb-4">挤出系统</div>
+      <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <label class="text-sm text-gray-600">挤出机温度</label>
+          </div>
+          <div class="relative">
+            <input type="number" value="210" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-10">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">°C</span>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <label class="text-sm text-gray-600">热床温度</label>
+          </div>
+          <div class="relative">
+            <input type="number" value="60" class="input-field w-full px-4 py-2.5 rounded-lg text-sm text-right pr-10">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">°C</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

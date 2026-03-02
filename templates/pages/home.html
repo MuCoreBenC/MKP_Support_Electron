@@ -1,0 +1,53 @@
+<!-- 选择机型页面 -->
+<div id="page-home" class="page flex-1 overflow-y-auto p-8">
+  <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">选择机型</h1>
+    <div class="flex items-center gap-3">
+      <button onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2">
+        <span>下一步</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="max-w-6xl">
+    <div class="grid grid-cols-12 gap-6">
+    <!-- 左侧品牌列表 -->
+    <div class="col-span-4">
+      <div class="bg-white rounded-xl card-shadow p-4">
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-sm font-medium text-gray-700">品牌列表</div>
+        </div>
+        <div id="brandList" class="space-y-2">
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧机型展示 -->
+    <div class="col-span-8">
+      <div class="bg-white rounded-xl card-shadow p-4">
+        <div class="flex items-center justify-between mb-4 w-full">
+          <div class="flex items-center gap-2 truncate pr-4 shrink">
+            <span id="currentBrandTitle" class="text-sm font-medium text-gray-700 truncate">拓竹 - Bambu版</span>
+          </div>
+          <div class="flex items-center gap-3 flex-1 justify-end min-w-0">
+            <div class="relative flex-1 max-w-[200px] min-w-[120px]">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+              </svg>
+              <input type="text" id="printerSearch" placeholder="搜索机型..." class="input-field pl-9 pr-4 py-2 rounded-lg text-sm w-full" oninput="filterPrinters()">
+            </div>
+            <select id="printerSort" class="input-field px-3 py-2 rounded-lg text-sm flex-shrink-0" onchange="sortPrinters()">
+              <option value="default">默认排序</option>
+              <option value="alpha">字母排序</option>
+              <option value="favorite">收藏优先</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="printerGrid" class="grid grid-cols-3 gap-4">
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>

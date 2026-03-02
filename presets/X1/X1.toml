@@ -1,0 +1,51 @@
+# release_time: 2025-02-21 12:15:01
+#胶笔配置
+[toolhead]
+speed_limit = 70.0  #涂胶速度限制 (mm/s)
+offset = { x = -25.9, y = 14.0, z = 1.1}# 笔尖偏移
+# 自定义工具头获取 G-code
+custom_mount_gcode = """
+;X1
+L803;此处使喷嘴降温
+G92 E0;挤出机归零
+;M106 P1 S255 
+;M106 P2 S255
+G1 E-10;长回抽
+G92 E0
+L801
+M204 S10000  ;10000mm/s2
+G1 X20 Y7 F30000 ;到驻点
+G1 X1 F300 ; 推到X0，笔尖下落
+G1 X20 Y7 F30000 ; 向左离开
+G1 F30000
+"""
+# 自定义工具头收起 G-code
+custom_unmount_gcode = """
+G92 E0
+G1 F30000
+G1 X246 Y0 ;到驻点
+G1 X256 F6000 ; 收笔
+G1 F30000
+L802
+G1 F1500
+G1 E10.7;填充回抽
+G1 F30000
+M106 P1 S[AUTO] ; 风扇
+;M106 P2 S100
+G1 X70 Y265 F30000;Wipe
+G1 E6;Wipe
+G1 X90 F30000;Wipe
+G1 X120 F30000;Wipe
+G1 X90 F30000;Wipe
+"""
+#擦嘴配置
+[wiping]
+have_wiping_components = false#使用擦嘴塔而非擦嘴组件Enable wiping components
+wiper_x = 20
+wiper_y = 20
+wipetower_speed = 200.0 # 擦嘴塔打印速度Wipe tower print speed
+nozzle_cooling_flag = false # 涂胶期间是否降温 Nozzle cooling during gluing
+iron_apply_flag = false # 最小化涂胶区域 Ironing apply flag
+user_dry_time = 0 # 额外干燥时间 User dry time (seconds)
+force_thick_bridge_flag = true # 强制厚桥开关 Force thick bridge flag
+support_extrusion_multiplier = 0.8 # 支撑体挤出倍率 Support extrusion multiplier

@@ -1,0 +1,698 @@
+    /* ============================================================
+       MKP Support - 支撑面改善工具
+       ============================================================
+       
+       文件概述：
+       本文件是一个单页面应用(SPA)，用于3D打印机支撑面参数管理和校准。
+       主要功能包括：机型选择、预设下载、偏移校准、参数修改、版本控制。
+       
+       目录结构：
+       1. CSS变量定义 (第28-43行) - 全局颜色和阴影变量
+       2. 基础样式 (第45-95行) - 通用组件样式
+       3. 侧边栏动画 (第100-170行) - 折叠/展开动画效果
+       4. 动画关键帧 (第175-200行) - 淡入、缩放等动画
+       5. 组件样式 (第205-320行) - 各种UI组件样式
+       6. HTML结构 (第325-985行) - 页面DOM结构
+       7. JavaScript逻辑 (第990-1960行) - 业务逻辑代码
+       
+       【侧边栏宽度调整指南】
+       ============================================
+       如需修改侧边栏宽度，请修改以下位置：
+       
+       1. 展开状态宽度 (当前216px)：
+          - 第624行: style="width: 216px;" (sidebarWrapper的style属性)
+          - 第626行: class="w-[216px]" (sidebar的class)
+          - 第1244行: wrapper.style.width = '216px'; (toggleSidebar函数中)
+       
+       2. 折叠状态宽度 (当前72px)：
+          - CSS中 .sidebar-wrapper-collapsed 和 .sidebar-collapsed 的 width: 72px
+          - 第1238行: wrapper.style.width = '72px'; (toggleSidebar函数中)
+       
+       3. 修改方法：
+          a) 修改展开宽度：将上述"216px"和"w-[216px]"改为目标值
+             例如：改为288px，则修改为 style="width: 288px;" 和 class="w-72"
+          b) 修改折叠宽度：修改CSS中的"72px"为目标值
+             例如：改为64px，则修改所有"72px"为"64px"
+          c) 注意：折叠宽度需要能容纳图标，建议不小于64px
+       
+       4. 宽度对照表 (Tailwind CSS)：
+          w-36 = 144px | w-48 = 192px | w-54 = 216px | w-64 = 256px | w-72 = 288px
+          w-16 = 64px  | w-18 = 72px  | w-20 = 80px
+       ============================================
+    ============================================================ */
+
+    /* ==================== 1. CSS变量定义 ==================== */
+    /* 
+     * 全局CSS变量定义
+     * 作用：统一管理颜色、阴影等样式变量，便于主题切换和维护
+     * 修改方法：直接修改对应的颜色值即可全局生效
+     */
+    :root {
+      --bg-page: #F5F6F8;           /* 页面背景色 */
+      --bg-card: #FFFFFF;           /* 卡片背景色 */
+      --bg-input: #F9FAFB;          /* 输入框背景色 */
+      --bg-disabled: #F3F4F6;       /* 禁用状态背景色 */
+      --border: #E5E7EB;            /* 边框颜色 */
+      --border-focus: #3B82F6;      /* 聚焦时边框颜色 */
+      --text-primary: #111827;      /* 主要文字颜色 */
+      --text-secondary: #6B7280;    /* 次要文字颜色 */
+      --text-muted: #9CA3AF;        /* 弱化文字颜色 */
+      --accent-blue: #3B82F6;       /* 主题蓝色 */
+      --accent-blue-light: #EFF6FF; /* 浅蓝色背景 */
+      --accent-green: #10B981;      /* 成功状态绿色 */
+      --accent-yellow: #F59E0B;     /* 警告状态黄色 */
+      --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);    /* 卡片阴影 */
+      --shadow-hover: 0 4px 12px rgba(0,0,0,0.08);                               /* 悬停阴影 */
+      --shadow-button: 0 2px 4px rgba(59,130,246,0.25);                          /* 按钮阴影 */
+      
+      /* 版本专属主题色 */
+      --theme-standard-text: #3B82F6;
+      --theme-standard-bg: #EFF6FF;
+      --theme-quick-text: #F59E0B;
+      --theme-quick-bg: #FFFBEB;
+      --theme-lite-text: #A855F7;
+      --theme-lite-bg: #FAF5FF;
+    }
+
+    /* ==================== 隐藏滚动条样式 ==================== */
+    /*
+     * 完全隐藏滚动条并移除空间占用
+     * 解决布局抖动问题：滚动条出现/消失会导致容器宽度变化
+     * 
+     * 兼容性说明：
+     * - scrollbar-width: none - Firefox 完全隐藏
+     * - ::-webkit-scrollbar { display: none } - Chrome/Safari/Edge 完全隐藏
+     */
+    
+    /* 全局隐藏滚动条 - Firefox */
+    * {
+      scrollbar-width: none;
+    }
+    
+    /* Webkit浏览器完全隐藏滚动条 */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* ==================== 2. 基础样式 ==================== */
+    /* 全局字体和盒模型设置 */
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      box-sizing: border-box;
+    }
+
+    /* 页面主体样式 */
+    body {
+      background: var(--bg-page);
+      color: var(--text-primary);
+      margin: 0;
+      min-height: 100vh;
+      min-width: 720px;  /* 最小窗口宽度，防止内容挤压变形 */
+    }
+
+    /* 最小尺寸警告提示 */
+    .size-warning {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      color: white;
+    }
+    .size-warning-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+    }
+    .size-warning-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .size-warning-text {
+      font-size: 14px;
+      color: #9CA3AF;
+    }
+
+    /* ============================================================
+       折叠面板（Accordion）标准复用方案
+       ============================================================
+       
+       使用方法：
+       1. 最外层容器添加 class="collapse-item"
+       2. 点击头部添加 onclick="toggleCollapse(this)"
+       3. 隐藏内容外框添加 class="collapse-wrapper"
+       4. 隐藏内容内框添加 class="collapse-inner"
+       
+       示例结构：
+       <div class="collapse-item">
+         <button onclick="toggleCollapse(this)">点击展开</button>
+         <div class="collapse-wrapper">
+           <div class="collapse-inner">
+             这里是隐藏的内容
+           </div>
+         </div>
+       </div>
+       
+       优点：
+       - 使用 CSS Grid 0fr/1fr 技术，无需 JS 计算高度
+       - 支持任意高度的内容
+       - 自动处理淡入淡出和位移动画
+       - 可在任何页面复用
+    ============================================================ */
+    
+    /* 1. 动画容器 */
+    .collapse-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .collapse-wrapper.is-expanded {
+      grid-template-rows: 1fr;
+    }
+    
+    /* 2. 内部内容区 */
+    .collapse-inner {
+      min-height: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    .collapse-wrapper.is-expanded .collapse-inner {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* 3. 箭头旋转动画复用 */
+    .collapse-icon {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .collapse-icon.is-rotated {
+      transform: rotate(180deg);
+    }
+    
+    /* 折叠按钮箭头旋转动画 - 兼容旧版 */
+    .collapse-arrow {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .collapse-item.expanded .collapse-arrow {
+      transform: rotate(180deg);
+    }
+
+    /* 卡片阴影样式 */
+    .card-shadow {
+      box-shadow: var(--shadow-card);
+    }
+    .card-shadow:hover {
+      box-shadow: var(--shadow-hover);
+    }
+
+    /* 主按钮样式 - 蓝色背景，带阴影和悬停效果 */
+    .btn-primary {
+      background: var(--accent-blue);
+      color: white;
+      box-shadow: var(--shadow-button);
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #2563EB;
+      transform: translateY(-1px);
+    }
+    .btn-primary:disabled {
+      background: #D1D5DB;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* 次要按钮样式 - 白色背景，带边框 */
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    /* 输入框样式 */
+    .input-field {
+      background: var(--bg-input);
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus {
+      outline: none;
+      background: var(--bg-card);
+      border-color: var(--border-focus);
+    }
+    .input-readonly {
+      background: var(--bg-disabled);
+      color: var(--text-secondary);
+    }
+
+    /* 自定义滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F3F4F6;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 4px;
+      border: 2px solid #F3F4F6;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
+    }
+
+    /* ==================== 3. 侧边栏丝滑折叠核心动画 ==================== */
+    /*
+     * 侧边栏折叠动画说明
+     * --------------------------
+     * 实现原理：
+     * 1. 使用CSS transition实现平滑过渡，而非display:none
+     * 2. 通过opacity控制元素显示/隐藏
+     * 3. 使用max-width实现品牌名的"卷帘门"效果
+     * 4. 使用cubic-bezier缓动函数实现更自然的动画
+     * 
+     * 【折叠宽度修改位置】
+     * 下面的 width: 72px 即为折叠后的侧边栏宽度
+     * 如需修改，请同时修改以下位置：
+     * - 本文件第152行: width: 72px !important;
+     * - HTML中sidebarWrapper的style属性
+     * - toggleSidebar函数中的wrapper.style.width = '72px'
+     */
+    
+    /* 侧边栏容器过渡动画 - 控制宽度变化的平滑过渡 */
+    .sidebar-wrapper, #sidebar {
+      transition: width 0.35s cubic-bezier(0.2, 0, 0, 1);
+    }
+    
+    /* 【折叠状态宽度】修改这里的72px可改变折叠后的侧边栏宽度 */
+    .sidebar-wrapper-collapsed, .sidebar-collapsed {
+      width: 72px !important;
+    }
+
+    /* 侧边栏文字过渡 - 控制文字的淡入淡出 */
+    .sidebar-text {
+      transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+      white-space: nowrap;
+      opacity: 1;
+    }
+
+    /* 侧边栏内容区域过渡 */
+    .sidebar-content {
+      transition: padding 0.3s ease;
+    }
+    .sidebar-collapsed .sidebar-content {
+      padding: 8px 4px;
+    }
+
+    /* 机型标签过渡 */
+    .sidebar-model-label {
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+    .sidebar-collapsed .sidebar-model-label {
+      opacity: 0;
+    }
+
+    /* --- 机型信息折叠专属动画 --- */
+    /*
+     * 品牌名折叠动画
+     * 原理：通过max-width从120px变为0px，实现"卷帘门"效果
+     * 优点：避免使用display:none导致的瞬间消失
+     */
+    #sidebarBrand {
+      max-width: 120px;
+      opacity: 1;
+    }
+    .sidebar-collapsed #sidebarBrand {
+      max-width: 0px;
+      opacity: 0;
+    }
+
+    /* 品牌名和机型名之间的间距 */
+    #sidebarBrandSpace {
+      width: 4px;
+    }
+    .sidebar-collapsed #sidebarBrandSpace {
+      width: 0px;
+    }
+
+    /* === 侧边栏按钮颜色与居中全局强制接管 === */
+    #sidebar button {
+      color: var(--text-secondary); /* 强制统一灰色，解决第一个图标发黑变粗问题 */
+      transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
+      overflow: hidden;
+    }
+    #sidebar button:hover { color: var(--text-primary); }
+    #sidebar button.active { color: var(--accent-blue); }
+    html.dark #sidebar button.active { color: #60A5FA; }
+
+    /* 完美的 Flex 居中，抛弃容易算错的 padding */
+    .sidebar-collapsed #sidebar button {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      justify-content: center !important;
+      gap: 0 !important;
+    }
+    /* 彻底抹除折叠后的文字残留空间 */
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .user-info {
+      opacity: 0 !important;
+      max-width: 0 !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* 导航项过渡 */
+    .nav-item {
+      transition: background-color 0.2s ease;
+    }
+
+    /* 用户信息区域过渡 */
+    .user-info {
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+      opacity: 1;
+    }
+
+    /* 确保图标不会被压缩 */
+    .nav-item svg, .sidebar-content .flex-shrink-0 {
+      flex-shrink: 0;
+    }
+    /* ==================== 侧边栏丝滑折叠核心动画结束 ==================== */
+
+    /* ==================== 4. 动画关键帧定义 ==================== */
+    /* 淡入动画 - 从下方滑入并渐显 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* 缩放动画 - 从小到大并渐显 */
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    /* 淡出动画 - 渐隐 */
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    /* 动画类 - 应用上述关键帧 */
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+    .animate-scale-in {
+      animation: scaleIn 0.2s ease forwards;
+    }
+    .animate-fade-out {
+      animation: fadeOut 0.2s ease forwards;
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+
+    /* 旋转动画 - 用于加载指示器 */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* ==================== 5. 组件样式 ==================== */
+    /* 工具提示样式 */
+    .tooltip {
+      position: fixed;
+      background: #1F2937;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      max-width: 280px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    /* 选择卡片样式 - 用于机型选择等 */
+    .select-card {
+      border: 2px solid var(--border);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .select-card:hover {
+      border-color: #D1D5DB;
+    }
+    .select-card.selected {
+      border-color: var(--accent-blue);
+      background: var(--accent-blue-light);
+    }
+
+    /* 禁用的打印机卡片样式 */
+    .printer-card-disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .printer-card-disabled img {
+      filter: grayscale(100%);
+    }
+
+    /* 收藏星星图标样式 */
+    .star-icon {
+      transition: all 0.2s ease;
+    }
+    .star-icon.favorited {
+      color: var(--accent-yellow);
+      fill: var(--accent-yellow);
+    }
+    .star-icon.not-favorited {
+      color: #D1D5DB;
+      stroke-dasharray: 2 1;
+    }
+
+    /* 品牌卡片样式 */
+    .brand-card {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .brand-card:hover {
+      background: #F9FAFB;
+    }
+    .brand-card.active {
+      background: var(--accent-blue-light);
+      border-color: var(--accent-blue);
+    }
+    .brand-card.favorited {
+      order: -1;
+    }
+
+    /* 右键菜单样式 */
+    .context-menu {
+      position: fixed;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 160px;
+      overflow: hidden;
+    }
+    .context-menu-item {
+      padding: 10px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .context-menu-item:hover {
+      background: #F3F4F6;
+    }
+
+    /* 版本卡片样式 */
+    .version-card {
+      transition: all 0.2s ease;
+    }
+    .version-card:hover {
+      background: #F9FAFB;
+    }
+
+    /* 导航项样式 - 侧边栏菜单按钮 */
+    .nav-item {
+      transition: all 0.15s ease;
+    }
+    .nav-item:hover {
+      background: #F3F4F6;
+    }
+    .nav-item.active {
+      background: var(--accent-blue-light);
+      color: var(--accent-blue);
+    }
+
+    /* 引导步骤样式 - 新手引导的步骤指示器 */
+    .step-item {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .step-item.active .step-number {
+      background: var(--accent-blue);
+      color: white;
+    }
+    .step-item.active .step-text {
+      color: var(--accent-blue);
+    }
+    .step-item.completed .step-number {
+      background: var(--accent-green);
+      color: white;
+    }
+    .step-item.completed .step-text {
+      color: var(--accent-green);
+    }
+
+    /* macOS风格列表 */
+    .model-list-item {
+      padding: 6px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .model-list-item:hover {
+      background: #F5F5F7;
+    }
+    .model-list-item.selected {
+      background: var(--accent-blue-light);
+    }
+    .model-list-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .macos-list {
+      background: white;
+      border: 1px solid #D1D1D6;
+      border-radius: 6px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* 极致舒适的 VS Code 级暗黑模式配色 (已补充高亮状态的暗黑适配) */
+    html.dark {
+      --bg-page: #1E1E1E;
+      --bg-card: #252526;
+      --bg-input: #3C3C3C;
+      --bg-disabled: #2A2D2E; /* 新增：修复只读输入框等禁用元素的白底问题 */
+      --border: #3E3E42;
+      --text-primary: #D4D4D4;
+      --text-secondary: #858585;
+      
+      /* 修复：将原本刺眼的纯色浅亮底，替换为极具质感的半透明色，提升文字对比度 */
+      --accent-blue-light: rgba(59, 130, 246, 0.15);
+      
+      /* 修复：版本专属主题色的暗黑适配，杜绝暗黑模式下的白底 */
+      --theme-standard-bg: rgba(59, 130, 246, 0.15);
+      --theme-standard-text: #60A5FA;
+      --theme-quick-bg: rgba(245, 158, 11, 0.15);
+      --theme-quick-text: #FBBF24;
+      --theme-lite-bg: rgba(168, 85, 247, 0.15);
+      --theme-lite-text: #C084FC;
+    }
+
+    html.dark body { background-color: var(--bg-page); color: var(--text-primary); }
+    html.dark .bg-white { background-color: var(--bg-card) !important; }
+    html.dark .bg-gray-50 { background-color: var(--bg-page) !important; }
+    html.dark .bg-gray-100 { background-color: #333333 !important; }
+    html.dark .border-gray-100, html.dark .border-gray-200 { border-color: var(--border) !important; }
+    html.dark .text-gray-900, html.dark .text-gray-800 { color: var(--text-primary) !important; }
+    html.dark .text-gray-700, html.dark .text-gray-600, html.dark .text-gray-500, html.dark .text-gray-400 { color: var(--text-secondary) !important; }
+
+    html.dark .card-shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; }
+
+    /* 彻底修复暗黑模式下所有悬停白底刺眼问题 */
+    html.dark .hover\:bg-gray-50:hover,
+    html.dark .hover\:bg-gray-100:hover,
+    html.dark .nav-item:hover,
+    html.dark .brand-card:hover,
+    html.dark .version-card:hover,
+    html.dark .model-list-item:hover,
+    html.dark .context-menu-item:hover {
+      background-color: #2A2D2E !important;
+    }
+
+    /* 顺手修复机型选择卡片悬停时的刺眼白边框 */
+    html.dark .select-card:hover {
+      border-color: #4B4B4B !important;
+    }
+
+    html.dark .btn-primary:disabled { background-color: #333333 !important; color: #666666 !important; }
+
+    /* ================= View Transitions 动画核心 (完美修复版) ================= */
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+      mix-blend-mode: normal;
+    }
+    ::view-transition-old(root) { z-index: 1; }
+    ::view-transition-new(root) { z-index: 2; }
+
+    /* ================= 外观设置卡片三态自动高亮 ================= */
+    .mode-btn-light, .mode-btn-dark, .mode-btn-system { border-color: transparent; background-color: transparent; }
+    .mode-text-light, .mode-text-dark, .mode-text-system { color: var(--text-secondary); }
+
+    /* 通用选中状态 (浅色模式下的蓝框和浅蓝底) */
+    html[data-theme-mode="light"] .mode-btn-light,
+    html[data-theme-mode="dark"] .mode-btn-dark,
+    html[data-theme-mode="system"] .mode-btn-system {
+      border-color: var(--accent-blue) !important;
+      background-color: var(--accent-blue-light) !important;
+    }
+    html[data-theme-mode="light"] .mode-text-light,
+    html[data-theme-mode="dark"] .mode-text-dark,
+    html[data-theme-mode="system"] .mode-text-system {
+      color: var(--accent-blue) !important;
+    }
+
+    /* 暗黑模式下的选中状态微调 (避免深色模式下的底色刺眼) */
+    html.dark[data-theme-mode="light"] .mode-btn-light,
+    html.dark[data-theme-mode="dark"] .mode-btn-dark,
+    html.dark[data-theme-mode="system"] .mode-btn-system {
+      background-color: rgba(59, 130, 246, 0.15) !important;
+    }
+    html.dark[data-theme-mode="light"] .mode-text-light,
+    html.dark[data-theme-mode="dark"] .mode-text-dark,
+    html.dark[data-theme-mode="system"] .mode-text-system {
+      color: #60A5FA !important;
+    }
+
+    /* ================= 终极排版接管：强制所有页面绝对居中且左边缘像素级对齐 ================= */
+    .page > div,
+    .page > p {
+      /* 强制统一为 4xl 尺寸 (896px)，这个宽度既能保证文字页面的阅读舒适度，又能完美容纳机型页面的栅格布局 */
+      max-width: 56rem !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      width: 100% !important;
+    }

@@ -1,0 +1,117 @@
+<!-- 校准偏移页面 -->
+<div id="page-calibrate" class="page flex-1 overflow-y-auto p-8 hidden">
+  <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">校准偏移</h1>
+    <div class="flex items-center gap-3">
+      <button onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
+        <span>上一步</span>
+      </button>
+    </div>
+  </div>
+  <div class="max-w-4xl">
+    <div class="bg-white rounded-xl card-shadow p-5 mb-5">
+      <div class="text-sm font-medium text-gray-700 mb-3">粘贴到:工艺->其他->后处理脚本</div>
+      <div class="flex items-center gap-2">
+        <input type="text" id="scriptPath" class="input-field input-readonly flex-1 px-4 py-2.5 rounded-lg text-sm" readonly title="后处理脚本路径" placeholder="请先选择机型和版本">
+        <button id="scriptCopyBtn" onclick="copyPath()" class="btn-secondary px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed" title="复制路径" disabled>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl card-shadow p-5 mb-5" id="zCalibrationCard">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-medium text-gray-700">Z轴偏移校准</div>
+        <button id="zOpenBtn" onclick="openZModel()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>打开校准模型</span>
+        </button>
+      </div>
+      
+      <div id="zCalibrationArea">
+        <div id="zProgress" class="hidden mb-4">
+          <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 100%"></div>
+          </div>
+        </div>
+        
+        <div id="zPlaceholder" class="h-32 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+          <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+          </svg>
+          <span class="text-sm text-gray-400">点击打开按钮加载视觉校准网格</span>
+        </div>
+        
+        <div id="zGridSelector" class="hidden">
+          <div class="flex flex-col items-center">
+            <div class="flex items-center justify-center gap-1 mb-4" id="zGrid">
+            </div>
+            <div class="flex items-center justify-center gap-4 py-4">
+              <div class="text-center">
+                <div class="text-xs text-gray-400 mb-1">原值</div>
+                <div class="text-3xl font-semibold text-gray-400" id="zOriginal">3.3</div>
+              </div>
+              <div class="flex flex-col items-center">
+                <div id="zBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-600 mb-1">-0.2</div>
+                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                </svg>
+              </div>
+              <div class="text-center">
+                <div class="text-xs text-gray-400 mb-1">修改后</div>
+                <div class="text-3xl font-bold text-blue-600" id="zNewValue">3.1</div>
+              </div>
+            </div>
+            <div class="flex justify-center mt-4">
+              <button onclick="saveZOffset()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium">保存并应用 Z 轴偏移</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl card-shadow p-5" id="xyCalibrationCard">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-medium text-gray-700">XY轴偏移校准</div>
+        <button id="xyOpenBtn" onclick="openXYModel()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>打开校准模型</span>
+        </button>
+      </div>
+      
+      <div id="xyCalibrationArea">
+        <div id="xyProgress" class="hidden mb-4">
+          <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 100%"></div>
+          </div>
+        </div>
+        
+        <div id="xyPlaceholder" class="h-48 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+          <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+          </svg>
+          <span class="text-sm text-gray-400">点击打开按钮加载视觉校准网格</span>
+        </div>
+        
+        <div id="xyGridSelector" class="hidden">
+          <div class="flex items-end justify-center gap-2 py-8">
+            <div id="xyGrid" class="flex-shrink-0">
+            </div>
+          </div>
+          <div class="flex justify-center mt-4 pb-2">
+            <button onclick="saveXYOffset()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium">保存并应用 XY 轴偏移</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

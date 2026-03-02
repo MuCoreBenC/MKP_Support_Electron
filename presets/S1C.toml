@@ -1,0 +1,51 @@
+# release_time: 2025-09-02 22:25:01
+#胶笔配置
+[toolhead]
+speed_limit = 140.0  #涂胶速度限制 (mm/s)
+offset = { x = 38.0, y = 33.0, z = 6.0}# 笔尖偏移
+# 自定义工具头获取 G-code
+custom_mount_gcode = """
+L803;此处使喷嘴降温
+G92 E0;挤出机归零
+M106 P1 S255 
+;M106 P2 S255
+G1 E-10;长回抽
+G92 E0
+L801
+M204 S10000  ;10000mm/s2
+G1 F30000
+G1 X3.7 Y90 ;到驻点
+G1 F5000 ;减速
+G1 Y122 ;挂载
+G1 F2400 ;40mm/s
+M204 S2000 ;2000mm/s2
+G1 Y90
+G1 X6 F5000 ;83mm/s
+M204 S10000  ;10000mm/s2
+"""
+# 自定义工具头收起 G-code
+custom_unmount_gcode = """
+G92 E0
+G1 F30000
+G1 X3.7 Y90 ;到驻点
+G1 F10000 ;卸载速度
+G1 F5000
+G1 Y122 ;挂载
+G1 X10 ;推出
+G1 Y90;远离
+G1 F30000
+G1 X70 Y270
+G1 E10.5;填充回抽
+G1 X110
+G1 X70
+G1 X110
+G1 X70
+M106 P1 S[AUTO]
+;M106 P2 S100
+"""
+#擦嘴配置
+[wiping]
+have_wiping_components = false#使用擦嘴塔而非擦嘴组件Enable wiping components
+wiper_x = 20.0
+wiper_y = 20.0
+wipetower_speed = 200.0 # 擦嘴塔打印速度Wipe tower print speed

@@ -1,0 +1,33 @@
+<!-- 常见问题页面 -->
+<div id="page-faq" class="page flex-1 overflow-y-auto p-8 hidden">
+  <div class="max-w-3xl mx-auto">
+    <div class="h-12 mb-6 shrink-0 w-full flex flex-col justify-center">
+      <h1 class="text-2xl font-bold text-gray-900 tracking-tight">常见问题</h1>
+    </div>
+    <p class="text-sm text-gray-500 mb-6">以下是用户最常遇到的问题及解决方案</p>
+
+    <!-- FAQ 搜索框 -->
+    <div class="relative mb-6">
+      <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="text" id="faqSearch" placeholder="搜索问题..." class="input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm" oninput="filterFaq(this.value)">
+    </div>
+
+    <!-- FAQ列表 - 由 JavaScript 动态渲染 -->
+    <div id="faqList" class="space-y-3"></div>
+
+    <!-- 底部提示 -->
+    <div class="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
+        </svg>
+        <div>
+          <div class="text-sm font-medium text-blue-900">没有找到您的问题？</div>
+          <div class="text-sm text-blue-700 mt-1">请加入我们的QQ群或查看视频教程获取更多帮助</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
