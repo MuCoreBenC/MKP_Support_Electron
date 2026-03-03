@@ -17,11 +17,18 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "static/images/a1.ico",
-      "asar": true
+      "asar": true,
+      "files": [
+        "!**/locales/**",
+        "!**/node_modules/**",
+        "!**/external/**"
+      ]
     },
     "nsis": {
       "oneClick": true,
@@ -34,7 +41,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "MKP Support",
-      "deleteAppDataOnUninstall": true
+      "deleteAppDataOnUninstall": true,
+      "include": "installer.nsh"
     },
     "files": [
       "main.js",
@@ -43,8 +51,7 @@
       "static/**/*",
       "data/**/*",
       "mkp_processor/**/*",
-      "presets/**/*",
-      "external/**/*"
+      "presets/**/*"
     ],
     "extraResources": [
       {
@@ -54,16 +61,10 @@
       {
         "from": "presets",
         "to": "presets"
-      },
-      {
-        "from": "external",
-        "to": "external"
       }
     ],
     "compression": "maximum",
-    "asarUnpack": [
-      "external/**/*"
-    ]
+    "asarUnpack": []
   },
   "repository": {
     "type": "git",
@@ -78,6 +79,7 @@
   "homepage": "https://github.com/MakinoKanna/MKP-Support-FASTUI#readme",
   "devDependencies": {
     "electron": "^40.6.1",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "electron-packager": "^17.1.2"
   }
 }

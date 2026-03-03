@@ -635,7 +635,7 @@
              oncontextmenu="showPrinterContextMenu(event, '${p.id}')">
           <div class="relative flex-shrink-0">
             <div class="aspect-video bg-transparent rounded-lg mb-3 overflow-hidden flex items-center justify-center">
-              <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
+              <img src="../${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
             </div>
             ${p.disabled ? `<div class="absolute top-2 left-2 px-2 py-1 rounded bg-gray-200 text-xs text-gray-500">开发中</div>` : ''}
             <div class="absolute top-2 right-2">
@@ -751,7 +751,7 @@
              oncontextmenu="showPrinterContextMenu(event, '${p.id}')">
           <div class="relative flex-shrink-0">
             <div class="aspect-video bg-transparent rounded-lg mb-3 overflow-hidden flex items-center justify-center">
-              <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
+              <img src="../${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
             </div>
             ${p.disabled ? `<div class="absolute top-2 left-2 px-2 py-1 rounded bg-gray-200 text-xs text-gray-500">开发中</div>` : ''}
             <div class="absolute top-2 right-2">
@@ -788,7 +788,7 @@
              oncontextmenu="showPrinterContextMenu(event, '${p.id}')">
           <div class="relative flex-shrink-0">
             <div class="aspect-video bg-transparent rounded-lg mb-3 overflow-hidden flex items-center justify-center">
-              <img src="${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
+              <img src="../${p.image}" alt="${p.name}" class="w-full h-full object-contain drop-shadow-sm">
             </div>
             ${p.disabled ? `<div class="absolute top-2 left-2 px-2 py-1 rounded bg-gray-200 text-xs text-gray-500">开发中</div>` : ''}
             <div class="absolute top-2 right-2">

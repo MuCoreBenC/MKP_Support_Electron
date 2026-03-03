@@ -55,13 +55,24 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: false
     }
   });
 
   mainWindow.loadFile('templates/index.html');
   // mainWindow.webContents.openDevTools();
 }
+
+// 确保应用能够正确解析静态资源路径
+app.on('ready', () => {
+  // 注册自定义协议处理，用于加载静态资源
+  const protocol = require('electron').protocol;
+  protocol.registerFileProtocol('file', (request, callback) => {
+    const pathname = decodeURI(request.url.replace('file:///', ''));
+    callback(pathname);
+  });
+});
 
 app.whenReady().then(() => {
   createWindow();
