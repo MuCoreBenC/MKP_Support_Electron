@@ -3,14 +3,21 @@ const path = require('path');
 
 function createWindow () { 
   const win = new BrowserWindow({ 
-    width: 1024, 
-    height: 768, 
+    width: 920, 
+    height: 600, 
+    // 强制限制窗口被缩小的极限尺寸
+    minWidth: 920,
+    minHeight: 600,
+
+    useContentSize: true,
+
     webPreferences: { 
       nodeIntegration: true, 
       contextIsolation: false 
     } 
   }); 
-
+// 直接加在配置项下面，加载 HTML 之前
+  // win.removeMenu();
   // 直接加载本地文件
   win.loadFile('renderer/index.html');
 }

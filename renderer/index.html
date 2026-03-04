@@ -13,97 +13,102 @@
 <body>
   <!-- 新手引导页 -->
 <div id="onboarding" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8 transition-opacity">
-    <div class="bg-white rounded-2xl card-shadow w-[520px] max-h-[90vh] animate-scale-in flex flex-col overflow-hidden border border-transparent dark:border-[#333333]">
-      <div class="p-5 pb-3 flex-shrink-0">
-        <div class="text-center mb-4">
-          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mb-2">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
-            </svg>
-          </div>
-          <h1 class="text-lg font-semibold text-gray-900">支撑面改善工具</h1>
-          <p class="text-[11px] text-gray-400 mt-0.5">MKP Support</p>
+  <div class="bg-white rounded-2xl card-shadow w-[520px] max-h-[90vh] animate-scale-in flex flex-col overflow-hidden border border-transparent dark:border-[#333333]">
+    
+    <div class="p-5 pb-4 flex-shrink-0">
+      <div class="text-center mb-5">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mb-2">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
+          </svg>
         </div>
-
-        <div class="flex items-center justify-center">
-          <div class="flex items-center step-item active" id="step1" onclick="if(currentStep > 1) goToStep(1)">
-            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-xs font-medium step-number transition-colors">1</div>
-            <span class="ml-1.5 text-xs font-medium step-text transition-colors">选择机型</span>
-          </div>
-          <div class="w-12 h-px bg-gray-200 dark:bg-[#3E3E42] mx-2"></div>
-          <div class="flex items-center step-item" id="step2" onclick="if(wizardSelectedPrinter && currentStep > 2) goToStep(2)">
-            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 text-xs font-medium step-number transition-colors">2</div>
-            <span class="ml-1.5 text-xs text-gray-400 step-text transition-colors">选择版本</span>
-          </div>
-          <div class="w-12 h-px bg-gray-200 dark:bg-[#3E3E42] mx-2"></div>
-          <div class="flex items-center step-item" id="step3">
-            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 text-xs font-medium step-number transition-colors">3</div>
-            <span class="ml-1.5 text-xs text-gray-400 step-text transition-colors">基础参数</span>
-          </div>
-        </div>
+        <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">支撑面改善工具</h1>
+        <p class="text-[11px] text-gray-400 mt-0.5">MKP Support</p>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-5 py-2 min-h-0">
-        <div id="stepContent1" class="step-content">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-sm font-medium text-gray-700">选择您的打印机</span>
-            <span id="selectedModelBadge" class="hidden px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium"></span>
-          </div>
-          <div class="flex gap-3">
-            <div class="w-28 flex-shrink-0">
-              <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">品牌</div>
-              <div class="macos-list bg-white dark:bg-[#252526] border-gray-200 dark:border-[#333]" style="height: 180px; overflow-y: auto;">
-                <div id="wizardBrandList"></div>
-              </div>
-            </div>
-            <div class="flex-1">
-              <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">机型</div>
-              <div class="macos-list bg-white dark:bg-[#252526] border-gray-200 dark:border-[#333]" style="height: 180px; overflow-y: auto;">
-                <div id="wizardModelList"></div>
-              </div>
-            </div>
-          </div>
+      <div class="flex items-center justify-center">
+        <div class="flex items-center step-item active" id="step1">
+          <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-xs font-medium step-number transition-colors">1</div>
+          <span class="ml-1.5 text-xs font-medium step-text transition-colors">选择机型</span>
         </div>
-
-        <div id="stepContent2" class="step-content hidden">
-          <div class="text-sm font-medium text-gray-700 mb-3">为该机型选择需要应用的预设版本</div>
-          <div id="wizardVersionList" class="flex flex-col gap-3">
-            </div>
+        <div class="w-12 h-px bg-gray-200 dark:bg-[#3E3E42] mx-2"></div>
+        <div class="flex items-center step-item" id="step2">
+          <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 text-xs font-medium step-number transition-colors">2</div>
+          <span class="ml-1.5 text-xs text-gray-400 step-text transition-colors">选择版本</span>
         </div>
-
-        <div id="stepContent3" class="step-content hidden">
-          <div class="text-sm font-medium text-gray-700 mb-3">当前配置偏移参数</div>
-          <div class="grid grid-cols-3 gap-3 mb-3">
-            <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
-              <div class="text-[10px] text-gray-400 mb-0.5">X 偏移</div>
-              <div class="text-xl font-bold text-gray-700" id="wizardXOffset">--</div>
-              <div class="text-[10px] text-gray-400">mm</div>
-            </div>
-            <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
-              <div class="text-[10px] text-gray-400 mb-0.5">Y 偏移</div>
-              <div class="text-xl font-bold text-gray-700" id="wizardYOffset">--</div>
-              <div class="text-[10px] text-gray-400">mm</div>
-            </div>
-            <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
-              <div class="text-[10px] text-gray-400 mb-0.5">Z 偏移</div>
-              <div class="text-xl font-bold text-gray-700" id="wizardZOffset">--</div>
-              <div class="text-[10px] text-gray-400">mm</div>
-            </div>
-          </div>
-          <div class="text-[10px] text-gray-400 text-center">以上参数仅供参考，请在实际使用中进行视觉校准</div>
-        </div>
-      </div>
-
-      <div class="p-5 pt-3 flex-shrink-0 border-t border-gray-100">
-        <div class="flex items-center justify-between">
-          <button id="leftBtn" onclick="skipOnboarding()" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-            跳过引导
-          </button>
-          <button id="rightBtn" onclick="goToStep(2)" class="btn-primary px-5 py-2 rounded-lg text-sm font-medium" disabled>下一步</button>
+        <div class="w-12 h-px bg-gray-200 dark:bg-[#3E3E42] mx-2"></div>
+        <div class="flex items-center step-item" id="step3">
+          <div class="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 text-xs font-medium step-number transition-colors">3</div>
+          <span class="ml-1.5 text-xs text-gray-400 step-text transition-colors">基础参数</span>
         </div>
       </div>
     </div>
+
+<div id="wizardSummaryBar" class="hidden items-center gap-2 px-6 py-2">
+      <span class="text-xs font-medium text-gray-500">当前选择:</span>
+      <span id="selectedModelBadge" class="hidden px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-xs font-medium border border-blue-100 dark:border-blue-500/20"></span>
+      <span id="selectedVersionBadge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors duration-300"></span>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-6 py-4 min-h-[260px]">
+      
+      <div id="stepContent1" class="step-content">
+        <div class="flex gap-4">
+          <div class="w-32 flex-shrink-0">
+            <div class="text-[11px] text-gray-400 mb-2 uppercase tracking-wide font-medium">品牌</div>
+            <div class="macos-list h-[200px] overflow-y-auto hide-scrollbar">
+              <div id="wizardBrandList"></div>
+            </div>
+          </div>
+          <div class="flex-1">
+            <div class="text-[11px] text-gray-400 mb-2 uppercase tracking-wide font-medium">机型</div>
+            <div class="macos-list h-[200px] overflow-y-auto hide-scrollbar">
+              <div id="wizardModelList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="stepContent2" class="step-content hidden">
+        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">为该机型选择需要应用的预设版本</div>
+        <div id="wizardVersionList" class="flex flex-col gap-3"></div>
+      </div>
+
+      <div id="stepContent3" class="step-content hidden">
+        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">当前配置偏移参数预览</div>
+        <div class="grid grid-cols-3 gap-3 mb-3">
+          <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
+            <div class="text-xs text-gray-400 mb-1">X 偏移</div>
+            <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardXOffset">--</div>
+            <div class="text-[10px] text-gray-400">mm</div>
+          </div>
+          <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
+            <div class="text-xs text-gray-400 mb-1">Y 偏移</div>
+            <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardYOffset">--</div>
+            <div class="text-[10px] text-gray-400">mm</div>
+          </div>
+          <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
+            <div class="text-xs text-gray-400 mb-1">Z 偏移</div>
+            <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardZOffset">--</div>
+            <div class="text-[10px] text-gray-400">mm</div>
+          </div>
+        </div>
+        <div class="text-xs text-gray-400 text-center">以上参数仅供参考，请在实际使用中进行视觉校准</div>
+      </div>
+
+    </div>
+
+    <div class="p-5 pt-3 flex-shrink-0 border-t border-gray-100 dark:border-[#333]">
+      <div class="flex items-center justify-between">
+        <button id="leftBtn" onclick="skipOnboarding()" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors">
+          跳过引导
+        </button>
+        <button id="rightBtn" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium transition-all" disabled>下一步</button>
+      </div>
+    </div>
+
   </div>
+</div>
 
   <!-- 右键菜单 -->
   <div id="contextMenu" class="context-menu hidden">
@@ -208,8 +213,9 @@
 
     <!-- 右侧主内容区 -->
     <main class="flex-1 overflow-hidden flex flex-col">
-      <!-- 选择机型页面 -->
-      <div id="page-home" class="page flex-1 overflow-y-auto p-8">
+      
+      <div id="page-home" class="page h-screen flex flex-col p-8 overflow-hidden">
+        
         <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
           <h1 class="text-2xl font-bold text-gray-900 tracking-tight">选择机型</h1>
           <div class="flex items-center gap-3">
@@ -219,46 +225,49 @@
             </button>
           </div>
         </div>
-        <div class="max-w-6xl">
-          <div class="grid grid-cols-12 gap-6">
-          <!-- 左侧品牌列表 -->
-          <div class="col-span-3">
-            <div class="bg-white rounded-xl card-shadow p-4">
-              <div class="flex items-center justify-between mb-4">
-                <div class="text-sm font-medium text-gray-500">品牌列表</div>
-              </div>
-              <div id="brandList" class="space-y-2">
+
+        <div class="max-w-6xl w-full mt-4">
+          <div class="grid grid-cols-12 gap-6 items-start">
+            
+            <div class="col-span-3">
+              <div class="bg-white rounded-xl card-shadow p-4 flex flex-col max-h-[calc(100vh-160px)]">
+                <div class="text-sm font-medium text-gray-500 mb-4 shrink-0">品牌列表</div>
+                <div id="brandList" class="space-y-2 flex-1 overflow-y-auto hide-scrollbar">
+                  </div>
               </div>
             </div>
-          </div>
 
-          <!-- 右侧机型展示 -->
-          <div class="col-span-9">
-            <div class="bg-white rounded-xl card-shadow p-4">
-              <div class="flex items-center justify-between mb-4 w-full">
-                <div class="flex items-center gap-2 truncate pr-4 shrink">
-                  <span id="currentBrandTitle" class="text-sm font-medium text-gray-700 truncate">拓竹 - Bambu版</span>
-                </div>
-                <div class="flex items-center gap-3 flex-1 justify-end min-w-0">
-                  <div class="relative flex-1 max-w-[200px] min-w-[120px]">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                    </svg>
-                    <input type="text" id="printerSearch" placeholder="搜索机型..." class="input-field pl-9 pr-4 py-2 rounded-lg text-sm w-full" oninput="filterPrinters()">
+            <div class="col-span-9">
+              <div class="bg-white rounded-xl card-shadow p-4 flex flex-col max-h-[calc(100vh-160px)]">
+                
+                <div class="flex items-center justify-between mb-4 w-full shrink-0">
+                  <div class="flex items-center gap-2 truncate pr-4 shrink">
+                    <span id="currentBrandTitle" class="text-sm font-medium text-gray-700 truncate">拓竹 - Bambu版</span>
+                  </div>
+                  <div class="flex items-center gap-3 flex-1 justify-end min-w-0">
+                    <div class="relative flex-1 max-w-[200px] min-w-[120px]">
+                      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                      </svg>
+                      <input type="text" id="printerSearch" placeholder="搜索机型..." class="input-field pl-9 pr-4 py-2 rounded-lg text-sm w-full" oninput="filterPrinters()">
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div id="printerGrid" class="grid grid-cols-3 gap-4">
+                <div class="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+                  <div id="printerGrid" class="grid grid-cols-3 gap-4 pb-2">
+                    </div>
+                </div>
+                
               </div>
             </div>
-          </div>
-          </div>
-        </div>
+            
+          </div> 
+        </div> 
       </div>
-
       <!-- 下载预设页面 -->
-      <div id="page-download" class="page flex-1 overflow-y-auto p-8 hidden">
+<div id="page-download" class="page flex-1 overflow-y-auto p-8 hidden">
+        
         <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
           <h1 class="text-2xl font-bold text-gray-900 tracking-tight">配置您的模型预设</h1>
           <div class="flex items-center gap-3 relative">
@@ -276,11 +285,12 @@
             </div>
           </div>
         </div>
+        
         <div class="max-w-4xl flex flex-col h-full">
           <p class="text-sm text-gray-500 mb-6">选择版本类型和发布日期以获取对应的预设配置</p>
 
           <div class="max-w-4xl space-y-8 flex-1">
-            <!-- 步骤一：选择版本类型 -->
+            
             <div>
               <div class="flex items-center gap-3 mb-4">
                 <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,80 +302,9 @@
                 </div>
               </div>
 
-              <!-- 版本卡片 - 垂直单列布局 -->
-              <div class="flex flex-col gap-3">
-                <!-- 标准版 -->
-                <div class="version-card group bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:border-blue-300 hover:shadow-sm" data-version="standard" onclick="selectVersion(this, 'standard')">
-                  <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-standard-bg); color: var(--theme-standard-text)">
-                      <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-gray-900">标准版</span>
-                      </div>
-                      <p class="text-sm text-gray-500 truncate">v3原版，适合到手即用追求稳定的用户</p>
-                    </div>
-                    <div class="check-indicator w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0 transition-all duration-200">
-                      <svg class="w-4 h-4 text-white opacity-0 transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 快拆版 -->
-                <div class="version-card group bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:border-orange-300 hover:shadow-sm" data-version="quick" onclick="selectVersion(this, 'quick')">
-                  <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-quick-bg); color: var(--theme-quick-text)">
-                      <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
-                      </svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-gray-900">快拆版</span>
-                      </div>
-                      <p class="text-sm text-gray-500 truncate">v3快拆版，适合自行打印安装的用户</p>
-                    </div>
-                    <div class="check-indicator w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0 transition-all duration-200">
-                      <svg class="w-4 h-4 text-white opacity-0 transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Lite版 -->
-                <div class="version-card group bg-white rounded-2xl border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-sm" data-version="lite" onclick="selectVersion(this, 'lite')">
-                  <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-lite-bg); color: var(--theme-lite-text)">
-                      <div class="flex items-center justify-center w-full h-full">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-gray-900">Lite版</span>
-                      </div>
-                      <p class="text-sm text-gray-500 truncate">适合P系列，以及其他品牌CoreXY打印机</p>
-                    </div>
-                    <div class="check-indicator w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center flex-shrink-0 transition-all duration-200">
-                      <svg class="w-4 h-4 text-white opacity-0 transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <div id="downloadVersionList" class="flex flex-col gap-3"></div>
             </div>
 
-            <!-- 步骤二：选择发布日期 -->
             <div>
               <div class="flex items-center gap-3 mb-4">
                 <svg id="step2Badge" class="w-6 h-6 text-gray-400 flex-shrink-0 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,25 +316,21 @@
                 </div>
               </div>
 
-              <!-- 高级居中卡片 -->
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <div class="flex flex-col items-center">
                   <div class="w-full max-w-md">
                     <label class="block text-sm font-medium text-gray-700 mb-2 text-center">发布日期</label>
                     <div id="dateSelector" class="relative transition-opacity duration-200">
-                      <!-- 日历图标 -->
                       <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
                         </svg>
                       </div>
-                      <!-- 自定义下拉选择器 -->
                       <select id="dateSelect" class="appearance-none w-full pl-12 pr-10 py-3.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-400 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" disabled>
                         <option value="">请先选择模型版本</option>
                         <option value="2024-10-24">2024-10-24 (最新)</option>
                         <option value="2024-10-15">2024-10-15</option>
                       </select>
-                      <!-- 自定义向下箭头 -->
                       <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -407,6 +342,7 @@
                 </div>
               </div>
             </div>
+            
           </div>
         </div>
       </div>

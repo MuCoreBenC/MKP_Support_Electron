@@ -223,17 +223,17 @@ function skipOnboarding() {
 }
 
 /*
- * goToStep(step) - 跳转到引导页指定步骤
- * @param {number} step - 步骤编号
- * 功能：切换引导页步骤，更新UI状态
+ * goToStep(step) - 跳转步骤并触发变色检查
  */
 function goToStep(step) {
   currentStep = step;
   
-  // 更新步骤条状态
+  // 1. 更新顶部小圆圈和页面内容的显示
   for (let i = 1; i <= 3; i++) {
     const stepItem = document.getElementById(`step${i}`);
     const stepContent = document.getElementById(`stepContent${i}`);
+    
+    if (!stepItem || !stepContent) continue;
     
     if (i < step) {
       stepItem.classList.remove('active');
@@ -249,27 +249,44 @@ function goToStep(step) {
     }
   }
   
-  // 更新按钮状态
-  const leftBtn = document.getElementById('leftBtn');
-  const rightBtn = document.getElementById('rightBtn');
-  
-  if (step === 1) {
-    leftBtn.textContent = '跳过引导';
-    leftBtn.onclick = skipOnboarding;
-    rightBtn.textContent = '下一步';
-    rightBtn.onclick = () => goToStep(2);
-  } else if (step === 2) {
-    leftBtn.textContent = '上一步';
-    leftBtn.onclick = () => goToStep(1);
-    rightBtn.textContent = '下一步';
-    rightBtn.onclick = () => goToStep(3);
-  } else if (step === 3) {
-    leftBtn.textContent = '上一步';
-    leftBtn.onclick = () => goToStep(2);
-    rightBtn.textContent = '完成';
-    rightBtn.onclick = skipOnboarding;
-  }
+  // 2. 每次切换页面，都去检查一下按钮该灰还是该蓝
+  updateWizardButtons();
 }
+
+/* ============================================================ 
+    引导页动态渲染逻辑升级版 (包含徽章更新与版本过滤) 
+    ============================================================ */ 
+
+ // 更新全局徽章栏 (机型名和版本名) 
+
+
+ // 渲染对应的机型列表，并绑定版本刷新 
+ function renderWizardModels(brandId) { 
+   const modelList = document.getElementById('wizardModelList'); 
+   if (!modelList) return; 
+   modelList.innerHTML = ''; 
+   const printers = printersByBrand[brandId] || []; 
+   
+   printers.forEach(printer => { 
+     if (!printer.disabled) { 
+       const modelItem = document.createElement('div'); 
+       modelItem.className = `model-list-item ${wizardSelectedPrinter === printer.id ? 'selected' : ''}`; 
+       modelItem.textContent = printer.name; 
+       modelItem.onclick = () => { 
+         wizardSelectedPrinter = printer.id; 
+         wizardSelectedVersion = null; // 切换机型时，强制清空版本 
+         
+         renderWizardModels(brandId); 
+         updateWizardOffsets(printer); 
+         updateWizardBadges(printer.name, null); // 更新全局机型名 
+         renderWizardVersions(printer); // 核心：根据该机型拥有的版本渲染第二页 
+         updateWizardButtons(); // 激活下一步 
+       }; 
+       modelList.appendChild(modelItem); 
+     } 
+   }); 
+ } 
+
 
 /*
  * renderWizardBrands() - 渲染引导页品牌列表
@@ -296,32 +313,6 @@ function renderWizardBrands() {
 }
 
 /*
- * renderWizardModels(brandId) - 渲染引导页机型列表
- * @param {string} brandId - 品牌ID
- * 功能：根据选择的品牌显示对应的机型列表
- */
-function renderWizardModels(brandId) {
-  const modelList = document.getElementById('wizardModelList');
-  modelList.innerHTML = '';
-  
-  const printers = printersByBrand[brandId] || [];
-  
-  printers.forEach(printer => {
-    if (!printer.disabled) {
-      const modelItem = document.createElement('div');
-      modelItem.className = `model-list-item ${wizardSelectedPrinter === printer.id ? 'selected' : ''}`;
-      modelItem.textContent = printer.name;
-      modelItem.onclick = () => {
-        wizardSelectedPrinter = printer.id;
-        renderWizardModels(brandId);
-        updateWizardOffsets(printer);
-      };
-      modelList.appendChild(modelItem);
-    }
-  });
-}
-
-/*
  * updateWizardOffsets(printer) - 更新引导页偏移参数
  * @param {Object} printer - 打印机对象
  * 功能：显示选中机型的默认偏移参数
@@ -335,7 +326,150 @@ function updateWizardOffsets(printer) {
   selectedModelBadge.textContent = printer.name;
   selectedModelBadge.classList.remove('hidden');
 }
+/*
+ * 1. updateWizardBadges() - 修复：全局徽章栏 (变成侧边栏同款胶囊样式)
+ */
+function updateWizardBadges(printerName, versionType) {
+  const summaryBar = document.getElementById('wizardSummaryBar');
+  const modelBadge = document.getElementById('selectedModelBadge');
+  const versionBadge = document.getElementById('selectedVersionBadge');
 
+  if (printerName) {
+    summaryBar.classList.remove('hidden');
+    summaryBar.classList.add('flex');
+    modelBadge.textContent = printerName;
+    modelBadge.classList.remove('hidden');
+  }
+
+  if (versionType) {
+    const versionThemes = {
+      standard: { title: '标准版', bg: 'var(--theme-standard-bg)', text: 'var(--theme-standard-text)' },
+      quick: { title: '快拆版', bg: 'var(--theme-quick-bg)', text: 'var(--theme-quick-text)' },
+      lite: { title: 'Lite版', bg: 'var(--theme-lite-bg)', text: 'var(--theme-lite-text)' }
+    };
+    const theme = versionThemes[versionType];
+    if (theme) {
+      versionBadge.textContent = theme.title;
+      // 侧边栏同款样式：应用专属背景色和文字色，没有边框
+      versionBadge.style.backgroundColor = theme.bg;
+      versionBadge.style.color = theme.text;
+      versionBadge.style.borderColor = 'transparent';
+      versionBadge.classList.remove('hidden');
+    }
+  } else {
+    if (versionBadge) versionBadge.classList.add('hidden');
+  }
+}
+
+/*
+ * 2. renderWizardVersions() - 修复：精准读取 data.js 中的 supportedVersions
+ */
+function renderWizardVersions(printerData) {
+  const versionList = document.getElementById('wizardVersionList');
+  if (!versionList || !printerData) return;
+  versionList.innerHTML = '';
+
+  // 严格读取 data.js 中该机型配置的 supportedVersions 数组
+  let availableVersions = ['standard']; // 默认兜底
+  if (printerData.supportedVersions && printerData.supportedVersions.length > 0) {
+    availableVersions = printerData.supportedVersions;
+  }
+
+  const versionDetails = {
+    standard: { title: '标准版', desc: 'v3原版，适合到手即用追求稳定', iconPath: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z', theme: 'standard' },
+    quick: { title: '快拆版', desc: 'v3快拆版，适合自行打印安装', iconPath: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z', theme: 'quick' },
+    lite: { title: 'Lite版', desc: '适合P系列，及其他CoreXY', iconPath: 'M21 12a9 9 0 11-18 0 9 9 0 0118 0z M9 12h6', theme: 'lite' }
+  };
+
+  availableVersions.forEach(vType => {
+    const vInfo = versionDetails[vType];
+    if (!vInfo) return;
+
+    const isSelected = wizardSelectedVersion === vType;
+    const card = document.createElement('div');
+    card.className = `version-card group bg-white dark:bg-[#252526] rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${isSelected ? 'selected border-blue-500' : 'border-gray-200 dark:border-[#333333] hover:border-blue-300'}`;
+    
+    card.onclick = () => {
+      wizardSelectedVersion = vType;
+      renderWizardVersions(printerData); 
+      updateWizardBadges(printerData.name, vType); 
+      updateWizardButtons(); // 瞬间激活下一步！
+    };
+
+    card.innerHTML = `
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-${vInfo.theme}-bg); color: var(--theme-${vInfo.theme}-text)">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${vInfo.iconPath}"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-semibold text-gray-900 dark:text-gray-100">${vInfo.title}</span>
+          </div>
+          <p class="text-xs text-gray-500 truncate">${vInfo.desc}</p>
+        </div>
+        <div class="check-indicator w-6 h-6 rounded-full border-2 ${isSelected ? 'border-transparent bg-blue-500' : 'border-gray-200 dark:border-[#444]'} flex items-center justify-center flex-shrink-0 transition-all duration-200">
+          <svg class="w-4 h-4 text-white ${isSelected ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+    `;
+    versionList.appendChild(card);
+  });
+}
+
+/*
+ * 3. updateWizardButtons() - 修复：物理级撕毁/添加 disabled 属性，彻底防卡死
+ */
+function updateWizardButtons() {
+  const leftBtn = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+  if (!leftBtn || !rightBtn) return;
+
+  if (currentStep === 1) {
+    leftBtn.textContent = '跳过引导';
+    leftBtn.onclick = skipOnboarding;
+    rightBtn.textContent = '下一步';
+    
+    if (wizardSelectedPrinter) {
+      rightBtn.disabled = false;
+      rightBtn.removeAttribute('disabled');
+      rightBtn.classList.remove('opacity-50', 'cursor-not-allowed'); // 确保恢复亮蓝色
+      rightBtn.onclick = () => goToStep(2);
+    } else {
+      rightBtn.disabled = true;
+      rightBtn.setAttribute('disabled', 'true');
+      rightBtn.classList.add('opacity-50', 'cursor-not-allowed'); // 确保变成不可点的灰色
+      rightBtn.onclick = null;
+    }
+  } else if (currentStep === 2) {
+    leftBtn.textContent = '上一步';
+    leftBtn.onclick = () => goToStep(1);
+    rightBtn.textContent = '下一步';
+    
+    if (wizardSelectedVersion) {
+      rightBtn.disabled = false;
+      rightBtn.removeAttribute('disabled');
+      rightBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      rightBtn.onclick = () => goToStep(3);
+    } else {
+      rightBtn.disabled = true;
+      rightBtn.setAttribute('disabled', 'true');
+      rightBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      rightBtn.onclick = null;
+    }
+  } else if (currentStep === 3) {
+    leftBtn.textContent = '上一步';
+    leftBtn.onclick = () => goToStep(2);
+    rightBtn.textContent = '完成并进入';
+    rightBtn.disabled = false;
+    rightBtn.removeAttribute('disabled');
+    rightBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    rightBtn.onclick = completeOnboarding;
+  }
+}
 // ==================== 6. 品牌相关功能 ====================
 /*
  * renderBrands() - 渲染品牌列表
@@ -732,6 +866,7 @@ function selectVersion(card, version) {
     c.querySelector('.check-indicator').style.borderColor = '#E5E7EB';
     c.querySelector('.check-indicator').style.backgroundColor = 'transparent';
     c.querySelector('.check-indicator svg').style.opacity = '0';
+    updateWizardButtons();
   });
   
   // 设置当前卡片状态
@@ -962,6 +1097,241 @@ function saveXYOffset() {
   alert('XY轴偏移已保存');
 }
 
+// ============================================================
+// 终极数据同步与本地存储模块 (大一统引擎)
+// ============================================================
+
+// 1. 本地存储引擎：将用户的选择永久存入本地缓存
+function saveUserConfig() {
+  const config = {
+    brand: selectedBrand,
+    printer: selectedPrinter,
+    version: selectedVersion
+  };
+  localStorage.setItem('mkp_user_config', JSON.stringify(config));
+}
+
+function loadUserConfig() {
+  try {
+    const saved = localStorage.getItem('mkp_user_config');
+    if (saved) {
+      const config = JSON.parse(saved);
+      if (config.brand) selectedBrand = config.brand;
+      if (config.printer) selectedPrinter = config.printer;
+      if (config.version) selectedVersion = config.version;
+    }
+  } catch (e) {
+    console.error("加载配置文件失败", e);
+  }
+}
+
+// 2. 辅助中心：快速根据机型ID找到它的完整数据
+function getPrinterObj(printerId) {
+  for (const brandId in printersByBrand) {
+    const p = printersByBrand[brandId].find(p => p.id === printerId);
+    if (p) return p;
+  }
+  return null;
+}
+
+// 3. 核心复用：通用版本卡片渲染器（同时给“引导页”和“下载页”打工！）
+function renderVersionCards(containerId, printerData, currentSelectedVersion, onSelectCallback) {
+  const container = document.getElementById(containerId);
+  if (!container || !printerData) return;
+  container.innerHTML = '';
+
+  // 严格读取该机型支持的版本，默认兜底标准版
+  let availableVersions = ['standard'];
+  if (printerData.supportedVersions && printerData.supportedVersions.length > 0) {
+    availableVersions = printerData.supportedVersions;
+  }
+
+  const versionDetails = {
+    standard: { title: '标准版', desc: 'v3原版，适合到手即用追求稳定', iconPath: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z', theme: 'standard' },
+    quick: { title: '快拆版', desc: 'v3快拆版，适合自行打印安装', iconPath: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z', theme: 'quick' },
+    lite: { title: 'Lite版', desc: '适合P系列，及其他CoreXY', iconPath: 'M21 12a9 9 0 11-18 0 9 9 0 0118 0z M9 12h6', theme: 'lite' }
+  };
+
+  availableVersions.forEach(vType => {
+    const vInfo = versionDetails[vType];
+    if (!vInfo) return;
+
+    const isSelected = currentSelectedVersion === vType;
+    const card = document.createElement('div');
+    // 自带完美的暗黑模式和选中高亮
+    card.className = `version-card group bg-white dark:bg-[#252526] rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${isSelected ? 'selected border-blue-500' : 'border-gray-200 dark:border-[#333333] hover:border-blue-300'}`;
+    
+    // 绑定点击事件
+    card.onclick = () => onSelectCallback(vType);
+
+    card.innerHTML = `
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style="background: var(--theme-${vInfo.theme}-bg); color: var(--theme-${vInfo.theme}-text)">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${vInfo.iconPath}"/></svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-semibold text-gray-900 dark:text-gray-100">${vInfo.title}</span>
+          </div>
+          <p class="text-xs text-gray-500 truncate">${vInfo.desc}</p>
+        </div>
+        <div class="check-indicator w-6 h-6 rounded-full border-2 ${isSelected ? 'border-transparent bg-blue-500' : 'border-gray-200 dark:border-[#444]'} flex items-center justify-center flex-shrink-0 transition-all duration-200">
+          <svg class="w-4 h-4 text-white ${isSelected ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// 4. 重写：引导页版本渲染 (直接调用上面的引擎)
+function renderWizardVersions(printerData) {
+  renderVersionCards('wizardVersionList', printerData, wizardSelectedVersion, (vType) => {
+    wizardSelectedVersion = vType;
+    renderWizardVersions(printerData); // 刷新自己
+    updateWizardBadges(printerData.name, vType); 
+    updateWizardButtons(); // 激活下一步按钮
+  });
+}
+
+// 5. 新增：下载页版本渲染 (直接调用上面的引擎，逻辑完全一致)
+function renderDownloadVersions(printerData) {
+  renderVersionCards('downloadVersionList', printerData, selectedVersion, (vType) => {
+    selectedVersion = vType;
+    saveUserConfig(); // 选完立刻存档！
+    
+    renderDownloadVersions(printerData); // 刷新自己
+    updateSidebarVersionBadge(vType); // 侧边栏联动
+    
+    // 解锁下载按钮和日期选择器
+    const dateSelect = document.getElementById('dateSelect');
+    if(dateSelect) {
+        dateSelect.disabled = false;
+        dateSelect.classList.remove('cursor-not-allowed', 'text-gray-400');
+        dateSelect.classList.add('text-gray-900', 'dark:text-gray-100');
+    }
+    const dlBtn = document.getElementById('downloadBtn');
+    const dlHint = document.getElementById('downloadHintWrapper');
+    if(dlBtn) dlBtn.disabled = false;
+    if(dlHint) dlHint.style.opacity = '0';
+  });
+
+  // 防呆逻辑：如果因为换了机型导致没选中版本，立刻上锁
+  if (!selectedVersion) {
+    const dateSelect = document.getElementById('dateSelect');
+    if(dateSelect) {
+        dateSelect.disabled = true;
+        dateSelect.classList.add('cursor-not-allowed', 'text-gray-400');
+        dateSelect.classList.remove('text-gray-900', 'dark:text-gray-100');
+    }
+    const dlBtn = document.getElementById('downloadBtn');
+    const dlHint = document.getElementById('downloadHintWrapper');
+    if(dlBtn) dlBtn.disabled = true;
+    if(dlHint) dlHint.style.opacity = '1';
+  }
+}
+
+// 6. 重写：主界面选择机型 (换机型 = 自动清空旧版本并存档)
+function selectPrinter(printerId, keepVersion = false) {
+  selectedPrinter = printerId;
+  let selectedPrinterObj = getPrinterObj(printerId);
+  
+  if (selectedPrinterObj) {
+    selectedBrand = brands.find(b => printersByBrand[b.id].some(p => p.id === printerId)).id;
+    
+    // 【核心要求】：切换机型时，强制清空版本变为"未选择"（除非是刚从引导页带数据过来）
+    if (!keepVersion) {
+        selectedVersion = null; 
+    }
+
+    // 更新侧边栏文字
+    document.getElementById('sidebarBrand').textContent = brands.find(b => b.id === selectedBrand).shortName;
+    document.getElementById('sidebarModelName').textContent = selectedPrinterObj.shortName;
+    updateSidebarVersionBadge(selectedVersion);
+    
+    saveUserConfig(); // 存档
+    
+    // 让界面重新画一遍
+    renderBrands();
+    renderPrinters(selectedBrand);
+    renderDownloadVersions(selectedPrinterObj);
+  }
+}
+
+// 7. 重写：引导页完成按钮 (把引导页的选择同步给主界面并存档)
+function completeOnboarding() {
+  selectedBrand = wizardSelectedBrand;
+  selectedPrinter = wizardSelectedPrinter;
+  selectedVersion = wizardSelectedVersion;
+  
+  saveUserConfig(); // 存档
+  
+  // 触发主界面更新 (传入 true 代表不要洗掉刚才选的版本)
+  selectPrinter(selectedPrinter, true); 
+  
+  const onboarding = document.getElementById('onboarding');
+  if(onboarding) {
+      onboarding.classList.add('animate-fade-out');
+      setTimeout(() => {
+        onboarding.style.display = 'none';
+        document.querySelector('[data-page="calibrate"]').click();
+      }, 200);
+  }
+}
+
+// 8. 重写：侧边栏徽章更新 (支持显示灰色的"未选择")
+function updateSidebarVersionBadge(version) {
+  const badge = document.getElementById('sidebarVersionBadge');
+  if (!badge) return;
+  
+  badge.style.backgroundColor = '';
+  badge.style.color = '';
+  
+  if (!version) {
+    badge.textContent = '未选择';
+    badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-400 dark:bg-[#333] dark:text-gray-500 whitespace-nowrap transition-colors duration-300';
+    return;
+  }
+  
+  badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors duration-300';
+  if (version === 'standard') {
+    badge.textContent = '标准版';
+    badge.style.backgroundColor = 'var(--theme-standard-bg)';
+    badge.style.color = 'var(--theme-standard-text)';
+  } else if (version === 'quick') {
+    badge.textContent = '快拆版';
+    badge.style.backgroundColor = 'var(--theme-quick-bg)';
+    badge.style.color = 'var(--theme-quick-text)';
+  } else if (version === 'lite') {
+    badge.textContent = 'Lite版';
+    badge.style.backgroundColor = 'var(--theme-lite-bg)';
+    badge.style.color = 'var(--theme-lite-text)';
+  }
+}
+
+// 9. 重写：软件加载时的初始化 (开局读档！)
+function init() {
+  loadUserConfig(); // 第一步：读取本地配置文件
+  
+  renderBrands();
+  selectPrinter(selectedPrinter, true); // 使用读取到的数据画出界面
+  
+  renderVersions();
+  bindNavigation();
+  bindContextMenu();
+  renderWizardBrands();
+  filterFaq('');
+  initTheme();
+  initSystemThemeListener();
+  initOnboardingSetting();
+  
+  if (!checkShowOnboarding()) {
+    skipOnboarding();
+  }
+}
+
 // ==================== 12. 事件监听 ====================
 /*
  * 页面加载完成后初始化
@@ -992,7 +1362,19 @@ function checkShowOnboarding() {
   return savedSetting !== 'false';
 }
 
-
+/*
+ * completeOnboarding() - 完成新手引导
+ * 功能：隐藏引导页并切换到校准偏移页面
+ */
+function completeOnboarding() {
+  const onboarding = document.getElementById('onboarding');
+  onboarding.classList.add('animate-fade-out');
+  setTimeout(() => {
+    onboarding.style.display = 'none';
+    // 切换到校准偏移页面
+    document.querySelector('[data-page="calibrate"]').click();
+  }, 200);
+}
 
 /*
  * 手动选择路径
@@ -1001,3 +1383,25 @@ function manualSelectPath() {
   // 模拟手动选择路径
   alert('请选择Bambu Studio安装路径');
 }
+// ==========================================
+// 开发者辅助小工具：实时显示窗口分辨率
+// （软件发布前记得把这段删掉哦！）
+// ==========================================
+const sizeIndicator = document.createElement('div');
+sizeIndicator.style.cssText = 'position:fixed; bottom:10px; right:10px; background:rgba(0,0,0,0.7); color:white; padding:4px 8px; border-radius:4px; z-index:99999; font-size:12px; font-family:monospace; pointer-events:none; transition:all 0.1s;';
+document.body.appendChild(sizeIndicator);
+
+function updateDevSize() {
+  sizeIndicator.textContent = `${window.innerWidth} x ${window.innerHeight}`;
+  // 如果宽度小于 1000（触发折叠的临界点），变红提示你！
+  if (window.innerWidth <= 1000) {
+    sizeIndicator.style.background = 'rgba(239, 68, 68, 0.9)'; // Tailwind的红色
+  } else if (window.innerWidth <= 1366) {
+    sizeIndicator.style.background = 'rgba(245, 158, 11, 0.9)'; // Tailwind的橙色
+  } else {
+    sizeIndicator.style.background = 'rgba(0, 0, 0, 0.7)'; // 正常黑色
+  }
+}
+
+window.addEventListener('resize', updateDevSize);
+updateDevSize(); // 初始化执行一次
