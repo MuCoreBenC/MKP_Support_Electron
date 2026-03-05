@@ -2,8 +2,84 @@ const { app, BrowserWindow, Notification, ipcMain, nativeTheme } = require('elec
 const path = require('path');
 const fs = require('fs');
 const { processGcode } = require('./mkp_engine');
-
 const isCliMode = process.argv.includes('--Gcode');
+// ==========================================
+// 日志系统 (写入本地文件)
+// ==========================================
+ipcMain.on('write-log', (event, message) => {
+  try {
+    // 日志存放在: AppData/Roaming/你的应用名/Logs
+    const logDir = path.join(app.getPath('userData'), 'Logs');
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    // 按天生成日志文件，例如：mkp_2026-03-05.log
+    const date = new Date();
+    const fileName = `mkp_${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}.log`;
+    const logFile = path.join(logDir, fileName);
+
+    // 格式化时间，例如：[18:30:45]
+    const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+    const logLine = `[${timeStr}] ${message}\n`;
+
+    // 追加写入文件
+    fs.appendFileSync(logFile, logLine, 'utf8');
+  } catch (error) {
+    console.error("写入日志文件失败:", error);
+  }
+});
+// 版本号对比工具
+function compareVersions(v1, v2) {
+  const a = (v1 || '0.0.0').replace(/^v/, '').split('.').map(Number);
+  const b = (v2 || '0.0.0').replace(/^v/, '').split('.').map(Number);
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const num1 = a[i] || 0;
+    const num2 = b[i] || 0;
+    if (num1 > num2) return 1;  
+    if (num1 < num2) return -1; 
+  }
+  return 0; 
+}
+
+// 初始化：释放默认预设 JSON 到用户电脑
+ipcMain.handle('init-default-presets', async () => {
+  try {
+    const userDataPath = path.join(app.getPath('userData'), 'Presets');
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath, { recursive: true });
+    }
+
+    const defaultPresetsPath = path.join(__dirname, '../default_presets');
+    if (!fs.existsSync(defaultPresetsPath)) return { success: true, msg: "无内置预设" };
+
+    const files = fs.readdirSync(defaultPresetsPath);
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const sourceFile = path.join(defaultPresetsPath, file);
+        const targetFile = path.join(userDataPath, file);
+
+        if (!fs.existsSync(targetFile)) {
+          fs.copyFileSync(sourceFile, targetFile);
+        } else {
+          try {
+            const sourceData = JSON.parse(fs.readFileSync(sourceFile, 'utf8'));
+            const targetData = JSON.parse(fs.readFileSync(targetFile, 'utf8'));
+            if (compareVersions(sourceData.version, targetData.version) > 0) {
+              fs.copyFileSync(sourceFile, targetFile);
+            }
+          } catch (e) {
+            console.error("解析JSON报错", e);
+          }
+        }
+      }
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
 if (isCliMode) {
   // ==========================================

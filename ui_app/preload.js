@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('mkpAPI', {
   writeToml: (filePath, newData) => ipcRenderer.invoke('write-toml', filePath, newData),
   
   // 3. 获取用户本地数据存放路径
-  getUserDataPath: () => ipcRenderer.invoke('get-userdata-path')
+  getUserDataPath: () => ipcRenderer.invoke('get-userdata-path'),
   
+  initDefaultPresets: () => ipcRenderer.invoke('init-default-presets'),
+  writeLog: (message) => ipcRenderer.send('write-log', message)
 });

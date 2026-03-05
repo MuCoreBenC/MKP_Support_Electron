@@ -1,3 +1,27 @@
+// ==========================================
+// 全局日志管理器 (Logger)
+// ==========================================
+const Logger = {
+  _format(level, msg, data) {
+    const dataStr = data ? ' | 附加数据: ' + JSON.stringify(data) : '';
+    const logStr = `[${level}] ${msg}${dataStr}`;
+    
+    // 1. 打印到浏览器开发者工具控制台
+    if (level === 'ERROR') console.error(logStr);
+    else if (level === 'WARN') console.warn(logStr);
+    else console.log(logStr);
+
+    // 2. 发送到主进程，永久写入本地硬盘
+    if (window.mkpAPI && window.mkpAPI.writeLog) {
+      window.mkpAPI.writeLog(logStr);
+    }
+  },
+  info: (msg, data) => Logger._format('INFO', msg, data),
+  warn: (msg, data) => Logger._format('WARN', msg, data),
+  error: (msg, data) => Logger._format('ERROR', msg, data)
+};
+
+
 // 状态管理
 let selectedVersion = null;
 let selectedDate = null;
@@ -11,6 +35,128 @@ let wizardSelectedPrinter = null;
 let versionsExpanded = false;
 const INITIAL_DISPLAY_COUNT = 3;
 let sidebarCollapsed = false;
+
+
+
+
+// ============================================================
+// 底层服务：统一更新检查引擎 (带冷却防刷机制)
+// ==========================================
+
+
+// ==========================================
+// Node.js 端的版本对比工具 (绝对靠谱的版本号对比)
+// ==========================================
+function compareVersions(v1, v2) {
+  const a = (v1 || '0.0.0').replace(/^v/, '').split('.').map(Number);
+  const b = (v2 || '0.0.0').replace(/^v/, '').split('.').map(Number);
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const num1 = a[i] || 0;
+    const num2 = b[i] || 0;
+    if (num1 > num2) return 1;  // v1 新
+    if (num1 < num2) return -1; // v2 新
+  }
+  return 0; // 一样
+}
+
+// ==========================================
+// 底层服务：统一更新检查引擎 (缓存驱动版)
+// ==========================================
+
+const UPDATE_CONFIG = {
+  app: {
+    manifestUrl: 'http://localhost:3000/app_manifest.json', 
+    getLocalVersion: () => '1.0.0', 
+    cooldownMinutes: 5 // 统一 5 分钟缓存有效期
+  },
+  preset: {
+    manifestUrl: 'http://localhost:3000/presets_manifest.json',
+    getLocalVersion: (presetId) => {
+      const localPresets = JSON.parse(localStorage.getItem('mkp_local_presets') || '{}');
+      return localPresets[presetId] || '0.0.0'; 
+    },
+    cooldownMinutes: 5 
+  }
+};
+
+/**
+ * 核心引擎
+ * @param {string} type - 'app' 或 'preset'
+ * @param {string} targetId - 机型ID (如 'a1')
+ * @param {boolean} forceCheck - 是否无视缓存，强制请求云端？
+ */
+async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
+  const config = UPDATE_CONFIG[type];
+  if (!config) throw new Error(`未知的更新类型: ${type}`);
+
+  const lastCheckKey = `mkp_last_check_${type}`;
+  const cacheKey = `mkp_manifest_cache_${type}`;
+  const lastCheckTime = localStorage.getItem(lastCheckKey);
+
+  let cloudData = null;
+  let usedCache = false;
+
+  // 1. 尝试使用本地缓存 (如果不强制刷新，且在5分钟有效期内)
+  if (!forceCheck && lastCheckTime) {
+    const diffMinutes = (Date.now() - parseInt(lastCheckTime)) / (1000 * 60);
+    if (diffMinutes < config.cooldownMinutes) {
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+        try {
+          cloudData = JSON.parse(cachedStr);
+          usedCache = true;
+          Logger.info(`[更新引擎] 使用缓存的 ${type} 清单 (距上次更新 ${diffMinutes.toFixed(1)} 分钟)`);
+        } catch(e) {
+          Logger.warn(`[更新引擎] 缓存读取失败，准备重新拉取`);
+        }
+      }
+    }
+  }
+
+  // 2. 如果没有缓存，或者缓存过期，或者用户强制要求，则去云端拉取
+  if (!cloudData) {
+    try {
+      Logger.info(`[更新引擎] 正在从云端拉取最新 ${type} 清单...`);
+      const response = await fetch(config.manifestUrl);
+      if (!response.ok) throw new Error(`HTTP错误: ${response.status}`);
+      cloudData = await response.json();
+
+      // 拉取成功，写入缓存并更新时间戳
+      localStorage.setItem(cacheKey, JSON.stringify(cloudData));
+      localStorage.setItem(lastCheckKey, Date.now().toString());
+      Logger.info(`[更新引擎] ${type} 清单拉取成功，已更新本地缓存`);
+    } catch (error) {
+      Logger.error(`[更新引擎] 网络请求失败:`, error.message);
+      // 网络断开时的降级处理：死马当活马医，看看有没有旧缓存能用
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+         cloudData = JSON.parse(cachedStr);
+         usedCache = true;
+         Logger.info(`[更新引擎] 无网络，降级使用过期缓存清单`);
+      } else {
+         return { success: false, error: error.message };
+      }
+    }
+  }
+
+  // 3. 开始版本对比逻辑
+  const localVersion = config.getLocalVersion(targetId);
+  let cloudVersion = '0.0.0';
+  let targetData = null;
+
+  if (type === 'app') {
+    cloudVersion = cloudData.latestVersion;
+    targetData = cloudData;
+  } else if (type === 'preset') {
+    targetData = cloudData.presets.find(p => p.id === targetId);
+    if (targetData) cloudVersion = targetData.version;
+  }
+
+  const hasUpdate = compareVersions(cloudVersion, localVersion) > 0;
+
+  return { success: true, hasUpdate, localVersion, cloudVersion, data: targetData, usedCache };
+}
 
 // ==================== 3. 侧边栏功能 ====================
 /*
@@ -190,24 +336,7 @@ function filterFaq(keyword) {
  * - 更新版本列表显示状态
  * - 初始化引导界面设置
  */
-function init() {
-  renderBrands();
-  renderPrinters(selectedBrand);
-  renderVersions();
-  bindNavigation();
-  bindContextMenu();
-  renderWizardBrands();
-  updateVersionListForPrinter();
-  filterFaq('');
-  initTheme();
-  initSystemThemeListener();
-  initOnboardingSetting();
-  
-  // 检查是否显示引导界面
-  if (!checkShowOnboarding()) {
-    skipOnboarding();
-  }
-}
+
 
 // ==================== 5. 引导页功能 ====================
 /*
@@ -678,38 +807,46 @@ function generatePrinterCardsHtml(array) {
   }).join('');
 }
 
-/*
- * selectPrinter(printerId) - 选择机型
- * @param {string} printerId - 机型ID
- * 功能：更新选中机型状态，更新侧边栏显示，更新版本列表
- */
-function selectPrinter(printerId) {
+// 8. 重写：主界面选择机型 (换机型 = 自动清空旧版本并存档)
+function selectPrinter(printerId, keepVersion = false) {
   selectedPrinter = printerId;
-  
-  // 找到对应的打印机对象
-  let selectedPrinterObj = null;
-  for (const brandId in printersByBrand) {
-    const printer = printersByBrand[brandId].find(p => p.id === printerId);
-    if (printer) {
-      selectedPrinterObj = printer;
-      selectedBrand = brandId;
-      break;
-    }
-  }
+  let selectedPrinterObj = getPrinterObj(printerId);
   
   if (selectedPrinterObj) {
-    // 更新侧边栏显示
-    document.getElementById('sidebarBrand').textContent = brands.find(b => b.id === selectedBrand).shortName;
-    document.getElementById('sidebarModelName').textContent = selectedPrinterObj.shortName;
-    document.getElementById('sidebarVersionBadge').textContent = '未选择';
+    // 找出所属品牌
+    for (const brandId in printersByBrand) {
+      if (printersByBrand[brandId].some(p => p.id === printerId)) {
+        selectedBrand = brandId;
+        break;
+      }
+    }
     
-    // 更新当前打印机支持的版本
-    currentPrinterSupportedVersions = selectedPrinterObj.supportedVersions;
-    updateVersionListForPrinter();
+    if (!keepVersion) {
+        selectedVersion = null; 
+    }
+
+    // 安全更新左侧边栏文字 (加了防空判断，就算找不到DOM也不会报错白屏)
+    const sbBrand = document.getElementById('sidebarBrand');
+    if (sbBrand) {
+      const bObj = brands.find(b => b.id === selectedBrand);
+      if (bObj) sbBrand.textContent = bObj.shortName;
+    }
+
+    const sbModel = document.getElementById('sidebarModelName');
+    if (sbModel) sbModel.textContent = selectedPrinterObj.shortName;
     
-    // 重新渲染品牌和机型列表
+    // 更新左上角徽章 (刚刚修复过的)
+    updateSidebarVersionBadge(selectedVersion);
+    
+    saveUserConfig(); 
+    
     renderBrands();
     renderPrinters(selectedBrand);
+    
+    // 确保这个函数存在再去调用
+    if (typeof renderDownloadVersions === 'function') {
+      renderDownloadVersions(selectedPrinterObj);
+    }
   }
 }
 
@@ -767,52 +904,85 @@ function hideContextMenu() {
 }
 
 // ==================== 9. 版本控制功能 ====================
+
 /*
- * renderVersions() - 渲染版本列表
- * 功能：在版本控制页面显示版本历史
+ * renderVersions() - 重新设计的版本控制渲染引擎
+ * 功能：将版本分为 稳定/测试/历史 三类，并支持历史版本折叠
  */
 function renderVersions() {
   const versionList = document.getElementById('versionList');
+  if (!versionList) return;
   versionList.innerHTML = '';
-  
-  const displayCount = versionsExpanded ? versions.length : INITIAL_DISPLAY_COUNT;
-  const displayVersions = versions.slice(0, displayCount);
-  
-  displayVersions.forEach(version => {
-    const versionCard = document.createElement('div');
-    versionCard.className = 'bg-white rounded-xl border border-gray-200 p-5';
-    versionCard.innerHTML = `
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-3">
-          <div class="px-2.5 py-1 rounded-full text-xs font-medium ${version.status === 'RUNNING' ? 'bg-green-100 text-green-800' : version.status === 'Beta' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">${version.status}</div>
-          <div>
-            <div class="font-medium text-gray-900">${version.version}</div>
-            <div class="text-xs text-gray-500">${version.date}</div>
+
+  // 1. 数据分组
+  const stableVersion = versions.find(v => v.status === 'RUNNING' || v.status === 'Stable');
+  const betaVersion = versions.find(v => v.status === 'Beta');
+  const legacyVersions = versions.filter(v => v !== stableVersion && v !== betaVersion);
+
+  // 2. 渲染函数：生成单个版本卡片
+  const createCard = (version, type) => {
+    let badgeClass = 'bg-gray-100 text-gray-800';
+    let btnText = '回退';
+    let btnClass = 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+
+    if (type === 'stable') {
+      badgeClass = 'bg-green-100 text-green-800';
+      btnText = version.current ? '已是最新' : '下载并更新';
+      btnClass = 'bg-blue-600 text-white hover:bg-blue-700';
+    } else if (type === 'beta') {
+      badgeClass = 'bg-purple-100 text-purple-800';
+      btnText = '立即尝鲜';
+      btnClass = 'bg-purple-50 text-purple-600 hover:bg-purple-100';
+    }
+
+    return `
+      <div class="bg-white dark:bg-[#252526] rounded-xl border border-gray-200 dark:border-[#333] p-5 mb-4 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}">${version.status}</div>
+            <div>
+              <div class="font-bold text-gray-900 dark:text-gray-100">${version.version}</div>
+              <div class="text-[10px] text-gray-400">${version.date}</div>
+            </div>
           </div>
+          <button class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${btnClass}" 
+                  ${version.current && type === 'stable' ? 'disabled' : ''}>
+            ${btnText}
+          </button>
         </div>
-        ${version.current ? '<div class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">当前版本</div>' : ''}
-      </div>
-      <p class="text-sm text-gray-600 mb-3">${version.desc}</p>
-      <div class="space-y-1">
-        ${version.details.map(detail => `<div class="flex items-start gap-2 text-sm text-gray-600">
-          <svg class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span>${detail}</span>
-        </div>`).join('')}
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">${version.desc}</p>
+        <div class="space-y-1">
+          ${version.details.map(detail => `
+            <div class="flex items-start gap-2 text-xs text-gray-500">
+              <svg class="w-3.5 h-3.5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>${detail}</span>
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
-    versionList.appendChild(versionCard);
-  });
-  
-  // 更新展开/收起按钮
-  const expandBtn = document.querySelector('button[onclick="toggleExpandMore()"]');
-  const expandBtnText = document.getElementById('expandBtnText');
-  if (versions.length > INITIAL_DISPLAY_COUNT) {
-    expandBtnText.textContent = versionsExpanded ? '收起' : '历史版本';
-    expandBtn.classList.remove('hidden');
-  } else {
-    expandBtn.classList.add('hidden');
+  };
+
+  // 3. 按顺序注入 HTML
+  if (stableVersion) versionList.innerHTML += createCard(stableVersion, 'stable');
+  if (betaVersion) versionList.innerHTML += createCard(betaVersion, 'beta');
+
+  // 4. 历史版本折叠区
+  if (legacyVersions.length > 0) {
+    const legacyContainer = document.createElement('div');
+    legacyContainer.className = 'collapse-item mt-6';
+    legacyContainer.innerHTML = `
+      <button class="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-3" onclick="toggleCollapse(this)">
+        <svg class="collapse-arrow w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <span>查看历史旧版本 (${legacyVersions.length})</span>
+      </button>
+      <div class="collapse-wrapper">
+        <div class="collapse-inner">
+          ${legacyVersions.map(v => createCard(v, 'legacy')).join('')}
+        </div>
+      </div>
+    `;
+    versionList.appendChild(legacyContainer);
   }
 }
 
@@ -826,12 +996,27 @@ function toggleExpandMore() {
 }
 
 /*
- * checkForUpdates() - 检查更新
- * 功能：模拟检查更新操作
+ * checkForUpdates() - 软件版本检查 (用户点击，强制去云端查询)
  */
-function checkForUpdates() {
-  // 模拟检查更新
-  alert('检查更新中...\n当前已是最新版本');
+async function checkForUpdates() {
+  Logger.info("用户点击了检查更新按钮，强制突破缓存限制");
+  
+  // 核心：第三个参数传 true，代表强行 fetch 云端！
+  const result = await checkUpdateEngine('app', null, true);
+
+  if (!result.success) {
+    alert('网络请求失败，请检查网络设置。');
+    return;
+  }
+
+  if (result.hasUpdate) {
+    if (confirm(`发现软件新版本 v${result.cloudVersion}！\n是否立即前往下载？`)) {
+      Logger.info('用户同意跳转下载', { url: result.data.downloadUrl });
+      // 未来这里可以用 electron 的 shell 打开浏览器
+    }
+  } else {
+    alert(`当前软件已是最新版本 (v${result.localVersion})！\n\n您使用的是最新版。`);
+  }
 }
 
 /*
@@ -890,13 +1075,14 @@ function selectVersion(card, version) {
   updateSidebarVersionBadge(version);
 }
 
+
 /*
  * updateSidebarVersionBadge(version) - 更新侧边栏版本徽章
- * @param {string} version - 版本类型
- * 功能：根据选中的版本更新侧边栏版本徽章的样式和文本
  */
 function updateSidebarVersionBadge(version) {
   const badge = document.getElementById('sidebarVersionBadge');
+  if (!badge) return; // 防御性保护
+
   if (version === 'standard') {
     badge.textContent = '标准版';
     badge.style.backgroundColor = 'var(--theme-standard-bg)';
@@ -909,6 +1095,11 @@ function updateSidebarVersionBadge(version) {
     badge.textContent = 'Lite版';
     badge.style.backgroundColor = 'var(--theme-lite-bg)';
     badge.style.color = 'var(--theme-lite-text)';
+  } else {
+    // 【核心修复】：如果传进来的是 null，强行变回灰色的“未选择”
+    badge.textContent = '未选择';
+    badge.style.backgroundColor = '#F3F4F6'; // 浅灰底
+    badge.style.color = '#9CA3AF'; // 灰字
   }
 }
 
@@ -1337,28 +1528,21 @@ async function renderPresetList(printerData, versionType) {
     });
 
     const dlBtn = item.querySelector('.dl-btn');
-    dlBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); 
-      // 把云端文件名传给下载函数
-      applyPreset(release.id, isInstalledLocally.toString(), release.fileName);
+      // 1. 在 (e) 前面加一个 async
+      dlBtn.addEventListener('click', async (e) => {
+        e.stopPropagation(); 
+        
+        // 2. 在调用的函数前面加一个 await (意思是：耐心等它去云端对比/下载完)
+        await applyPreset(release.id, isInstalledLocally.toString(), release.fileName);
+        
+        // 如果你以后想在下载完成后立马弹个炫酷的提示，就可以写在这里
+        // console.log("所有下载和处理流程都已经彻底结束啦！");
+      });
+
+      listEl.appendChild(item);
     });
-
-    listEl.appendChild(item);
-  });
 }
 
-// 模拟点击下载按钮动作 (带上文件名)
-function applyPreset(releaseId, isInstalled, fileName) {
-  console.log(`[云端下载指令] 准备从 GitHub/Gitee 下载: ${fileName}`);
-  const dlBtn = document.getElementById('downloadBtn');
-  const dlHint = document.getElementById('downloadHintWrapper');
-  if(dlBtn) {
-    dlBtn.disabled = false;
-    dlBtn.innerHTML = `<span>下一步</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>`;
-  }
-  if(dlHint) dlHint.style.opacity = '0';
-  alert(`已触发下载逻辑！\n\n系统将自动去网络请求：\nhttps://your-github.com/.../${fileName}\n\n下载完成后将应用此版本。`);
-}
 
 // 5. 升级版：打通页面的核心逻辑
 function renderDownloadVersions(printerData) {
@@ -1395,9 +1579,21 @@ function renderWizardVersions(printerData) {
   });
 }
 
-// 7. 模拟点击下载/应用按钮的动作
-function applyPreset(releaseId, isInstalled) {
-  console.log(`指令：准备应用 ${releaseId} 版本的 .toml 文件`);
+// ==========================================
+// 终极合并版：预设下载/应用逻辑 (无阻拦版)
+// ==========================================
+async function applyPreset(releaseId, isInstalled, fileName) {
+  Logger.info(`准备处理预设: ${releaseId}`);
+
+  // 1. 调用更新引擎 (第三个参数默认 false，优先使用 5 分钟内的本地缓存，不卡顿)
+  const result = await checkUpdateEngine('preset', selectedPrinter);
+
+  if (!result || !result.success) {
+    alert("获取预设信息失败，请检查网络。");
+    return;
+  }
+
+  // 2. UI 交互：点亮“下一步”按钮
   const dlBtn = document.getElementById('downloadBtn');
   const dlHint = document.getElementById('downloadHintWrapper');
   if(dlBtn) {
@@ -1405,7 +1601,26 @@ function applyPreset(releaseId, isInstalled) {
     dlBtn.innerHTML = `<span>下一步</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>`;
   }
   if(dlHint) dlHint.style.opacity = '0';
-  alert(isInstalled === 'true' ? `已成功应用本地配置: ${releaseId}` : `配置 ${releaseId} 下载成功并已应用！`);
+
+  // 3. 根据引擎对比结果，直接执行操作，绝不弹窗说“请3分钟后再试”
+  if (result.hasUpdate) {
+    Logger.info(`发现新版预设 v${result.cloudVersion}，准备下载`);
+    alert(`发现新版 JSON 预设 (v${result.cloudVersion})！\n\n即将去网络请求下载：${fileName}\n\n下载完成后将为您应用此版本。`);
+    
+    // 【未来预留】：这里执行真实的下载代码...
+    
+    // 下载成功后，更新本地记录
+    const localPresets = JSON.parse(localStorage.getItem('mkp_local_presets') || '{}');
+    localPresets[selectedPrinter] = result.cloudVersion;
+    localStorage.setItem('mkp_local_presets', JSON.stringify(localPresets));
+
+  } else if (isInstalled === 'true') {
+    Logger.info(`应用了本地已有的配置 v${result.localVersion}`);
+    alert(`已成功应用本地配置: ${releaseId}`);
+  } else {
+    Logger.info(`版本一致 v${result.localVersion}，跳过下载直接应用`);
+    alert(`本地已是最新配置 (v${result.localVersion})，无需重复下载！即将为您应用。`);
+  }
 }
 
 // 8. 重写：主界面选择机型 (换机型 = 自动清空旧版本并存档)
@@ -1451,23 +1666,48 @@ function completeOnboarding() {
   }
 }
 
-// 10. 重写：软件加载时的初始化
-function init() {
+/*
+ * 10. 软件加载时的初始化 (修复版 + 日志埋点)
+ */
+async function init() {
+  Logger.info("=== 软件启动，开始初始化 ===");
+  // 【新增】：动态设置窗口左上角的标题和版本号
+  const currentAppVersion = UPDATE_CONFIG.app.getLocalVersion();
+  document.title = `支撑面改善工具 (MKP Support) v${currentAppVersion}`;
+  try {
+    if (window.mkpAPI && window.mkpAPI.initDefaultPresets) {
+      await window.mkpAPI.initDefaultPresets();
+      Logger.info("底层默认预设 JSON 检查/释放完成");
+    }
+  } catch (error) {
+    Logger.error("初始化预设失败，但不影响界面加载:", error);
+  }
+  
   loadUserConfig(); 
   
   renderBrands();
-  selectPrinter(selectedPrinter, true); 
+  if (selectedPrinter) {
+    selectPrinter(selectedPrinter, true); 
+    Logger.info("自动加载了上次记忆的机型", { printer: selectedPrinter });
+  }
   
   renderVersions();
   bindNavigation();
   bindContextMenu();
   renderWizardBrands();
   filterFaq('');
-  initTheme();
-  initSystemThemeListener();
-  initOnboardingSetting();
-  if (!checkShowOnboarding()) {
+  
+  // 【关键修复】：取消注释，让设置界面的事件绑定生效！
+  if (typeof initTheme === 'function') initTheme();
+  if (typeof initSystemThemeListener === 'function') initSystemThemeListener();
+  if (typeof initOnboardingSetting === 'function') initOnboardingSetting();
+
+  // 检查是否显示引导界面
+  if (typeof checkShowOnboarding === 'function' && !checkShowOnboarding()) {
+    Logger.info("用户设置了关闭引导页，直接跳过");
     skipOnboarding();
+  } else {
+    Logger.info("进入新手引导页面");
   }
 }
 
