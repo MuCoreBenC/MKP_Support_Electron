@@ -1,1 +1,113 @@
-// ==================== 外观主题三态控制系统 (带圆形扩散动画) ====================\nlet currentThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'light';\n\n// 🚀 新增：全局主色调引擎 (支持未来无限扩展)\nconst THEME_PALETTE = {\n  blue: { name: '蔚蓝', rgb: '59, 130, 246' },      // Tailwind Blue 500\n  emerald: { name: '翠绿', rgb: '16, 185, 129' },   // Tailwind Emerald 500\n  violet: { name: '紫罗兰', rgb: '139, 92, 246' },  // Tailwind Violet 500\n  orange: { name: '橙黄', rgb: '245, 158, 11' },    // Tailwind Amber 500\n  rose: { name: '玫瑰', rgb: '244, 63, 94' },        // Tailwind Rose 500\n  pink: { name: '猛男粉', rgb: '236, 72, 153' },    // Tailwind Pink 500\n  green: { name: '极客绿', rgb: '34, 197, 94' },    // Tailwind Green 500\n  purple: { name: '深邃紫', rgb: '168, 85, 247' }   // Tailwind Purple 500\n};\n\n// 生成50-950色阶的函数\nfunction generateColorScale(rgb) {\n  const color = `rgb(${rgb})`;\n  const scales = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];\n  const scaleValues = {};\n  \n  scales.forEach((scale) => {\n    if (scale === 500) {\n      // 500是标准色\n      scaleValues[scale] = color;\n    } else if (scale < 500) {\n      // 小于500的色阶，与白色混合\n      const ratio = (500 - scale) / 500;\n      scaleValues[scale] = `color-mix(in srgb, ${color} ${(1 - ratio) * 100}%, white)`;\n    } else {\n      // 大于500的色阶，与黑色混合\n      const ratio = (scale - 500) / 450; // 950-500=450\n      scaleValues[scale] = `color-mix(in srgb, ${color} ${(1 - ratio) * 100}%, black)`;\n    }\n  });\n  \n  return scaleValues;\n}\n\n// 初始化主题与颜色\nfunction initTheme() {\n  const savedMode = localStorage.getItem('themeMode') || 'light';\n  const savedColor = localStorage.getItem('appThemeColor') || 'blue'; // 默认蔚蓝\n  \n  setThemeMode(savedMode, null);\n  setGlobalThemeColor(savedColor);\n}\n\n// 🚀 新增：切换全局主色调\nfunction setGlobalThemeColor(colorKey) {\n  const color = THEME_PALETTE[colorKey] || THEME_PALETTE.blue;\n  // 将 RGB 值注入到 HTML 根节点，供 CSS 全局调用\n  document.documentElement.style.setProperty('--primary-rgb', color.rgb);\n  \n  // 生成并注入50-950色阶\n  const colorScale = generateColorScale(color.rgb);\n  Object.entries(colorScale).forEach(([scale, value]) => {\n    document.documentElement.style.setProperty(`--primary-${scale}`, value);\n  });\n  \n  localStorage.setItem('appThemeColor', colorKey);\n}\n\n// 1. 卡片点击分发器\nfunction setThemeMode(mode, event) {\n  if (currentThemeMode === mode) return; \n  \n  currentThemeMode = mode;\n  localStorage.setItem('themeMode', mode);\n  const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);\n  \n  executeThemeTransition(mode, isDark, event);\n}\n\n// 2. 侧边栏按钮逻辑\nfunction toggleDarkMode(event) {\n  const isDark = document.documentElement.classList.contains('dark');\n  setThemeMode(isDark ? 'light' : 'dark', event);\n}\n\n// 3. 核心动画执行器\nfunction executeThemeTransition(mode, isDark, event) {\n  const html = document.documentElement;\n\n  const applyDOMChanges = () => {\n    html.setAttribute('data-theme-mode', mode);\n    html.classList.toggle('dark', isDark);\n\n    const icon = document.querySelector('.dark-icon-sun path');\n    if (icon) {\n      if (isDark) {\n         icon.setAttribute('d', 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z');\n      } else {\n         icon.setAttribute('d', 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z');\n      }\n    }\n\n    if (window.mkpAPI && window.mkpAPI.setNativeTheme) {\n          window.mkpAPI.setNativeTheme(mode);\n        }\n  };\n\n  if (!document.startViewTransition) {\n    applyDOMChanges();\n    return;\n  }\n\n  const x = (event && event.clientX !== undefined) ? event.clientX : window.innerWidth / 2;\n  const y = (event && event.clientY !== undefined) ? event.clientY : window.innerHeight / 2;\n  const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));\n\n  const transition = document.startViewTransition(() => {\n    applyDOMChanges();\n  });\n\n  transition.ready.then(() => {\n    document.documentElement.animate(\n      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },\n      { duration: 400, easing: "ease-out", pseudoElement: "::view-transition-new(root)" }\n    );\n  });\n}\n\nfunction initSystemThemeListener() {\n  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {\n    if (currentThemeMode === 'system') {\n      executeThemeTransition('system', e.matches, null);\n    }\n  });\n}\n\nfunction setVersionTheme(version, textHex, bgHex) {\n  const root = document.documentElement;\n  root.style.setProperty(`--theme-${version}-text`, textHex);\n  root.style.setProperty(`--theme-${version}-bg`, bgHex);\n  \n  if (window.selectedVersion === version && typeof updateSidebarVersionBadge === 'function') {\n    updateSidebarVersionBadge(version);\n  }\n}\n\nif (typeof module !== 'undefined' && module.exports) {\n  module.exports = { initTheme, setThemeMode, toggleDarkMode, setVersionTheme, initSystemThemeListener, setGlobalThemeColor };\n}\n
+// ==================== 外观主题三态控制系统 (带圆形扩散动画) ====================
+let currentThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'light';
+
+// 🚀 新增：全局主色调引擎 (支持未来无限扩展)
+const THEME_PALETTE = {
+  blue: { name: '蔚蓝', rgb: '59, 130, 246' },      // Tailwind Blue 500
+  emerald: { name: '翠绿', rgb: '16, 185, 129' },   // Tailwind Emerald 500
+  violet: { name: '紫罗兰', rgb: '139, 92, 246' },  // Tailwind Violet 500
+  orange: { name: '橙黄', rgb: '245, 158, 11' },    // Tailwind Amber 500
+  rose: { name: '玫瑰', rgb: '244, 63, 94' },        // Tailwind Rose 500
+  pink: { name: '猛男粉', rgb: '236, 72, 153' },    // Tailwind Pink 500
+  green: { name: '极客绿', rgb: '34, 197, 94' },    // Tailwind Green 500
+  purple: { name: '深邃紫', rgb: '168, 85, 247' }   // Tailwind Purple 500
+};
+
+// 初始化主题与颜色
+function initTheme() {
+  const savedMode = localStorage.getItem('themeMode') || 'light';
+  const savedColor = localStorage.getItem('appThemeColor') || 'blue'; // 默认蔚蓝
+  
+  setThemeMode(savedMode, null);
+  setGlobalThemeColor(savedColor);
+}
+
+// 🚀 新增：切换全局主色调
+function setGlobalThemeColor(colorKey) {
+  const color = THEME_PALETTE[colorKey] || THEME_PALETTE.blue;
+  // 将 RGB 值注入到 HTML 根节点，供 CSS 全局调用
+  document.documentElement.style.setProperty('--primary-rgb', color.rgb);
+  localStorage.setItem('appThemeColor', colorKey);
+}
+
+// 1. 卡片点击分发器
+function setThemeMode(mode, event) {
+  if (currentThemeMode === mode) return; 
+  
+  currentThemeMode = mode;
+  localStorage.setItem('themeMode', mode);
+  const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  
+  executeThemeTransition(mode, isDark, event);
+}
+
+// 2. 侧边栏按钮逻辑
+function toggleDarkMode(event) {
+  const isDark = document.documentElement.classList.contains('dark');
+  setThemeMode(isDark ? 'light' : 'dark', event);
+}
+
+// 3. 核心动画执行器
+function executeThemeTransition(mode, isDark, event) {
+  const html = document.documentElement;
+
+  const applyDOMChanges = () => {
+    html.setAttribute('data-theme-mode', mode);
+    html.classList.toggle('dark', isDark);
+
+    const icon = document.querySelector('.dark-icon-sun path');
+    if (icon) {
+      if (isDark) {
+         icon.setAttribute('d', 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z');
+      } else {
+         icon.setAttribute('d', 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z');
+      }
+    }
+
+    if (window.mkpAPI && window.mkpAPI.setNativeTheme) {
+          window.mkpAPI.setNativeTheme(mode);
+        }
+  };
+
+  if (!document.startViewTransition) {
+    applyDOMChanges();
+    return;
+  }
+
+  const x = (event && event.clientX !== undefined) ? event.clientX : window.innerWidth / 2;
+  const y = (event && event.clientY !== undefined) ? event.clientY : window.innerHeight / 2;
+  const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+
+  const transition = document.startViewTransition(() => {
+    applyDOMChanges();
+  });
+
+  transition.ready.then(() => {
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+      { duration: 400, easing: "ease-out", pseudoElement: "::view-transition-new(root)" }
+    );
+  });
+}
+
+function initSystemThemeListener() {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (currentThemeMode === 'system') {
+      executeThemeTransition('system', e.matches, null);
+    }
+  });
+}
+
+function setVersionTheme(version, textHex, bgHex) {
+  const root = document.documentElement;
+  root.style.setProperty(`--theme-${version}-text`, textHex);
+  root.style.setProperty(`--theme-${version}-bg`, bgHex);
+  
+  if (window.selectedVersion === version && typeof updateSidebarVersionBadge === 'function') {
+    updateSidebarVersionBadge(version);
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { initTheme, setThemeMode, toggleDarkMode, setVersionTheme, initSystemThemeListener, setGlobalThemeColor };
+}
