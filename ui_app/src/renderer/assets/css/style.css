@@ -1,13 +1,27 @@
 /* ==================== 1. CSS 变量定义 ==================== */
 :root {
-  /* 🚀 核心：由 theme.js 动态接管的主色调 RGB */
+  /* 🚀 核心：全局主色调 RGB */
   --primary-rgb: 59, 130, 246; 
-  /* 将原来的写死颜色，全部代理到我们动态的 RGB 变量上 */
   --accent-blue: rgb(var(--primary-rgb));       
   --accent-blue-light: rgba(var(--primary-rgb), 0.1);
   --border-focus: rgb(var(--primary-rgb)); 
   --shadow-button: 0 2px 4px rgba(var(--primary-rgb), 0.25);
   
+  /* 🚀 核心：版本专属色调 RGB (交给 CSS 动态控制) */
+  --ver-standard-rgb: 59, 130, 246; 
+  --ver-quick-rgb: 245, 158, 11;
+  --ver-lite-rgb: 168, 85, 247;
+
+  /* 自动生成的版本 UI 颜色 */
+  --theme-standard-text: rgb(var(--ver-standard-rgb));
+  --theme-standard-bg: rgba(var(--ver-standard-rgb), 0.1);
+  
+  --theme-quick-text: rgb(var(--ver-quick-rgb));
+  --theme-quick-bg: rgba(var(--ver-quick-rgb), 0.1);
+  
+  --theme-lite-text: rgb(var(--ver-lite-rgb));
+  --theme-lite-bg: rgba(var(--ver-lite-rgb), 0.1);
+
   /* 基础页面色彩 */
   --bg-page: #F5F6F8;           
   --bg-card: #FFFFFF;           
@@ -17,20 +31,23 @@
   --text-primary: #111827;      
   --text-secondary: #6B7280;    
   --text-muted: #9CA3AF;        
-  --accent-green: #10B981;      
-  --accent-yellow: #F59E0B;     
-  
-  /* 阴影 */
   --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);    
   --shadow-hover: 0 4px 12px rgba(0,0,0,0.08);                               
+}
 
-  /* 版本专属色 (默认) */
-  --theme-standard-text: #3B82F6;
-  --theme-standard-bg: #EFF6FF;
-  --theme-quick-text: #F59E0B;
-  --theme-quick-bg: #FFFBEB;
-  --theme-lite-text: #A855F7;
-  --theme-lite-bg: #FAF5FF;
+html.dark {
+  --bg-page: #1E1E1E;
+  --bg-card: #252526;
+  --bg-input: #3C3C3C;
+  --bg-disabled: #2A2D2E; 
+  --border: #3E3E42;
+  --text-primary: #D4D4D4;
+  --text-secondary: #858585;
+
+  /* 暗黑模式下，自动加深版本的背景通透度 */
+  --theme-standard-bg: rgba(var(--ver-standard-rgb), 0.15);
+  --theme-quick-bg: rgba(var(--ver-quick-rgb), 0.15);
+  --theme-lite-bg: rgba(var(--ver-lite-rgb), 0.15);
 }
 
 /* ==================== 2. 基础全局样式 ==================== */
@@ -166,16 +183,7 @@ body {
 ::view-transition-old(root) { z-index: 1; }
 ::view-transition-new(root) { z-index: 2; }
 
-/* ==================== 6. 暗黑模式基础重写 ==================== */
-html.dark {
-  --bg-page: #1E1E1E;
-  --bg-card: #252526;
-  --bg-input: #3C3C3C;
-  --bg-disabled: #2A2D2E; 
-  --border: #3E3E42;
-  --text-primary: #D4D4D4;
-  --text-secondary: #858585;
-}
+
 
 html.dark body { background-color: var(--bg-page); color: var(--text-primary); }
 html.dark .bg-white { background-color: var(--bg-card) !important; }
@@ -381,3 +389,151 @@ input[type="checkbox"]:checked + div {
 .theme-bg-800 { background-color: color-mix(in srgb, rgb(var(--primary-rgb)) 50%, black) !important; }
 .theme-bg-900 { background-color: color-mix(in srgb, rgb(var(--primary-rgb)) 30%, black) !important; }
 .theme-bg-950 { background-color: color-mix(in srgb, rgb(var(--primary-rgb)) 15%, black) !important; }
+
+/* ============================================================
+   修复：解除 h-full 导致底部 padding 被吞噬的 Bug
+   ============================================================ */
+/* 强制增加页面底部的安全呼吸区 */
+.page.overflow-y-auto {
+  padding-bottom: 48px !important; 
+}
+
+/* 解除内层容器的死板高度，让 Flex 布局自然流淌 */
+.page.overflow-y-auto > .h-full {
+  height: auto !important;
+  min-height: 100%;
+}
+
+/* ============================================================
+   全局按钮物理按压动效 (点击缩放)
+   ============================================================ */
+/* 只要是这三类按钮，按下时全部缩小到 95%，且松开时带有 Q 弹恢复效果 */
+.theme-btn-solid:active:not(:disabled),
+.theme-btn-soft:active:not(:disabled),
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.95) !important;
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ============================================================
+   全局按钮终极接管 (物理按压 + 平滑过渡 + 禁用状态)
+   ============================================================ */
+
+/* 1. 强制所有按钮平滑过渡，修复“下一步”卡顿的问题 */
+.theme-btn-solid, 
+.theme-btn-soft, 
+.btn-secondary {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 2. 物理按压反馈 (点击时缩小) */
+.theme-btn-solid:active:not(:disabled),
+.theme-btn-soft:active:not(:disabled),
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.95) !important;
+}
+
+/* 3. 统一的禁用状态 (完全代替 HTML/JS 里的写死代码) */
+.theme-btn-solid:disabled,
+.theme-btn-soft:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important; /* 禁用时绝对不允许缩放 */
+  filter: grayscale(30%) !important; /* 变成高级的灰暗态 */
+}
+
+/* ============================================================
+   调色板引擎：中心缩放与外圈状态保持
+   ============================================================ */
+.color-picker-btn {
+  width: 1.875rem !important;  /* 🚀 从 2.5rem 缩小到了 1.875rem (30px)，如果还嫌大可以改成 1.5rem */
+  height: 1.875rem !important; /* 🚀 高度同步缩小 */
+  border-radius: 9999px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+/* 绝对的中心放大，去掉导致扭曲的 translateY */
+.color-picker-btn:hover {
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+/* 激活状态的外圈 (靠 outline 生成，完美兼容暗黑模式) */
+.color-picker-btn.active {
+  transform: scale(1.15) !important;
+  outline: 2px solid currentColor; /* 外圈变细一点配合小圆圈 */
+  outline-offset: 3px;
+}
+
+/* 跟随主题的魔法彩虹按钮 */
+.follow-theme-btn {
+  background: conic-gradient(from 180deg at 50% 50%, #3B82F6 0deg, #10B981 120deg, #F59E0B 240deg, #A855F7 360deg);
+  color: rgb(var(--primary-rgb)); /* 使得它的 outline 跟随全局主题色变化！ */
+}
+
+/* ============================================================
+   修复：Toggle 开关样式强制净化 (解决滑块被染成蓝色的 Bug)
+   ============================================================ */
+
+/* 1. 开启时的滑道：强制使用主题色 */
+input[type="checkbox"]:checked + div {
+  background-color: rgb(var(--primary-rgb)) !important;
+  border-color: rgb(var(--primary-rgb)) !important;
+}
+
+/* 2. 核心修复：无论怎样，中间的圆点滑块必须是纯白色！ */
+input[type="checkbox"] + div::after {
+  background-color: #FFFFFF !important; 
+  border: 1px solid rgba(0,0,0,0.05) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+}
+
+/* 3. 暗黑模式开关精细适配 */
+html.dark input[type="checkbox"]:not(:checked) + div { 
+  background-color: #3E3E42 !important; 
+}
+html.dark input[type="checkbox"] + div::after { 
+  background-color: #D4D4D4 !important; /* 暗黑未开启时，滑块为灰白色，防刺眼 */
+  border-color: transparent !important;
+}
+html.dark input[type="checkbox"]:checked + div::after { 
+  background-color: #FFFFFF !important; /* 开启时，滑块恢复纯白高亮 */
+}
+
+/* ============================================================
+   1. 收藏星星跟随主题
+   ============================================================ */
+.star-icon.favorited { 
+  color: rgb(var(--primary-rgb)) !important; 
+  fill: rgb(var(--primary-rgb)) !important; 
+}
+.star-icon.not-favorited { 
+  color: #9CA3AF !important; /* 未收藏时使用中庸的灰色 */
+  opacity: 0.5;
+}
+
+/* ============================================================
+   2. 暗黑模式：字体亮度调节 (解决“太亮了”的问题)
+   ============================================================ */
+/* 在暗黑模式下，通过 color-mix 将主题色与一点点灰色混合，使其更柔和 */
+html.dark .theme-text,
+html.dark .brand-card.active span,
+html.dark .select-card.selected span,
+html.dark .version-card.selected .font-semibold,
+html.dark .step-item.active .step-text {
+  color: color-mix(in srgb, rgb(var(--primary-rgb)), #9CA3AF 20%) !important;
+}
+/* ============================================================
+   版本专属色辅助类 (确保暗黑模式下色彩强制覆盖)
+   ============================================================ */
+.theme-standard-bg { background-color: var(--theme-standard-bg) !important; }
+.theme-standard-text { color: var(--theme-standard-text) !important; }
+
+.theme-quick-bg { background-color: var(--theme-quick-bg) !important; }
+.theme-quick-text { color: var(--theme-quick-text) !important; }
+
+.theme-lite-bg { background-color: var(--theme-lite-bg) !important; }
+.theme-lite-text { color: var(--theme-lite-text) !important; }

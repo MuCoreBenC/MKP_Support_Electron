@@ -139,7 +139,7 @@ function getPrinterObj(printerId) {
 const UPDATE_CONFIG = {
   app: {
     manifestUrl: 'http://localhost:3000/app_manifest.json', 
-    getLocalVersion: () => '1.0.0', 
+    getLocalVersion: () => '0.1.1', 
     cooldownMinutes: 5 
   },
   preset: {
@@ -230,25 +230,36 @@ async function fetchCloudPresets(printerId, versionType) {
     const matchedPresets = allPresets.filter(p => p.id === printerId && (p.type ? p.type === versionType : true));
     matchedPresets.sort((a, b) => compareVersionsFront(b.version, a.version));
 
-    return matchedPresets.map((p, index) => {
-      let finalChanges = ['常规优化与参数更新'];
-      if (Array.isArray(p.releaseNotes)) {
-         finalChanges = p.releaseNotes;
-      } else if (typeof p.releaseNotes === 'string') {
-         finalChanges = [p.releaseNotes]; 
-      } else if (p.description) {
-         finalChanges = [p.description];
-      }
+  return matchedPresets.map((p, index) => {
+    // 1. 获取当前软件定义的版本号 (比如你刚改的 0.1.1)
+    const currentAppVer = UPDATE_CONFIG.app.getLocalVersion(); //
+    
+    // 2. 获取今天的日期 (格式化为 YYYY-MM-DD)
+    const today = new Date().toISOString().split('T')[0];
 
-      return {
-        id: `v${p.version || '1.0.0'}`, 
-        version: p.version,
-        date: p.lastModified || '2026-03-05',
-        isLatest: index === 0, 
-        fileName: p.file, 
-        changes: finalChanges 
-      };
-    });
+    let finalChanges = ['常规优化与参数更新'];
+    if (Array.isArray(p.releaseNotes)) {
+        finalChanges = p.releaseNotes;
+    } else if (typeof p.releaseNotes === 'string') {
+        finalChanges = [p.releaseNotes]; 
+    } else if (p.description) {
+        finalChanges = [p.description];
+    }
+
+    return {
+      // 如果云端没给版本号，就显示当前软件的版本号
+      id: `v${p.version || currentAppVer}`, 
+      
+      version: p.version || currentAppVer,
+      
+      // 如果云端没给日期，就显示今天，而不是死板的 2026-03-05
+      date: p.lastModified || today, 
+      
+      isLatest: index === 0, 
+      fileName: p.file, 
+      changes: finalChanges 
+    };
+  });
 
   } catch (error) {
     console.error("拉取云端清单失败:", error);
@@ -352,20 +363,21 @@ function updateSidebarVersionBadge(version) {
 
   if (version === 'standard') {
     badge.textContent = '标准版';
-    badge.style.backgroundColor = 'var(--theme-standard-bg)';
-    badge.style.color = 'var(--theme-standard-text)';
+    badge.style.setProperty('background-color', 'var(--theme-standard-bg)', 'important');
+    badge.style.setProperty('color', 'var(--theme-standard-text)', 'important');
   } else if (version === 'quick') {
     badge.textContent = '快拆版';
-    badge.style.backgroundColor = 'var(--theme-quick-bg)';
-    badge.style.color = 'var(--theme-quick-text)';
+    badge.style.setProperty('background-color', 'var(--theme-quick-bg)', 'important');
+    badge.style.setProperty('color', 'var(--theme-quick-text)', 'important');
   } else if (version === 'lite') {
     badge.textContent = 'Lite版';
-    badge.style.backgroundColor = 'var(--theme-lite-bg)';
-    badge.style.color = 'var(--theme-lite-text)';
+    badge.style.setProperty('background-color', 'var(--theme-lite-bg)', 'important');
+    badge.style.setProperty('color', 'var(--theme-lite-text)', 'important');
   } else {
     badge.textContent = '未选择';
-    badge.style.backgroundColor = '#F3F4F6'; 
-    badge.style.color = '#9CA3AF'; 
+    // 💡 核心修复：未选择时，移除内联样式，让 Tailwind 自带的深灰色完美接管！
+    badge.style.removeProperty('background-color');
+    badge.style.removeProperty('color');
   }
 }
 
@@ -1484,9 +1496,10 @@ function updateWizardBadges(printerName, versionType) {
     const theme = versionThemes[versionType];
     if (theme) {
       versionBadge.textContent = theme.title;
-      versionBadge.style.backgroundColor = theme.bg;
-      versionBadge.style.color = theme.text;
-      versionBadge.style.borderColor = 'transparent';
+      // 💡 核心修复：用 setProperty 注入 important
+      versionBadge.style.setProperty('background-color', theme.bg, 'important');
+      versionBadge.style.setProperty('color', theme.text, 'important');
+      versionBadge.style.setProperty('border-color', 'transparent', 'important');
       versionBadge.classList.remove('hidden');
     }
   } else {
@@ -1503,6 +1516,9 @@ function renderWizardVersions(printerData) {
   });
 }
 
+/*
+ * 3. 极简版 updateWizardButtons() - 依赖 CSS 自动接管样式
+ */
 function updateWizardButtons() {
   const leftBtn = document.getElementById('leftBtn');
   const rightBtn = document.getElementById('rightBtn');
@@ -1513,41 +1529,25 @@ function updateWizardButtons() {
     leftBtn.onclick = skipOnboarding;
     rightBtn.textContent = '下一步';
     
-    if (wizardSelectedPrinter) {
-      rightBtn.disabled = false;
-      rightBtn.removeAttribute('disabled');
-      rightBtn.classList.remove('opacity-50', 'cursor-not-allowed'); 
-      rightBtn.onclick = () => goToStep(2);
-    } else {
-      rightBtn.disabled = true;
-      rightBtn.setAttribute('disabled', 'true');
-      rightBtn.classList.add('opacity-50', 'cursor-not-allowed'); 
-      rightBtn.onclick = null;
-    }
+    // 极简控制：只要控制 disabled 属性，CSS会自动接管变灰和禁用！
+    rightBtn.disabled = !wizardSelectedPrinter;
+    rightBtn.onclick = rightBtn.disabled ? null : () => goToStep(2);
+    
   } else if (currentStep === 2) {
     leftBtn.textContent = '上一步';
     leftBtn.onclick = () => goToStep(1);
     rightBtn.textContent = '下一步';
     
-    if (wizardSelectedVersion) {
-      rightBtn.disabled = false;
-      rightBtn.removeAttribute('disabled');
-      rightBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-      rightBtn.onclick = () => goToStep(3);
-    } else {
-      rightBtn.disabled = true;
-      rightBtn.setAttribute('disabled', 'true');
-      rightBtn.classList.add('opacity-50', 'cursor-not-allowed');
-      rightBtn.onclick = null;
-    }
+    rightBtn.disabled = !wizardSelectedVersion;
+    rightBtn.onclick = rightBtn.disabled ? null : () => goToStep(3);
+    
   } else if (currentStep === 3) {
     leftBtn.textContent = '上一步';
     leftBtn.onclick = () => goToStep(2);
     rightBtn.textContent = '完成并进入';
+    
     rightBtn.disabled = false;
-    rightBtn.removeAttribute('disabled');
-    rightBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    rightBtn.onclick = completeOnboarding; // 使用上面统一的那个！
+    rightBtn.onclick = completeOnboarding;
   }
 }
 
@@ -1657,10 +1657,12 @@ async function updateScriptPathDisplay() {
     const presetPath = await getActivePresetPath();
     if (!presetPath) {
       scriptInput.value = "请先在【下载预设】页面应用一个配置！";
-      if (copyBtn) {
-        copyBtn.disabled = true;
-        copyBtn.classList.add('opacity-50', 'cursor-not-allowed');
-      }
+      
+      // ❌ 失败/警告状态：移除正常文字的灰色，加上纯正的主题色和加粗
+      scriptInput.classList.remove('text-gray-500', 'dark:text-gray-400');
+      scriptInput.classList.add('theme-text', 'font-bold'); 
+      
+      if (copyBtn) copyBtn.disabled = true;
       return;
     }
 
@@ -1669,16 +1671,22 @@ async function updateScriptPathDisplay() {
     
     scriptInput.value = command;
     
-    if (copyBtn) {
-      copyBtn.disabled = false;
-      copyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-      copyBtn.classList.add('hover-theme');
-    }
+    // ✅ 成功状态 (你觉得纯白太亮)：移除警告色，换成柔和的暗灰色 (白天500，夜间400)
+    scriptInput.classList.remove('theme-text', 'font-bold', 'text-red-500');
+    scriptInput.classList.add('text-gray-500', 'dark:text-gray-400'); 
+    
+    if (copyBtn) copyBtn.disabled = false;
+    
   } catch (e) {
     console.error("生成脚本路径失败:", e);
     scriptInput.value = "生成路径时发生错误";
+    
+    // 💥 报错状态：变成红色
+    scriptInput.classList.remove('text-gray-500', 'dark:text-gray-400', 'theme-text');
+    scriptInput.classList.add('text-red-500', 'font-bold');
   }
 }
+
 
 function copyPath() {
   const scriptPath = document.getElementById('scriptPath');
