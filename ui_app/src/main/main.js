@@ -1,3 +1,4 @@
+const { autoUpdater } = require('electron-updater');
 const { app, BrowserWindow, Notification, ipcMain, nativeTheme, shell } = require('electron'); // 必须全部引入
 const path = require('path');
 const fs = require('fs');
@@ -165,7 +166,7 @@ if (isCliMode) {
     });
 
     createWindow();
-
+    autoUpdater.checkForUpdatesAndNotify();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });

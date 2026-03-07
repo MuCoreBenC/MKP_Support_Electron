@@ -42,23 +42,763 @@
       } catch (e) {}
     })();
   </script>
-
 </head>
 <body>
-  <!-- 新手引导页 -->
-<div id="onboarding" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8 transition-opacity">
-  <div class="bg-white rounded-2xl card-shadow w-[520px] max-h-[90vh] animate-scale-in flex flex-col overflow-hidden border border-transparent dark:border-[#333333]">
+
+  <div id="mainApp" class="flex h-screen">
     
-    <div class="p-5 pb-4 flex-shrink-0">
-      <div class="text-center mb-5">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl theme-btn-solid mb-2 shadow-sm">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
-          </svg>
+    <div id="sidebarWrapper" class="sidebar-wrapper relative flex-shrink-0" style="width: 200px;">
+      <aside id="sidebar" class="w-[200px] h-screen bg-white border-r border-gray-200 dark:border-[#333] flex flex-col duration-300 ease-in-out overflow-hidden transition-colors">
+        
+        <div class="sidebar-header-bar px-3 py-2 border-b border-gray-100 dark:border-[#333] flex items-center transition-colors">
+          <button id="btn-toggle-sidebar" onclick="toggleSidebar()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-100 dark:hover:bg-[#2A2D2E] transition-colors" title="折叠侧边栏">
+            <div id="icon-toggle-sidebar" class="relative flex-shrink-0">
+              <svg id="menuIcon" class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+              </svg>
+            </div>
+            <span id="text-toggle-sidebar" class="sidebar-text font-semibold text-gray-800 dark:text-gray-200">MKP Support</span>
+          </button>
         </div>
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">支撑面改善工具</h1>
-        <p class="text-[11px] text-gray-400 mt-0.5">MKP Support</p>
+
+        <div class="py-4 sidebar-content border-b border-gray-100 dark:border-[#333] flex flex-col items-center justify-center min-h-[84px] cursor-default pointer-events-none transition-colors">
+          <div class="flex items-center justify-center whitespace-nowrap overflow-hidden duration-300">
+            <span id="sidebarBrand" class="text-sm font-medium text-gray-500 dark:text-gray-400 duration-300 overflow-hidden inline-block align-middle">Bambu Lab</span>
+            <span id="sidebarBrandSpace" class="duration-300 inline-block"></span>
+            <span id="sidebarModelName" class="text-sm font-bold theme-text duration-300 inline-block align-middle">A1</span>
+          </div>
+          <div class="mt-1.5 flex items-center justify-center overflow-hidden w-full">
+            <span id="sidebarVersionBadge" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-[#333] text-gray-400 dark:text-gray-500 whitespace-nowrap duration-300 transition-colors">未选择</span>
+          </div>
+        </div>
+
+        <nav class="flex-1 px-3 py-2">
+          <div class="space-y-1">
+            <button id="btn-nav-home" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left active" data-page="home">
+              <div id="icon-nav-home" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l3 3m-3-3H4.5m0 0l-3 3m3-3l-3-3"/></svg>
+              </div>
+              <span id="text-nav-home" class="sidebar-text">选择机型</span>
+            </button>
+
+            <button id="btn-nav-download" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="download">
+              <div id="icon-nav-download" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              </div>
+              <span id="text-nav-download" class="sidebar-text">下载预设</span>
+            </button>
+
+            <button id="btn-nav-calibrate" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="calibrate">
+              <div id="icon-nav-calibrate" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
+              </div>
+              <span id="text-nav-calibrate" class="sidebar-text">校准偏移</span>
+            </button>
+
+            <button id="btn-nav-params" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="params">
+              <div id="icon-nav-params" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <span id="text-nav-params" class="sidebar-text">修改参数</span>
+            </button>
+
+            <button id="btn-nav-versions" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="versions">
+              <div id="icon-nav-versions" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>
+              </div>
+              <span id="text-nav-versions" class="sidebar-text">版本控制</span>
+            </button>
+
+            <button id="btn-nav-faq" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="faq">
+              <div id="icon-nav-faq" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>
+              </div>
+              <span id="text-nav-faq" class="sidebar-text">常见问题</span>
+            </button>
+
+            <button id="btn-nav-about" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="about">
+              <div id="icon-nav-about" class="relative flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+              </div>
+              <span id="text-nav-about" class="sidebar-text">关于软件</span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="px-3 py-3 border-t border-gray-100 dark:border-[#333] flex flex-col gap-1 transition-colors">
+          <button id="btn-nav-darkmode" onclick="toggleDarkMode(event)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors">
+            <div id="icon-nav-darkmode" class="relative flex-shrink-0">
+              <svg class="w-5 h-5 dark-icon-sun text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+              </svg>
+            </div>
+            <span id="text-nav-darkmode" class="sidebar-text text-gray-700 dark:text-gray-300">外观模式</span>
+          </button>
+          
+          <button id="btn-nav-theme" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors" data-page="theme">
+            <div id="icon-nav-theme" class="relative flex-shrink-0">
+              <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+              </svg>
+            </div>
+            <span id="text-nav-theme" class="sidebar-text text-gray-700 dark:text-gray-300">软件设置</span>
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <main class="flex-1 overflow-hidden flex flex-col transition-colors">
+      
+      <div id="page-home" class="page flex-1" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-home" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">选择机型</h1>
+            <div class="flex items-center gap-3">
+              <button id="btn-home-next" onclick="document.querySelector('[data-page=\'download\']').click()" class="theme-btn-solid px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+                <span>下一步</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="page-header-sub"></div>
+        </div>
+
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-6xl w-full">
+            <div class="grid grid-cols-12 gap-6 items-start">
+              <div class="col-span-3">
+                <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow p-4 flex flex-col max-h-[calc(100vh-160px)] border border-transparent dark:border-[#333] transition-colors">
+                  <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 shrink-0">品牌列表</div>
+                  <div id="brandList" class="space-y-2 flex-1 overflow-y-auto hide-scrollbar"></div>
+                </div>
+              </div>
+              <div class="col-span-9">
+                <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow p-4 flex flex-col max-h-[calc(100vh-160px)] border border-transparent dark:border-[#333] transition-colors">
+                  <div class="flex items-center justify-between mb-4 w-full shrink-0">
+                    <div class="flex items-center gap-2 truncate pr-4 shrink">
+                      <span id="currentBrandTitle" class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">拓竹 - Bambu版</span>
+                    </div>
+                    <div class="flex items-center gap-3 flex-1 justify-end min-w-0">
+                      <div class="relative flex-1 max-w-[200px] min-w-[120px]">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                        </svg>
+                        <input type="text" id="printerSearch" placeholder="搜索机型..." class="input-field pl-9 pr-4 py-2 rounded-lg text-sm w-full" oninput="filterPrinters()">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+                    <div id="printerGrid" class="grid grid-cols-3 gap-4 pb-2"></div>
+                  </div>
+                </div>
+              </div>
+            </div> 
+          </div> 
+        </div>
       </div>
+
+      <div id="page-download" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-download" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">配置您的模型预设</h1>
+            <div class="flex items-center gap-3 relative">
+              <button id="btn-download-prev" onclick="document.querySelector('[data-page=\'home\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
+                <span>上一步</span>
+              </button>
+              <button id="downloadBtn" onclick="document.querySelector('[data-page=\'calibrate\']').click()" class="theme-btn-solid px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all" disabled>
+                <span>下一步</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+              </button>
+              <div id="downloadHintWrapper" class="absolute -bottom-6 right-1 flex items-center gap-1 text-amber-500 transition-opacity duration-300">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-[11px]">请完成选项</span>
+              </div>
+            </div>
+          </div>
+          <div class="page-header-sub">
+            <p class="text-sm text-gray-500 dark:text-gray-400 leading-none">选择版本类型和发布日期以获取对应的预设配置</p>
+          </div>
+        </div>
+        
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-4xl flex flex-col h-full">
+            <div class="max-w-4xl space-y-8 flex-1">
+              <div>
+                <div class="flex items-center gap-3 mb-4">
+                  <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  <div>
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">选择版本类型</h2>
+                    <p class="text-xs text-gray-500">根据您的打印机配置选择合适的版本</p>
+                  </div>
+                </div>
+                <div id="downloadVersionList" class="flex flex-col gap-3"></div>
+              </div>
+
+              <div>
+                <div class="mb-8">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                      <svg id="step2Badge" class="w-6 h-6 text-gray-400 flex-shrink-0 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                      </svg>
+                      <div>
+                        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">本地预设</h2>
+                        <p class="text-xs text-gray-500">已存放在您电脑中的配置，点击即可应用</p>
+                      </div>
+                    </div>
+                    <button id="checkUpdateBtn" onclick="checkOnlineUpdates()" class="relative text-sm font-medium flex items-center gap-1.5 px-4 py-2 rounded-lg theme-btn-soft transition-all">
+                      <svg id="refreshIcon" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                      </svg>
+                      <span id="checkUpdateText">检查更新</span>
+                    </button>
+                  </div>
+                  <div id="localPresetsContainer" class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-200 dark:border-[#333] shadow-sm overflow-hidden duration-300 transition-colors">
+                    <div id="localEmptyState" class="p-8 flex flex-col items-center justify-center text-center">
+                      <p class="text-sm text-gray-500 dark:text-gray-400">请先在上方选择「版本类型」</p>
+                    </div>
+                    <div id="localPresetsList" class="hidden flex-col divide-y divide-gray-100 dark:divide-[#333]"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex items-center gap-3 mb-4">
+                    <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                    </svg>
+                    <div>
+                      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">在线预设</h2>
+                      <p class="text-xs text-gray-500">云端最新的配置文件，下载后将出现在本地预设中</p>
+                    </div>
+                  </div>
+                  <div id="onlinePresetsContainer" class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-200 dark:border-[#333] shadow-sm overflow-hidden duration-300 transition-colors">
+                    <div id="onlineEmptyState" class="p-8 flex flex-col items-center justify-center text-center">
+                      <p class="text-sm text-gray-500 dark:text-gray-400">点击上方的“检查更新”获取云端预设</p>
+                    </div>
+                    <div id="onlinePresetsList" class="hidden flex-col divide-y divide-gray-100 dark:divide-[#333]"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-calibrate" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-calibrate" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">校准偏移</h1>
+            <div class="flex items-center gap-3">
+              <button id="btn-calibrate-prev" onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
+                <span>上一步</span>
+              </button>
+            </div>
+          </div>
+          <div class="page-header-sub"></div>
+        </div>
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-4xl">
+            <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow border border-transparent dark:border-[#333] p-5 mb-5 transition-colors">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">粘贴到:工艺->其他->后处理脚本</div>
+              <div class="flex items-center gap-2">
+                <input type="text" id="scriptPath" class="input-field input-readonly flex-1 px-4 py-2.5 rounded-lg text-sm" readonly title="后处理脚本路径" placeholder="请先选择机型和版本">
+                <button id="scriptCopyBtn" onclick="copyPath()" class="btn-secondary px-3 py-2.5 rounded-lg transition-all" title="复制路径" disabled>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow border border-transparent dark:border-[#333] p-5 mb-5 transition-colors" id="zCalibrationCard">
+              <div class="flex items-center justify-between mb-4">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300">Z轴偏移校准</div>
+                <button id="zOpenBtn" onclick="openZModel()" class="theme-btn-solid px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>打开校准模型</span>
+                </button>
+              </div>
+              <div id="zCalibrationArea">
+                <div id="zProgress" class="hidden mb-4">
+                  <div class="h-1 bg-gray-100 dark:bg-[#333] rounded-full overflow-hidden">
+                    <div class="h-full theme-bg-solid rounded-full animate-pulse" style="width: 100%"></div>
+                  </div>
+                </div>
+                <div id="zPlaceholder" class="h-32 bg-gray-50 dark:bg-[#1E1E1E] rounded-xl border border-dashed border-gray-200 dark:border-[#444] flex flex-col items-center justify-center">
+                  <svg class="w-10 h-10 text-gray-400 dark:text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+                  </svg>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">点击右上角打开校准模型按钮加载视觉校准网格</span>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">点击后请耐心等待3mf打开...</span>
+                </div>
+                <div id="zGridSelector" class="hidden">
+                  <div class="flex flex-col items-center">
+                    <div class="flex items-center justify-center gap-1 mb-4" id="zGrid"></div>
+                    <div class="flex items-center justify-center gap-4 py-4">
+                      <div class="text-center">
+                        <div class="text-xs text-gray-400 mb-1">原值</div>
+                        <div class="text-3xl font-semibold text-gray-400" id="zOriginal">3.3</div>
+                      </div>
+                      <div class="flex flex-col items-center">
+                        <div id="zBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full theme-bg-soft theme-text mb-1">-0.2</div>
+                        <svg class="w-8 h-8 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                        </svg>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-xs text-gray-400 mb-1">修改后</div>
+                        <div class="text-3xl font-bold theme-text" id="zNewValue">3.1</div>
+                      </div>
+                    </div>
+                    <div class="flex justify-center mt-4">
+                      <button onclick="saveZOffset()" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 Z 轴偏移</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow border border-transparent dark:border-[#333] p-5 transition-colors" id="xyCalibrationCard">
+              <div class="flex items-center justify-between mb-4">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300">XY轴偏移校准</div>
+                <button id="xyOpenBtn" onclick="openXYModel()" class="theme-btn-solid px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>打开校准模型</span>
+                </button>
+              </div>
+              <div id="xyCalibrationArea">
+                <div id="xyProgress" class="hidden mb-4">
+                  <div class="h-1 bg-gray-100 dark:bg-[#333] rounded-full overflow-hidden">
+                    <div class="h-full theme-bg-solid rounded-full animate-pulse" style="width: 100%"></div>
+                  </div>
+                </div>
+                <div id="xyPlaceholder" class="h-48 bg-gray-50 dark:bg-[#1E1E1E] rounded-xl border border-dashed border-gray-200 dark:border-[#444] flex flex-col items-center justify-center">
+                  <svg class="w-10 h-10 text-gray-400 dark:text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+                  </svg>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">点击右上角打开校准模型按钮加载视觉校准网格</span>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">点击后请耐心等待3mf打开...</span>
+                </div>
+                <div id="xyGridSelector" class="hidden">
+                  <div class="flex items-end justify-center gap-2 py-8">
+                    <div id="xyGrid" class="flex-shrink-0"></div>
+                  </div>
+                  <div class="flex justify-center mt-4 pb-2">
+                    <button onclick="saveXYOffset()" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 XY 轴偏移</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-params" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-params" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">修改参数</h1>
+            <div class="flex items-center gap-3">
+              <button id="btn-restore-defaults" onclick="demoRestoreDefaults()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                还原默认
+              </button>
+              <button id="saveParamsBtn" onclick="saveAllDynamicParams()" class="theme-btn-solid px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+                保存所有修改
+              </button>
+            </div>
+          </div>
+          <div class="page-header-sub">
+            <p class="text-xs text-gray-500 leading-none">当前编辑文件：<span id="currentEditingFile" class="font-mono theme-text">未选择</span></p>
+          </div>
+        </div>
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-6xl">
+            <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow p-6 mb-5 border border-gray-100 dark:border-[#333] transition-colors">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-6 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
+                JSON 预设全参数映射
+              </div>
+              <div id="dynamicParamsContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-versions" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-versions" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">版本控制</h1>
+            <button id="btn-page-check-update" onclick="checkForUpdates()" class="theme-btn-solid px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              检查更新
+            </button>
+          </div>
+          <div class="page-header-sub"></div>
+        </div>
+
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-4xl">
+            <div id="updateReadyPrompt" class="hidden animate-scale-in w-full mb-6">
+              <div class="bg-white dark:bg-[#252526] p-4 rounded-2xl card-shadow border border-green-100 dark:border-green-900/50 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                  <div class="relative flex-shrink-0">
+                    <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100">新版本已准备就绪</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">软件将在下一次完全关闭时自动安装</p>
+                  </div>
+                </div>
+                <button id="btn-prompt-restart" onclick="if(window.mkpAPI) window.mkpAPI.sendRestartInstall()" class="theme-btn-solid px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 flex-shrink-0 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  点击重启立即更新
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 mb-5">
+              <div class="relative flex-1">
+                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                <input type="text" id="versionSearch" placeholder="搜索版本号或更新描述..." class="input-field w-full pl-11 pr-4 py-2.5 rounded-xl text-sm">
+              </div>
+              <button id="btn-toggle-history" onclick="toggleExpandMore()" class="btn-secondary px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0 transition-all">
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span id="expandBtnText">历史版本</span>
+              </button>
+            </div>
+            
+            <div id="versionList" class="space-y-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-faq" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-faq" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">常见问题</h1>
+          </div>
+          <div class="page-header-sub">
+            <p class="text-sm text-gray-500 dark:text-gray-400 leading-none">以下是用户最常遇到的问题及解决方案</p>
+          </div>
+        </div>
+
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-3xl mx-auto">
+            <div class="relative mb-6">
+              <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input type="text" id="faqSearch" placeholder="搜索问题..." class="input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm" oninput="filterFaq(this.value)">
+            </div>
+
+            <div id="faqList" class="space-y-3"></div>
+
+            <div class="mt-8 p-4 theme-bg-subtle rounded-xl transition-colors">
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 theme-text mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
+                </svg>
+                <div>
+                  <div class="text-sm font-medium theme-text">没有找到您的问题？</div>
+                  <div class="text-sm theme-text opacity-80 mt-1">请加入我们的QQ群或查看视频教程获取更多帮助</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-about" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header w-full">
+          <div class="page-header-top">
+            <h1 id="title-page-about" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">关于软件</h1>
+          </div>
+          <div class="page-header-sub"></div>
+        </div>
+
+        <div class="page-content hide-scrollbar">
+          <div class="max-w-2xl mx-auto pt-8">
+            <div class="text-center mb-8">
+              <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl theme-bg-solid mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                </svg>
+              </div>
+              <h1 id="about-app-name" class="text-2xl font-semibold text-gray-900 dark:text-gray-100">支撑面改善工具</h1>
+              <p class="text-sm text-gray-400 mt-1">MKP Support</p>
+              <p class="text-gray-500 mt-3">致力于为 3D 打印爱好者提供最精准的校准方案</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6">
+              <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow border border-transparent dark:border-[#333] p-5 transition-colors">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">核心作者</div>
+                <div class="flex items-center gap-4">
+                  <div class="w-14 h-14 rounded-full theme-bg-solid flex items-center justify-center text-white text-lg font-medium">MK</div>
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-900 dark:text-gray-100">MKP Team</div>
+                    <div class="text-sm text-gray-500 mb-2">3D打印技术开发</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow border border-transparent dark:border-[#333] p-5 transition-colors">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">社区资源</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <button id="btn-community-qq" class="relative p-3 rounded-xl border border-gray-100 dark:border-[#444] text-left hover-theme transition-all">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">QQ 群</span>
+                    <div class="text-xs text-gray-400">123456789</div>
+                  </button>
+                  <button id="btn-community-bili" class="relative p-3 rounded-xl border border-gray-100 dark:border-[#444] text-left hover-theme transition-all">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">视频教程</span>
+                    <div class="text-xs text-gray-400">Bilibili</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-theme" class="page flex-1 hidden" data-fixed-header="true">
+        <div class="page-header flex flex-col justify-end w-full border-b border-gray-200 dark:border-[#333]" style="height: 120px; padding-bottom: 1rem;">
+          <h1 id="title-page-settings" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight mb-4">软件设置</h1>
+          <div class="flex items-center gap-6 text-sm font-medium">
+            <button id="tab-setting-startup" onclick="scrollToSetting('setting-startup')" class="settings-nav-item active theme-text">常规与启动</button>
+            <button id="tab-setting-appearance" onclick="scrollToSetting('setting-appearance')" class="settings-nav-item text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">外观与主题</button>
+            <button id="tab-setting-update" onclick="scrollToSetting('setting-update')" class="settings-nav-item text-gray-500 hover:text-gray-900 dark:hover:text-gray-200">更新与关于</button>
+          </div>
+        </div>
+
+        <div class="page-content hide-scrollbar" id="settingsPageContent">
+          <div class="space-y-8 max-w-4xl">
+            
+            <div id="setting-startup" class="settings-section">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">常规与启动</h3>
+              <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 transition-colors">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-sm font-medium text-gray-700 dark:text-gray-300">显示引导界面</div>
+                    <div class="text-xs text-gray-500 mt-1">每次启动时显示新手引导界面</div>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="showOnboarding" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 dark:bg-[#3E3E42] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:peer-checked:bg-blue-500 transition-all"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div id="setting-appearance" class="settings-section pt-8">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">外观与主题</h3>
+              
+              <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6 transition-colors">
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">外观模式</div>
+                <div class="grid grid-cols-3 gap-4 max-w-[540px]">
+                  <button id="btn-mode-light" onclick="setThemeMode('light', event)" class="mode-btn-light flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
+                    <div class="w-full h-16 rounded-lg bg-[#f3f4f6] border border-[#e5e7eb] overflow-hidden flex flex-col">
+                      <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb]"></div>
+                      <div class="flex-1 flex"><div class="w-1/3 bg-[#f9fafb] border-r border-[#e5e7eb]"></div><div class="flex-1 bg-[#ffffff]"></div></div>
+                    </div>
+                    <span class="mode-text-light text-sm font-medium text-gray-700 dark:text-gray-300">白天</span>
+                  </button>
+
+                  <button id="btn-mode-dark" onclick="setThemeMode('dark', event)" class="mode-btn-dark flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
+                    <div class="w-full h-16 rounded-lg bg-[#1a1a1a] border border-[#333] overflow-hidden flex flex-col">
+                      <div class="h-3 bg-[#222] border-b border-[#333]"></div>
+                      <div class="flex-1 flex"><div class="w-1/3 bg-[#111] border-r border-[#333]"></div><div class="flex-1 bg-[#1a1a1a]"></div></div>
+                    </div>
+                    <span class="mode-text-dark text-sm font-medium text-gray-700 dark:text-gray-300">夜间</span>
+                  </button>
+
+                  <button id="btn-mode-system" onclick="setThemeMode('system', event)" class="mode-btn-system flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
+                    <div class="w-full h-16 rounded-lg border border-[#e5e7eb] dark:border-[#333] overflow-hidden flex">
+                      <div class="flex-1 bg-[#f3f4f6] flex flex-col border-r border-[#e5e7eb] dark:border-[#333]">
+                        <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb] dark:border-[#333]"></div>
+                        <div class="flex-1 bg-[#ffffff]"></div>
+                      </div>
+                      <div class="flex-1 bg-[#1a1a1a] flex flex-col">
+                        <div class="h-3 bg-[#222] border-b border-[#333]"></div>
+                        <div class="flex-1 bg-[#1a1a1a]"></div>
+                      </div>
+                    </div>
+                    <span class="mode-text-system text-sm font-medium text-gray-700 dark:text-gray-300">跟随系统</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6 transition-colors">
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">全局主色调</div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">选择软件的强调色，将应用于侧边栏、按钮、高亮字体及更新日志边框。</p>
+                
+                <div id="globalThemePalette" class="flex items-center gap-4 flex-wrap">
+                  <button onclick="setGlobalThemeColor('blue')" class="global-color-btn color-picker-btn" data-color="blue" style="color: #3B82F6; background-color: #3B82F6;" title="蔚蓝"></button>
+                  <button onclick="setGlobalThemeColor('emerald')" class="global-color-btn color-picker-btn" data-color="emerald" style="color: #10B981; background-color: #10B981;" title="翠绿"></button>
+                  <button onclick="setGlobalThemeColor('violet')" class="global-color-btn color-picker-btn" data-color="violet" style="color: #8B5CF6; background-color: #8B5CF6;" title="紫罗兰"></button>
+                  <button onclick="setGlobalThemeColor('orange')" class="global-color-btn color-picker-btn" data-color="orange" style="color: #F59E0B; background-color: #F59E0B;" title="活力橙"></button>
+                  <button onclick="setGlobalThemeColor('pink')" class="global-color-btn color-picker-btn" data-color="pink" style="color: #EC4899; background-color: #EC4899;" title="猛男粉"></button>
+                  <button onclick="setGlobalThemeColor('green')" class="global-color-btn color-picker-btn" data-color="green" style="color: #22C55E; background-color: #22C55E;" title="极客绿"></button>
+                  <button onclick="setGlobalThemeColor('purple')" class="global-color-btn color-picker-btn" data-color="purple" style="color: #A855F7; background-color: #A855F7;" title="深邃紫"></button>
+                  <button onclick="setGlobalThemeColor('rose')" class="global-color-btn color-picker-btn" data-color="rose" style="color: #F43F5E; background-color: #F43F5E;" title="玫瑰粉"></button>
+                </div>
+              </div>
+
+              <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 transition-colors">
+                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">版本专属图标色</div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">为不同预设版本指定专属颜色，便于在列表中快速分辨。您也可以让它跟随全局主题色。</p>
+                
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors theme-standard-bg theme-standard-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+                      </div>
+                      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">标准版</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <button onclick="setVersionTheme('standard', 'follow', 'follow')" class="version-color-btn color-picker-btn follow-theme-btn flex items-center justify-center" data-version="standard" data-color="follow" title="跟随全局主题">
+                        <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                      </button>
+                      <button onclick="setVersionTheme('standard', '59, 130, 246', 'blue')" class="version-color-btn color-picker-btn" data-version="standard" data-color="blue" style="color: #3B82F6; background-color: #3B82F6;"></button>
+                      <button onclick="setVersionTheme('standard', '16, 185, 129', 'emerald')" class="version-color-btn color-picker-btn" data-version="standard" data-color="emerald" style="color: #10B981; background-color: #10B981;"></button>
+                      <button onclick="setVersionTheme('standard', '244, 63, 94', 'rose')" class="version-color-btn color-picker-btn" data-version="standard" data-color="rose" style="color: #F43F5E; background-color: #F43F5E;"></button>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors border-t border-gray-100 dark:border-[#333]">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors theme-quick-bg theme-quick-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                      </div>
+                      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">快拆版</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <button onclick="setVersionTheme('quick', 'follow', 'follow')" class="version-color-btn color-picker-btn follow-theme-btn flex items-center justify-center" data-version="quick" data-color="follow" title="跟随全局主题">
+                        <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                      </button>
+                      <button onclick="setVersionTheme('quick', '245, 158, 11', 'amber')" class="version-color-btn color-picker-btn" data-version="quick" data-color="amber" style="color: #F59E0B; background-color: #F59E0B;"></button>
+                      <button onclick="setVersionTheme('quick', '6, 182, 212', 'cyan')" class="version-color-btn color-picker-btn" data-version="quick" data-color="cyan" style="color: #06B6D4; background-color: #06B6D4;"></button>
+                      <button onclick="setVersionTheme('quick', '139, 92, 246', 'violet')" class="version-color-btn color-picker-btn" data-version="quick" data-color="violet" style="color: #8B5CF6; background-color: #8B5CF6;"></button>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors border-t border-gray-100 dark:border-[#333]">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors theme-lite-bg theme-lite-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6"/></svg>
+                      </div>
+                      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Lite版</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <button onclick="setVersionTheme('lite', 'follow', 'follow')" class="version-color-btn color-picker-btn follow-theme-btn flex items-center justify-center" data-version="lite" data-color="follow" title="跟随全局主题">
+                        <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                      </button>
+                      <button onclick="setVersionTheme('lite', '168, 85, 247', 'purple')" class="version-color-btn color-picker-btn" data-version="lite" data-color="purple" style="color: #A855F7; background-color: #A855F7;"></button>
+                      <button onclick="setVersionTheme('lite', '59, 130, 246', 'blue')" class="version-color-btn color-picker-btn" data-version="lite" data-color="blue" style="color: #3B82F6; background-color: #3B82F6;"></button>
+                      <button onclick="setVersionTheme('lite', '249, 115, 22', 'orange')" class="version-color-btn color-picker-btn" data-version="lite" data-color="orange" style="color: #F97316; background-color: #F97316;"></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="setting-update" class="settings-section pt-8">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">更新与关于软件</h3>
+              <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 transition-colors">
+                
+                <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-100 dark:border-[#333]">
+                  <div>
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      当前版本 <span id="settingsCurrentVersion" class="theme-text font-bold">v0.1.1</span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">核心框架: Electron v29.0.0</div>
+                  </div>
+                  <div class="flex gap-3">
+                    <button id="btn-setting-about" class="btn-secondary px-4 py-2 text-sm rounded-lg transition-all" onclick="document.querySelector('[data-page=\'about\']').click()">关于我们</button>
+                    <button id="btn-setting-check-update" class="theme-btn-solid px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all" onclick="if(window.checkForUpdates) checkForUpdates()">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      检查更新
+                    </button>
+                  </div>
+                </div>
+
+                <div class="space-y-4">
+                  <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="radio" name="updatePreference" value="auto" class="custom-radio theme-ring" checked onchange="if(window.saveUpdatePreference) saveUpdatePreference()">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">自动下载并安装</div>
+                      <div class="text-xs text-gray-500 mt-0.5">发现新版本时在后台静默下载，并在下次启动时自动安装</div>
+                    </div>
+                  </label>
+                  
+                  <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="radio" name="updatePreference" value="remind" class="custom-radio theme-ring" onchange="if(window.saveUpdatePreference) saveUpdatePreference()">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">有新版本时仅提醒我</div>
+                      <div class="text-xs text-gray-500 mt-0.5">只在界面上显示红点提示，由我手动决定何时下载</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+
+  <div id="mkp-global-modal" class="mkp-modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="mkp-modal-card bg-white dark:bg-[#252526] w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 dark:border-[#333] overflow-hidden flex flex-col md:flex-row md:items-start p-6 gap-5">
+      
+      <div id="mkp-modal-icon-box" class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 theme-bg-soft">
+        <svg id="mkp-modal-icon" class="w-6 h-6 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+
+      <div class="flex-1 w-full">
+        <h3 id="mkp-modal-title" class="text-lg font-bold text-gray-900 dark:text-white mb-2">提示</h3>
+        <p id="mkp-modal-msg" class="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed break-words"></p>
+        
+        <div class="flex items-center justify-end gap-3 mt-auto">
+          <button id="mkp-modal-cancel" onclick="MKPModal.cancel()" class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors">
+            取消
+          </button>
+          <button id="mkp-modal-confirm" onclick="MKPModal.confirmBtn()" class="theme-btn-solid px-5 py-2.5 rounded-xl text-sm font-medium transition-all">
+            确认
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="onboarding" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8 transition-opacity">
+    <div class="bg-white rounded-2xl card-shadow w-[520px] max-h-[90vh] animate-scale-in flex flex-col overflow-hidden border border-transparent dark:border-[#333333]">
+      
+      <div class="p-5 pb-4 flex-shrink-0">
+        <div class="text-center mb-5">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl theme-btn-solid mb-2 shadow-sm">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+          </div>
+          <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">支撑面改善工具</h1>
+          <p class="text-[11px] text-gray-400 mt-0.5">MKP Support</p>
+        </div>
 
         <div class="flex items-center justify-center">
           <div class="flex items-center step-item active" id="step1" onclick="if(currentStep > 1) goToStep(1)">
@@ -76,715 +816,100 @@
             <span class="ml-1.5 text-xs font-medium step-text transition-colors">基础参数</span>
           </div>
         </div>
-    </div>
+      </div>
 
-<div id="wizardSummaryBar" class="hidden items-center gap-2 px-6 py-2">
-      <span class="text-xs font-medium text-gray-500">当前选择:</span>
-      <span id="selectedModelBadge" class="hidden px-2 py-1 rounded-md text-[11px] font-medium theme-btn-soft border-0"></span>
-      <span id="selectedVersionBadge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap duration-300"></span>
-    </div>
+      <div id="wizardSummaryBar" class="hidden items-center gap-2 px-6 py-2">
+        <span class="text-xs font-medium text-gray-500">当前选择:</span>
+        <span id="selectedModelBadge" class="hidden px-2 py-1 rounded-md text-[11px] font-medium theme-btn-soft border-0"></span>
+        <span id="selectedVersionBadge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap duration-300"></span>
+      </div>
 
-    <div class="flex-1 overflow-y-auto px-6 py-4 min-h-[260px]">
-      
-      <div id="stepContent1" class="step-content">
-        <div class="flex gap-4">
-          <div class="w-32 flex-shrink-0">
-            <div class="text-[11px] text-gray-400 mb-2 uppercase tracking-wide font-medium">品牌</div>
-            <div class="macos-list h-[200px] overflow-y-auto hide-scrollbar">
-              <div id="wizardBrandList"></div>
+      <div class="flex-1 overflow-y-auto px-6 py-4 min-h-[260px]">
+        <div id="stepContent1" class="step-content">
+          <div class="flex gap-4">
+            <div class="w-32 flex-shrink-0">
+              <div class="text-[11px] text-gray-400 mb-2 uppercase tracking-wide font-medium">品牌</div>
+              <div class="macos-list h-[200px] overflow-y-auto hide-scrollbar">
+                <div id="wizardBrandList"></div>
+              </div>
             </div>
-          </div>
-          <div class="flex-1">
-            <div class="text-[11px] text-gray-400 mb-2 uppercase tracking-wide font-medium">机型</div>
-            <div class="macos-list h-[200px] overflow-y-auto hide-scrollbar">
-              <div id="wizardModelList"></div>
+            <div class="flex-1">
+              <div class="text-[11px] text-gray-400 mb-2 uppercase tracking-wide font-medium">机型</div>
+              <div class="macos-list h-[200px] overflow-y-auto hide-scrollbar">
+                <div id="wizardModelList"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div id="stepContent2" class="step-content hidden">
-        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">为该机型选择需要应用的预设版本</div>
-        <div id="wizardVersionList" class="flex flex-col gap-3"></div>
-      </div>
-
-      <div id="stepContent3" class="step-content hidden">
-        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">当前配置偏移参数预览</div>
-        <div class="grid grid-cols-3 gap-3 mb-3">
-          <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
-            <div class="text-xs text-gray-400 mb-1">X 偏移</div>
-            <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardXOffset">--</div>
-            <div class="text-[10px] text-gray-400">mm</div>
-          </div>
-          <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
-            <div class="text-xs text-gray-400 mb-1">Y 偏移</div>
-            <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardYOffset">--</div>
-            <div class="text-[10px] text-gray-400">mm</div>
-          </div>
-          <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
-            <div class="text-xs text-gray-400 mb-1">Z 偏移</div>
-            <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardZOffset">--</div>
-            <div class="text-[10px] text-gray-400">mm</div>
-          </div>
+        <div id="stepContent2" class="step-content hidden">
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">为该机型选择需要应用的预设版本</div>
+          <div id="wizardVersionList" class="flex flex-col gap-3"></div>
         </div>
-        <div class="text-xs text-gray-400 text-center">以上参数仅供参考，请在实际使用中进行视觉校准</div>
+
+        <div id="stepContent3" class="step-content hidden">
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">当前配置偏移参数预览</div>
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
+              <div class="text-xs text-gray-400 mb-1">X 偏移</div>
+              <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardXOffset">--</div>
+              <div class="text-[10px] text-gray-400">mm</div>
+            </div>
+            <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
+              <div class="text-xs text-gray-400 mb-1">Y 偏移</div>
+              <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardYOffset">--</div>
+              <div class="text-[10px] text-gray-400">mm</div>
+            </div>
+            <div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-4 text-center border border-gray-100 dark:border-[#333]">
+              <div class="text-xs text-gray-400 mb-1">Z 偏移</div>
+              <div class="text-2xl font-bold text-gray-700 dark:text-gray-200" id="wizardZOffset">--</div>
+              <div class="text-[10px] text-gray-400">mm</div>
+            </div>
+          </div>
+          <div class="text-xs text-gray-400 text-center">以上参数仅供参考，请在实际使用中进行视觉校准</div>
+        </div>
       </div>
 
-    </div>
-
-    <div class="p-5 pt-3 flex-shrink-0 border-t border-gray-100 dark:border-[#333]">
-      <div class="flex items-center justify-between">
-        <button id="leftBtn" onclick="skipOnboarding()" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors">
-          跳过引导
-        </button>
-        <button id="rightBtn" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium transition-all" disabled>下一步</button>
+      <div class="p-5 pt-3 flex-shrink-0 border-t border-gray-100 dark:border-[#333]">
+        <div class="flex items-center justify-between">
+          <button id="leftBtn" onclick="skipOnboarding()" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors">
+            跳过引导
+          </button>
+          <button id="rightBtn" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium transition-all" disabled>下一步</button>
+        </div>
       </div>
     </div>
-
   </div>
-</div>
 
-  <!-- 右键菜单 -->
   <div id="contextMenu" class="context-menu hidden">
     <div class="context-menu-item" id="contextMenuFavorite">
       <span id="contextMenuFavoriteText">收藏此机型</span>
     </div>
   </div>
 
-  <!-- 主应用界面 -->
-  <div id="mainApp" class="flex h-screen">
-    <!-- 左侧边栏容器 -->
-    <!-- 【展开宽度】修改这里的width和w-[200px]可改变展开后的侧边栏宽度，当前为200px -->
-    <div id="sidebarWrapper" class="sidebar-wrapper relative flex-shrink-0" style="width: 200px;">
-      <aside id="sidebar" class="w-[200px] h-screen bg-white border-r border-gray-200 flex flex-col duration-300 ease-in-out overflow-hidden">
-        <!-- 汉堡菜单按钮 -->
-        <div class="sidebar-header-bar px-3 py-2 border-b border-gray-100 flex items-center">
-          <button onclick="toggleSidebar()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-100 transition-colors" title="折叠侧边栏">
-            <svg id="menuIcon" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-            </svg>
-            <span class="sidebar-text font-semibold text-gray-800">MKP Support</span>
-          </button>
-        </div>
-
-        <div class="py-4 sidebar-content border-b border-gray-100 flex flex-col items-center justify-center min-h-[84px] cursor-default pointer-events-none">
-          <div class="flex items-center justify-center whitespace-nowrap overflow-hidden duration-300">
-            <span id="sidebarBrand" class="text-sm font-medium text-gray-500 duration-300 overflow-hidden inline-block align-middle">Bambu Lab</span>
-            <span id="sidebarBrandSpace" class="duration-300 inline-block"></span>
-            <span id="sidebarModelName" class="text-sm font-bold theme-text duration-300 inline-block align-middle">A1</span>
-          </div>
-          <div class="mt-1.5 flex items-center justify-center overflow-hidden w-full">
-            <span id="sidebarVersionBadge" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-400 whitespace-nowrap duration-300">未选择</span>
-          </div>
-        </div>
-
-      <nav class="flex-1 px-3 py-2">
-        <div class="space-y-1">
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left active" data-page="home">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l3 3m-3-3H4.5m0 0l-3 3m3-3l-3-3"/>
-            </svg>
-            <span class="sidebar-text">选择机型</span>
-          </button>
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="download">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            <span class="sidebar-text">下载预设</span>
-          </button>
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="calibrate">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
-            </svg>
-            <span class="sidebar-text">校准偏移</span>
-          </button>
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="params">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            <span class="sidebar-text">修改参数</span>
-          </button>
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="versions">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/>
-            </svg>
-            <span class="sidebar-text">版本控制</span>
-          </button>
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="faq">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
-            </svg>
-            <span class="sidebar-text">常见问题</span>
-          </button>
-          <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left" data-page="about">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
-            </svg>
-            <span class="sidebar-text">关于软件</span>
-          </button>
-        </div>
-      </nav>
-
-      <div class="px-3 py-3 border-t border-gray-100 flex flex-col gap-1">
-        <button onclick="toggleDarkMode(event)" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-50 transition-colors">
-          <svg class="w-5 h-5 flex-shrink-0 dark-icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-2.25l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-          </svg>
-          <span class="sidebar-text">外观模式</span>
-        </button>
-        
-        <button class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-50 transition-colors" data-page="theme">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
-          </svg>
-          <span class="sidebar-text">软件设置</span>
-        </button>
-      </div>
-    </aside>
-  </div>
-
-    <!-- 右侧主内容区 -->
-    <main class="flex-1 overflow-hidden flex flex-col">
-      
-      <div id="page-home" class="page h-screen flex flex-col p-8 overflow-hidden">
-        
-        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
-          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">选择机型</h1>
-          <div class="flex items-center gap-3">
-            <button onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2">
-              <span>下一步</span>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="max-w-6xl w-full mt-4">
-          <div class="grid grid-cols-12 gap-6 items-start">
-            
-            <div class="col-span-3">
-              <div class="bg-white rounded-xl card-shadow p-4 flex flex-col max-h-[calc(100vh-160px)]">
-                <div class="text-sm font-medium text-gray-500 mb-4 shrink-0">品牌列表</div>
-                <div id="brandList" class="space-y-2 flex-1 overflow-y-auto hide-scrollbar">
-                  </div>
-              </div>
-            </div>
-
-            <div class="col-span-9">
-              <div class="bg-white rounded-xl card-shadow p-4 flex flex-col max-h-[calc(100vh-160px)]">
-                
-                <div class="flex items-center justify-between mb-4 w-full shrink-0">
-                  <div class="flex items-center gap-2 truncate pr-4 shrink">
-                    <span id="currentBrandTitle" class="text-sm font-medium text-gray-700 truncate">拓竹 - Bambu版</span>
-                  </div>
-                  <div class="flex items-center gap-3 flex-1 justify-end min-w-0">
-                    <div class="relative flex-1 max-w-[200px] min-w-[120px]">
-                      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                      </svg>
-                      <input type="text" id="printerSearch" placeholder="搜索机型..." class="input-field pl-9 pr-4 py-2 rounded-lg text-sm w-full" oninput="filterPrinters()">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
-                  <div id="printerGrid" class="grid grid-cols-3 gap-4 pb-2">
-                    </div>
-                </div>
-                
-              </div>
-            </div>
-            
-          </div> 
-        </div> 
-      </div>
-      <!-- 下载预设页面 -->
-<div id="page-download" class="page flex-1 overflow-y-auto p-8 hidden">
-        
-        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
-          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">配置您的模型预设</h1>
-          <div class="flex items-center gap-3 relative">
-            <button onclick="document.querySelector('[data-page=\'home\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
-              <span>上一步</span>
-            </button>
-            <button id="downloadBtn" onclick="document.querySelector('[data-page=\'calibrate\']').click()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-medium disabled:bg-gray-300 flex items-center gap-2" disabled>
-              <span>下一步</span>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-            </button>
-            <div id="downloadHintWrapper" class="absolute -bottom-6 right-1 flex items-center gap-1 text-amber-500 transition-opacity duration-300">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <span class="text-[11px]">请完成选项</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="max-w-4xl flex flex-col h-full">
-          <p class="text-sm text-gray-500 mb-6">选择版本类型和发布日期以获取对应的预设配置</p>
-
-          <div class="max-w-4xl space-y-8 flex-1">
-            
-            <div>
-              <div class="flex items-center gap-3 mb-4">
-                <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <div>
-                  <h2 class="text-base font-semibold text-gray-900">选择版本类型</h2>
-                  <p class="text-xs text-gray-500">根据您的打印机配置选择合适的版本</p>
-                </div>
-              </div>
-
-              <div id="downloadVersionList" class="flex flex-col gap-3"></div>
-            </div>
-
-            <div>
-
-<div class="mb-8">
-              <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                  <svg id="step2Badge" class="w-6 h-6 text-gray-400 flex-shrink-0 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                  </svg>
-                  <div>
-                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">本地预设</h2>
-                    <p class="text-xs text-gray-500">已存放在您电脑中的配置，点击即可应用</p>
-                  </div>
-                </div>
-                <button id="checkUpdateBtn" onclick="checkOnlineUpdates()" class="text-sm font-medium flex items-center gap-1.5 px-4 py-2 rounded-lg theme-btn-soft">
-                  <svg id="refreshIcon" class="w-4 h-4 transition-transform duration-300 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                  </svg>
-                  <span id="checkUpdateText">检查更新</span>
-                </button>
-              </div>
-
-              <div id="localPresetsContainer" class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-200 dark:border-[#333] shadow-sm overflow-hidden duration-300">
-                <div id="localEmptyState" class="p-8 flex flex-col items-center justify-center text-center">
-                  <p class="text-sm text-gray-500 dark:text-gray-400">请先在上方选择「版本类型」</p>
-                </div>
-                <div id="localPresetsList" class="hidden flex-col divide-y divide-gray-100 dark:divide-[#333]"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex items-center gap-3 mb-4">
-                <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                </svg>
-                <div>
-                  <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">在线预设</h2>
-                  <p class="text-xs text-gray-500">云端最新的配置文件，下载后将出现在本地预设中</p>
-                </div>
-              </div>
-
-              <div id="onlinePresetsContainer" class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-200 dark:border-[#333] shadow-sm overflow-hidden duration-300">
-                <div id="onlineEmptyState" class="p-8 flex flex-col items-center justify-center text-center">
-                  <p class="text-sm text-gray-500 dark:text-gray-400">点击上方的“检查更新”获取云端预设</p>
-                </div>
-                <div id="onlinePresetsList" class="hidden flex-col divide-y divide-gray-100 dark:divide-[#333]"></div>
-              </div>
-            </div>
-            </div>
-
-
-            
-          </div>
-        </div>
-      </div>
-
-      <!-- 校准偏移页面 -->
-      <div id="page-calibrate" class="page flex-1 overflow-y-auto p-8 hidden">
-        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">校准偏移</h1>
-          <div class="flex items-center gap-3">
-            <button onclick="document.querySelector('[data-page=\'download\']').click()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg>
-              <span>上一步</span>
-            </button>
-          </div>
-        </div>
-        <div class="max-w-4xl">
-          <div class="bg-white rounded-xl card-shadow p-5 mb-5">
-            <div class="text-sm font-medium text-gray-700 mb-3">粘贴到:工艺->其他->后处理脚本</div>
-            <div class="flex items-center gap-2">
-              <input type="text" id="scriptPath" class="input-field input-readonly flex-1 px-4 py-2.5 rounded-lg text-sm" readonly title="后处理脚本路径" placeholder="请先选择机型和版本">
-              <button id="scriptCopyBtn" onclick="copyPath()" class="btn-secondary px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed" title="复制路径" disabled>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl card-shadow p-5 mb-5" id="zCalibrationCard">
-            <div class="flex items-center justify-between mb-4">
-              <div class="text-sm font-medium text-gray-700">Z轴偏移校准</div>
-              <button id="zOpenBtn" onclick="openZModel()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>打开校准模型</span>
-              </button>
-            </div>
-            
-            <div id="zCalibrationArea">
-              <div id="zProgress" class="hidden mb-4">
-                <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 100%"></div>
-                </div>
-              </div>
-              
-              <div id="zPlaceholder" class="h-32 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                <svg class="w-10 h-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
-                </svg>
-                <span class="text-sm text-gray-300">点击右上角打开校准模型按钮加载视觉校准网格</span>
-                <span class="text-sm text-gray-300">点击后请耐心等待3mf打开...</span>
-              </div>
-              
-              <div id="zGridSelector" class="hidden">
-                <div class="flex flex-col items-center">
-                  <div class="flex items-center justify-center gap-1 mb-4" id="zGrid">
-                  </div>
-                  <div class="flex items-center justify-center gap-4 py-4">
-                    <div class="text-center">
-                      <div class="text-xs text-gray-400 mb-1">原值</div>
-                      <div class="text-3xl font-semibold text-gray-400" id="zOriginal">3.3</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                      <div id="zBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-600 mb-1">-0.2</div>
-                      <svg class="w-8 h-8 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
-                      </svg>
-                    </div>
-                    <div class="text-center">
-                      <div class="text-xs text-gray-400 mb-1">修改后</div>
-                      <div class="text-3xl font-bold theme-text-600" id="zNewValue">3.1</div>
-                    </div>
-                  </div>
-                  <div class="flex justify-center mt-4">
-                    <button onclick="saveZOffset()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium">保存并应用 Z 轴偏移</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl card-shadow p-5" id="xyCalibrationCard">
-            <div class="flex items-center justify-between mb-4">
-              <div class="text-sm font-medium text-gray-700">XY轴偏移校准</div>
-              <button id="xyOpenBtn" onclick="openXYModel()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>打开校准模型</span>
-              </button>
-            </div>
-            
-            <div id="xyCalibrationArea">
-              <div id="xyProgress" class="hidden mb-4">
-                <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full animate-pulse" style="width: 100%"></div>
-                </div>
-              </div>
-              
-              <div id="xyPlaceholder" class="h-48 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                <svg class="w-10 h-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
-                </svg>
-                <span class="text-sm text-gray-300">点击右上角打开校准模型按钮加载视觉校准网格</span>
-                <span class="text-sm text-gray-300">点击后请耐心等待3mf打开...</span>
-              </div>
-              
-              <div id="xyGridSelector" class="hidden">
-                <div class="flex items-end justify-center gap-2 py-8">
-                  <div id="xyGrid" class="flex-shrink-0">
-                  </div>
-                </div>
-                <div class="flex justify-center mt-4 pb-2">
-                  <button onclick="saveXYOffset()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium">保存并应用 XY 轴偏移</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 修改参数页面 -->
-      <div id="page-params" class="page flex-1 overflow-y-auto p-8 hidden">
-        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">修改参数</h1>
-            <p class="text-xs text-gray-500 mt-1">当前编辑文件：<span id="currentEditingFile" class="font-mono theme-text">未选择</span></p>
-          </div>
-          <button id="saveParamsBtn" onclick="saveAllDynamicParams()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2">
-            保存所有修改
-          </button>
-        </div>
-        
-        <div class="max-w-6xl">
-          <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow p-6 mb-5 border border-gray-100 dark:border-[#333]">
-            <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-6 flex items-center gap-2">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
-              JSON 预设全参数映射
-            </div>
-            
-            <div id="dynamicParamsContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
-              </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- 版本控制页面 -->
-      <div id="page-versions" class="page flex-1 overflow-y-auto p-8 hidden">
-        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
-          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">版本控制</h1>
-          <button onclick="checkForUpdates()" class="btn-primary px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            检查更新
-          </button>
-        </div>
-        <div class="max-w-4xl">
-          <div class="flex items-center gap-3 mb-5">
-            <div class="relative flex-1">
-              <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-              </svg>
-              <input type="text" id="versionSearch" placeholder="搜索版本号或更新描述..." class="input-field w-full pl-11 pr-4 py-2.5 rounded-xl text-sm">
-            </div>
-            <button onclick="toggleExpandMore()" class="btn-secondary px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0">
-              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <span id="expandBtnText">历史版本</span>
-            </button>
-          </div>
-
-          <div id="versionList" class="space-y-3"></div>
-        </div>
-      </div>
-
-      <!-- 常见问题页面 -->
-      <div id="page-faq" class="page flex-1 overflow-y-auto p-8 hidden">
-        <div class="max-w-3xl mx-auto">
-          <div class="h-12 mb-6 shrink-0 w-full flex flex-col justify-center">
-            <h1 class="text-2xl font-bold text-gray-900 tracking-tight">常见问题</h1>
-          </div>
-          <p class="text-sm text-gray-500 mb-6">以下是用户最常遇到的问题及解决方案</p>
-
-          <!-- FAQ 搜索框 -->
-          <div class="relative mb-6">
-            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input type="text" id="faqSearch" placeholder="搜索问题..." class="input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm" oninput="filterFaq(this.value)">
-          </div>
-
-          <!-- FAQ列表 - 由 JavaScript 动态渲染 -->
-          <div id="faqList" class="space-y-3"></div>
-
-          <!-- 底部提示 -->
-          <div class="mt-8 p-4 theme-bg-subtle rounded-xl transition-colors">
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 theme-text mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/>
-              </svg>
-              <div>
-                <div class="text-sm font-medium theme-text">没有找到您的问题？</div>
-                <div class="text-sm theme-text opacity-80 mt-1">请加入我们的QQ群或查看视频教程获取更多帮助</div>
-              </div>
-            </div>
-          </div>
-          
-        </div>
-      </div>
-
-      <!-- 关于软件页面 -->
-      <div id="page-about" class="page flex-1 overflow-y-auto p-8 hidden">
-        <div class="max-w-2xl mx-auto">
-          <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
-              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-              </svg>
-            </div>
-            <h1 class="text-2xl font-semibold text-gray-900">支撑面改善工具</h1>
-            <p class="text-sm text-gray-400 mt-1">MKP Support</p>
-            <p class="text-gray-500 mt-3">致力于为 3D 打印爱好者提供最精准的校准方案</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-6">
-            <div class="bg-white rounded-xl card-shadow p-5">
-              <div class="text-sm font-medium text-gray-700 mb-4">核心作者</div>
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-lg font-medium">MK</div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900">MKP Team</div>
-                  <div class="text-sm text-gray-500 mb-2">3D打印技术开发</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-white rounded-xl card-shadow p-5">
-              <div class="text-sm font-medium text-gray-700 mb-4">社区资源</div>
-              <div class="grid grid-cols-2 gap-3">
-                <button class="p-3 rounded-xl border border-gray-100 text-left hover:border-blue-200 transition-all">
-                  <span class="text-sm font-medium text-gray-700">QQ 群</span>
-                  <div class="text-xs text-gray-400">123456789</div>
-                </button>
-                <button class="p-3 rounded-xl border border-gray-100 text-left hover:border-blue-200 transition-all">
-                  <span class="text-sm font-medium text-gray-700">视频教程</span>
-                  <div class="text-xs text-gray-400">Bilibili</div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 软件设置页面 -->
-      <div id="page-theme" class="page flex-1 overflow-y-auto p-8 hidden">
-        <div class="flex items-center justify-between h-12 mb-6 shrink-0 w-full">
-          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">软件设置</h1>
-        </div>
-        <div class="max-w-4xl">
-          <p class="text-sm text-gray-500 mb-6">自定义软件的全局设置，包括界面风格、主题颜色和启动选项。</p>
-
-          <!-- 引导界面设置 -->
-          <div class="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6">
-            <div class="text-sm font-semibold text-gray-900 mb-4">启动设置</div>
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm font-medium text-gray-700">显示引导界面</div>
-                <div class="text-xs text-gray-500 mt-1">每次启动时显示新手引导界面</div>
-              </div>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="showOnboarding" class="sr-only peer" checked>
-                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:peer-checked:bg-blue-500"></div>
-              </label>
-            </div>
-          </div>
-<div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6 transition-colors">
-            <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">外观模式</div>
-            <div class="grid grid-cols-3 gap-4 max-w-[540px]">
-              <button onclick="setThemeMode('light', event)" class="mode-btn-light flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
-                <div class="w-full h-16 rounded-lg bg-[#f3f4f6] border border-[#e5e7eb] overflow-hidden flex flex-col">
-                  <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb]"></div>
-                  <div class="flex-1 flex"><div class="w-1/3 bg-[#f9fafb] border-r border-[#e5e7eb]"></div><div class="flex-1 bg-[#ffffff]"></div></div>
-                </div>
-                <span class="mode-text-light text-sm font-medium text-gray-700 dark:text-gray-300">白天</span>
-              </button>
-
-              <button onclick="setThemeMode('dark', event)" class="mode-btn-dark flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
-                <div class="w-full h-16 rounded-lg bg-[#1a1a1a] border border-[#333] overflow-hidden flex flex-col">
-                  <div class="h-3 bg-[#222] border-b border-[#333]"></div>
-                  <div class="flex-1 flex"><div class="w-1/3 bg-[#111] border-r border-[#333]"></div><div class="flex-1 bg-[#1a1a1a]"></div></div>
-                </div>
-                <span class="mode-text-dark text-sm font-medium text-gray-700 dark:text-gray-300">夜间</span>
-              </button>
-
-              <button onclick="setThemeMode('system', event)" class="mode-btn-system flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
-                <div class="w-full h-16 rounded-lg border border-[#e5e7eb] dark:border-[#333] overflow-hidden flex">
-                  <div class="flex-1 bg-[#f3f4f6] flex flex-col border-r border-[#e5e7eb] dark:border-[#333]">
-                    <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb] dark:border-[#333]"></div>
-                    <div class="flex-1 bg-[#ffffff]"></div>
-                  </div>
-                  <div class="flex-1 bg-[#1a1a1a] flex flex-col">
-                    <div class="h-3 bg-[#222] border-b border-[#333]"></div>
-                    <div class="flex-1 bg-[#1a1a1a]"></div>
-                  </div>
-                </div>
-                <span class="mode-text-system text-sm font-medium text-gray-700 dark:text-gray-300">跟随系统</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6 transition-colors">
-            <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">全局主色调</div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">选择软件的强调色，将应用于侧边栏、按钮、高亮字体及更新日志边框。</p>
-            
-            <div class="flex items-center gap-4 flex-wrap">
-              <button onclick="setGlobalThemeColor('blue')" class="global-color-btn color-picker-btn" data-color="blue" style="color: #3B82F6; background-color: #3B82F6;" title="蔚蓝"></button>
-              <button onclick="setGlobalThemeColor('emerald')" class="global-color-btn color-picker-btn" data-color="emerald" style="color: #10B981; background-color: #10B981;" title="翠绿"></button>
-              <button onclick="setGlobalThemeColor('violet')" class="global-color-btn color-picker-btn" data-color="violet" style="color: #8B5CF6; background-color: #8B5CF6;" title="紫罗兰"></button>
-              <button onclick="setGlobalThemeColor('orange')" class="global-color-btn color-picker-btn" data-color="orange" style="color: #F59E0B; background-color: #F59E0B;" title="活力橙"></button>
-              <button onclick="setGlobalThemeColor('pink')" class="global-color-btn color-picker-btn" data-color="pink" style="color: #EC4899; background-color: #EC4899;" title="猛男粉"></button>
-              <button onclick="setGlobalThemeColor('green')" class="global-color-btn color-picker-btn" data-color="green" style="color: #22C55E; background-color: #22C55E;" title="极客绿"></button>
-              <button onclick="setGlobalThemeColor('purple')" class="global-color-btn color-picker-btn" data-color="purple" style="color: #A855F7; background-color: #A855F7;" title="深邃紫"></button>
-              <button onclick="setGlobalThemeColor('rose')" class="global-color-btn color-picker-btn" data-color="rose" style="color: #F43F5E; background-color: #F43F5E;" title="玫瑰粉"></button>
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 transition-colors">
-            <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">版本专属图标色</div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">为不同预设版本指定专属颜色，便于在列表中快速分辨。您也可以让它跟随全局主题色。</p>
-            
-            <div class="space-y-4">
-              <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors theme-standard-bg theme-standard-text">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
-                  </div>
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-200">标准版</span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <button onclick="setVersionTheme('standard', 'follow', 'follow')" class="version-color-btn color-picker-btn follow-theme-btn flex items-center justify-center" data-version="standard" data-color="follow" title="跟随全局主题">
-                    <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                  </button>
-                  <button onclick="setVersionTheme('standard', '59, 130, 246', 'blue')" class="version-color-btn color-picker-btn" data-version="standard" data-color="blue" style="color: #3B82F6; background-color: #3B82F6;"></button>
-                  <button onclick="setVersionTheme('standard', '16, 185, 129', 'emerald')" class="version-color-btn color-picker-btn" data-version="standard" data-color="emerald" style="color: #10B981; background-color: #10B981;"></button>
-                  <button onclick="setVersionTheme('standard', '244, 63, 94', 'rose')" class="version-color-btn color-picker-btn" data-version="standard" data-color="rose" style="color: #F43F5E; background-color: #F43F5E;"></button>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors border-t border-gray-100 dark:border-[#333]">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors theme-quick-bg theme-quick-text">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                  </div>
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-200">快拆版</span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <button onclick="setVersionTheme('quick', 'follow', 'follow')" class="version-color-btn color-picker-btn follow-theme-btn flex items-center justify-center" data-version="quick" data-color="follow" title="跟随全局主题">
-                    <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                  </button>
-                  <button onclick="setVersionTheme('quick', '245, 158, 11', 'amber')" class="version-color-btn color-picker-btn" data-version="quick" data-color="amber" style="color: #F59E0B; background-color: #F59E0B;"></button>
-                  <button onclick="setVersionTheme('quick', '6, 182, 212', 'cyan')" class="version-color-btn color-picker-btn" data-version="quick" data-color="cyan" style="color: #06B6D4; background-color: #06B6D4;"></button>
-                  <button onclick="setVersionTheme('quick', '139, 92, 246', 'violet')" class="version-color-btn color-picker-btn" data-version="quick" data-color="violet" style="color: #8B5CF6; background-color: #8B5CF6;"></button>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors border-t border-gray-100 dark:border-[#333]">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors theme-lite-bg theme-lite-text">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6"/></svg>
-                  </div>
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Lite版</span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <button onclick="setVersionTheme('lite', 'follow', 'follow')" class="version-color-btn color-picker-btn follow-theme-btn flex items-center justify-center" data-version="lite" data-color="follow" title="跟随全局主题">
-                    <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                  </button>
-                  <button onclick="setVersionTheme('lite', '168, 85, 247', 'purple')" class="version-color-btn color-picker-btn" data-version="lite" data-color="purple" style="color: #A855F7; background-color: #A855F7;"></button>
-                  <button onclick="setVersionTheme('lite', '59, 130, 246', 'blue')" class="version-color-btn color-picker-btn" data-version="lite" data-color="blue" style="color: #3B82F6; background-color: #3B82F6;"></button>
-                  <button onclick="setVersionTheme('lite', '249, 115, 22', 'orange')" class="version-color-btn color-picker-btn" data-version="lite" data-color="orange" style="color: #F97316; background-color: #F97316;"></button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-        </div>
-      </div>
-    </main>
-  </div>
-
   <div id="tooltip" class="tooltip"></div>
 
-  <!-- JavaScript 脚本 -->
   <script src="assets/js/data.js"></script>
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/app.js"></script>
+
+  <script>
+    async function demoRestoreDefaults() {
+      const isConfirmed = await MKPModal.confirm({
+        title: '还原默认参数？',
+        msg: '这将会覆盖您当前手动修改的所有参数，且无法撤销。您确定要继续吗？',
+        type: 'warning',       // 可选: info, warning, error, success
+        confirmText: '确认还原',
+        cancelText: '暂不还原'
+      });
+
+      if (isConfirmed) {
+        console.log("正在还原...");
+        await MKPModal.alert({ title: '成功', msg: '参数已还原为默认值！', type: 'success' });
+      } else {
+        console.log("用户取消了还原");
+      }
+    }
+  </script>
+</body>
+</html>

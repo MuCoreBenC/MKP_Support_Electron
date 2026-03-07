@@ -27,33 +27,6 @@ git config --global https.proxy http://127.0.0.1:7890
 3. 用户确认后，才能执行 `git add`、`git commit`、`git push`
 4. 如果用户不确认，保留修改在本地，不执行任何 Git 操作
 
-## 项目结构
-
-```
-MKP_Support_FASTUI/
-├── main.js              # Electron 主进程
-├── preload.js           # Electron 预加载脚本
-├── main.py              # Python 核心逻辑
-├── templates/           # 页面模板
-│   ├── index.html       # 主页面
-│   ├── components/      # 组件
-│   └── pages/           # 页面
-├── static/              # 静态资源
-│   ├── css/             # 样式文件
-│   ├── js/              # JavaScript 文件
-│   └── images/          # 图片资源（机型图片等）
-├── data/                # 数据文件
-│   └── printers.json    # 打印机数据
-├── mkp_processor/       # Python 处理模块
-├── presets/             # 预设文件
-├── scripts/             # 脚本文件
-│   └── preinstall.js    # 预安装脚本
-├── installer.nsh        # NSIS 安装脚本
-├── package.json         # npm 配置文件
-└── .trae/
-    └── rules/
-        └── project_rules.md  # 本规则文件
-```
 
 ## 技术栈
 

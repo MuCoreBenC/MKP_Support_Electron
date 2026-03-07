@@ -21,6 +21,105 @@ const Logger = {
   error: (msg, data) => Logger._format('ERROR', msg, data)
 };
 
+// ============================================================
+// 🚀 MKP 全局 SaaS 级弹窗系统 (支持 Promise 异步等待)
+// 使用方法:
+// await MKPModal.confirm({ title: '警告', msg: '确定要删除吗？', type: 'warning' });
+// await MKPModal.alert({ title: '成功', msg: '保存完毕！', type: 'success' });
+// ============================================================
+const MKPModal = {
+  _resolve: null,
+
+  show: function (options) {
+    return new Promise((resolve) => {
+      this._resolve = resolve;
+      
+      const overlay = document.getElementById('mkp-global-modal');
+      const iconBox = document.getElementById('mkp-modal-icon-box');
+      const iconSvg = document.getElementById('mkp-modal-icon');
+      const titleEl = document.getElementById('mkp-modal-title');
+      const msgEl = document.getElementById('mkp-modal-msg');
+      const cancelBtn = document.getElementById('mkp-modal-cancel');
+      const confirmBtn = document.getElementById('mkp-modal-confirm');
+
+      // 1. 设置内容
+      titleEl.textContent = options.title || '提示';
+      msgEl.innerHTML = options.msg || '';
+
+      // 2. 根据不同类型设置主题 (info, warning, error, success)
+      const type = options.type || 'info';
+      
+      // 清除旧颜色
+      iconBox.className = 'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 mb-4 md:mb-0';
+      confirmBtn.className = 'px-5 py-2.5 rounded-xl text-sm font-medium transition-all text-white';
+
+      if (type === 'warning') {
+        iconBox.classList.add('bg-amber-100', 'dark:bg-amber-900/30');
+        iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
+        iconSvg.className = 'w-6 h-6 text-amber-500';
+        confirmBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+        confirmBtn.textContent = options.confirmText || '确定';
+      } else if (type === 'error') {
+        iconBox.classList.add('bg-red-100', 'dark:bg-red-900/30');
+        iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+        iconSvg.className = 'w-6 h-6 text-red-500';
+        confirmBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+        confirmBtn.textContent = options.confirmText || '危险操作';
+      } else if (type === 'success') {
+        iconBox.classList.add('bg-green-100', 'dark:bg-green-900/30');
+        iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+        iconSvg.className = 'w-6 h-6 text-green-500';
+        confirmBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+        confirmBtn.textContent = options.confirmText || '好的';
+      } else { // 默认 info 主题色
+        iconBox.classList.add('theme-bg-soft');
+        iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+        iconSvg.className = 'w-6 h-6 theme-text';
+        confirmBtn.classList.add('theme-btn-solid');
+        confirmBtn.textContent = options.confirmText || '确认';
+      }
+
+      // 3. 按钮显示逻辑 (alert 模式隐藏取消按钮)
+      if (options.mode === 'alert') {
+        cancelBtn.classList.add('hidden');
+      } else {
+        cancelBtn.classList.remove('hidden');
+        cancelBtn.textContent = options.cancelText || '取消';
+      }
+
+      // 4. 显示动画
+      overlay.classList.add('show');
+    });
+  },
+
+  hide: function () {
+    const overlay = document.getElementById('mkp-global-modal');
+    overlay.classList.remove('show');
+  },
+
+  // 用户点击取消
+  cancel: function () {
+    this.hide();
+    if (this._resolve) this._resolve(false);
+  },
+
+  // 用户点击确认
+  confirmBtn: function () {
+    this.hide();
+    if (this._resolve) this._resolve(true);
+  },
+
+  // 快捷接口：询问框
+  confirm: function (options) {
+    return this.show({ ...options, mode: 'confirm' });
+  },
+
+  // 快捷接口：提示框
+  alert: function (options) {
+    return this.show({ ...options, mode: 'alert' });
+  }
+};
+
 // ==========================================
 // 1. 全局状态与变量管理
 // ==========================================
@@ -1221,7 +1320,7 @@ async function applyPreset(releaseId, isInstalled, fileName) {
   const dlHint = document.getElementById('downloadHintWrapper');
   if(dlBtn) {
     dlBtn.disabled = false;
-    dlBtn.innerHTML = `<span>下一步</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>`;
+    dlBtn.innerHTML = `<span>下一步</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>`;
   }
   if(dlHint) dlHint.style.opacity = '0';
 
@@ -1867,6 +1966,151 @@ function switchPage(page) {
     if (typeof updateScriptPathDisplay === 'function') updateScriptPathDisplay();
   }
 }
+
+
+// ============================================================
+// 🔴 全局小红点管理器 (随调随用)
+// ============================================================
+const RedDotManager = {
+  /**
+   * 显示小红点
+   * @param {string} elementId - 目标元素的 ID (比如某个图标所在的 div)
+   * @param {boolean} isPulse - 是否开启呼吸灯动效 (默认不开启)
+   */
+  show: function(elementId, isPulse = false) {
+    const el = document.getElementById(elementId);
+    if (!el) {
+      console.warn(`[RedDot] 找不到目标元素: ${elementId}`);
+      return;
+    }
+
+    // 1. 魔法处理：确保父容器能“锁住”绝对定位的红点
+    const currentPosition = window.getComputedStyle(el).position;
+    if (currentPosition === 'static') {
+      el.style.position = 'relative';
+    }
+
+    // 2. 检查是否已经贴过红点了，防止重复生成
+    let dot = el.querySelector('.mkp-badge-dot');
+    if (!dot) {
+      dot = document.createElement('span');
+      dot.className = 'mkp-badge-dot';
+      el.appendChild(dot);
+    }
+
+    // 3. 延迟一帧触发动画，确保 Q 弹效果能播出来
+    requestAnimationFrame(() => {
+      dot.classList.add('show');
+      if (isPulse) {
+        dot.classList.add('pulse');
+      } else {
+        dot.classList.remove('pulse');
+      }
+    });
+  },
+
+  /**
+   * 隐藏并销毁小红点
+   * @param {string} elementId - 目标元素的 ID
+   */
+  hide: function(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    
+    const dot = el.querySelector('.mkp-badge-dot');
+    if (dot) {
+      dot.classList.remove('show'); // 先缩小消失
+      // 等动画播完 (300ms)，直接把标签从 HTML 里拔掉，保持代码干净
+      setTimeout(() => {
+        if (dot.parentNode) dot.parentNode.removeChild(dot);
+      }, 300);
+    }
+  }
+};
+
+
+// ============================================================
+// 🚀 全局固定表头：滚动阴影特效监听器
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // 找到所有开启了固定表头的页面内容区
+  const fixedPages = document.querySelectorAll('.page[data-fixed-header="true"]');
+  
+  fixedPages.forEach(page => {
+    const header = page.querySelector('.page-header');
+    const content = page.querySelector('.page-content');
+    
+    if (header && content) {
+      content.addEventListener('scroll', () => {
+        // 如果向下滚动超过 10px，就给头部加上阴影类名
+        if (content.scrollTop > 10) {
+          header.classList.add('is-scrolled');
+        } else {
+          header.classList.remove('is-scrolled');
+        }
+      });
+    }
+  });
+});
+
+// ============================================================
+// 🚀 设置页面锚点导航与滚动监听 (真·精准无Bug版)
+// ============================================================
+
+// 1. 点击平滑跳转逻辑
+window.scrollToSetting = function(sectionId) {
+  const container = document.getElementById('settingsPageContent'); // 获取真正的滚动容器
+  const target = document.getElementById(sectionId); // 获取目标模块
+  
+  if (!container || !target) return;
+
+  // 核心魔法：通过 getBoundingClientRect 获取视口相对位置
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  
+  // 精准计算：当前已滚动的距离 + 目标相对于容器顶部的偏差 - 20px的安全留白
+  const targetScrollTop = container.scrollTop + (targetRect.top - containerRect.top) - 20;
+
+  container.scrollTo({
+    top: targetScrollTop,
+    behavior: 'smooth' // 丝滑滚动
+  });
+};
+
+// 2. 滚动时自动高亮顶部导航逻辑
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('settingsPageContent');
+  if (!container) return;
+
+  container.addEventListener('scroll', () => {
+    const sections = document.querySelectorAll('.settings-section');
+    const navItems = document.querySelectorAll('.settings-nav-item');
+    
+    // 获取容器当前的视口位置
+    const containerRect = container.getBoundingClientRect();
+    let currentActiveIndex = 0;
+
+    sections.forEach((section, index) => {
+      const rect = section.getBoundingClientRect();
+      // 判断逻辑：如果这个模块的顶部，滑动到了距离容器顶部往下 120px 的范围内
+      // 说明用户的视线已经进入了这个模块
+      if (rect.top <= containerRect.top + 120) {
+        currentActiveIndex = index;
+      }
+    });
+
+    // 动态切换导航栏的 CSS 样式
+    navItems.forEach((item, index) => {
+      if (index === currentActiveIndex) {
+        item.classList.add('active', 'theme-text');
+        item.classList.remove('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-200');
+      } else {
+        item.classList.remove('active', 'theme-text');
+        item.classList.add('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-200');
+      }
+    });
+  });
+});
 
 async function init() {
   Logger.info("=== 软件启动，开始初始化 ===");

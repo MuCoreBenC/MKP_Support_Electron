@@ -184,7 +184,9 @@ body {
 ::view-transition-new(root) { z-index: 2; }
 
 
-
+/* ============================================================
+   6. 暗黑模式基础组件强制接管 (集中管理)
+   ============================================================ */
 html.dark body { background-color: var(--bg-page); color: var(--text-primary); }
 html.dark .bg-white { background-color: var(--bg-card) !important; }
 html.dark .bg-gray-50 { background-color: var(--bg-page) !important; }
@@ -194,7 +196,15 @@ html.dark .text-gray-900, html.dark .text-gray-800 { color: var(--text-primary) 
 html.dark .text-gray-700, html.dark .text-gray-600, html.dark .text-gray-500, html.dark .text-gray-400 { color: var(--text-secondary) !important; }
 html.dark .card-shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; }
 
-html.dark .hover\:bg-gray-50:hover, html.dark .hover\:bg-gray-100:hover, html.dark .nav-item:hover, html.dark .brand-card:hover, html.dark .version-card:hover, html.dark .model-list-item:hover, html.dark .context-menu-item:hover { background-color: #2A2D2E !important; }
+html.dark .hover\:bg-gray-50:hover, 
+html.dark .hover\:bg-gray-100:hover, 
+html.dark .nav-item:hover, 
+html.dark .brand-card:hover, 
+html.dark .version-card:hover, 
+html.dark .model-list-item:hover, 
+html.dark .context-menu-item:hover { 
+  background-color: #2A2D2E !important; 
+}
 
 html.dark .select-card { border-color: #333333 !important; background-color: #252526 !important; }
 html.dark .select-card:not(.selected):hover { border-color: #4A4A4A !important; background-color: #2A2D2E !important; }
@@ -209,6 +219,7 @@ html.dark .btn-secondary { background-color: #333333 !important; border-color: #
 html.dark .btn-secondary:hover { background-color: #3A3A3A !important; border-color: #555555 !important; }
 html.dark .btn-primary:disabled { background-color: #333333 !important; color: #666666 !important; }
 
+/* 引导页组件暗黑适配 */
 html.dark #onboarding .border-gray-100 { border-color: #333333 !important; }
 html.dark #onboarding .bg-white { background-color: #252526 !important; }
 html.dark #onboarding h1, html.dark #onboarding span.text-gray-700 { color: #D4D4D4 !important; }
@@ -218,9 +229,6 @@ html.dark .model-list-item { color: #D4D4D4; }
 html.dark .step-number { background-color: #333333 !important; color: #858585 !important; }
 html.dark .step-text { color: #858585 !important; }
 html.dark .mode-btn-light, html.dark .mode-btn-dark, html.dark .mode-btn-system { border-color: #333333 !important; }
-html.dark input[type="checkbox"]:not(:checked) + div { background-color: #3E3E42 !important; }
-html.dark input[type="checkbox"] + div::after { background-color: #A3A3A3 !important; border-color: transparent !important; }
-html.dark input[type="checkbox"]:checked + div::after { background-color: #E5E7EB !important; }
 
 
 /* ============================================================
@@ -301,7 +309,7 @@ html.dark[data-theme-mode="system"] .mode-btn-system {
   background-color: rgba(var(--primary-rgb), 0.15) !important;
 }
 
-/* 3. 强制选中卡片内的文字跟随主题色高亮 (已移除刺眼的 brightness 滤镜) */
+/* 3. 强制选中卡片内的文字跟随主题色高亮 */
 .brand-card.active .font-medium,
 .brand-card.active .text-xs,
 .select-card.selected .text-sm,
@@ -353,14 +361,9 @@ html.dark .step-item.completed .step-text {
   background-color: rgba(var(--primary-rgb), 0.05) !important;
 }
 
-/* 7. 预留：强制接管设置里的 Toggle 开关 */
-input[type="checkbox"]:checked + div {
-  background-color: rgb(var(--primary-rgb)) !important;
-  border-color: rgb(var(--primary-rgb)) !important;
-}
 
 /* ============================================================
-   🔥 Tailwind 风格动态色阶系统 (50 - 950)
+   8. Tailwind 风格动态色阶系统 (50 - 950)
    利用 color-mix 与白色/黑色混合，生成极其平滑的动态色卡
    ============================================================ */
 
@@ -391,23 +394,26 @@ input[type="checkbox"]:checked + div {
 .theme-bg-950 { background-color: color-mix(in srgb, rgb(var(--primary-rgb)) 15%, black) !important; }
 
 /* ============================================================
-   修复：解除 h-full 导致底部 padding 被吞噬的 Bug
+   9. 交互优化与组件细节修复
    ============================================================ */
-/* 强制增加页面底部的安全呼吸区 */
+
+/* 解除 h-full 导致底部 padding 被吞噬的 Bug */
 .page.overflow-y-auto {
   padding-bottom: 48px !important; 
 }
-
-/* 解除内层容器的死板高度，让 Flex 布局自然流淌 */
 .page.overflow-y-auto > .h-full {
   height: auto !important;
   min-height: 100%;
 }
 
-/* ============================================================
-   全局按钮物理按压动效 (点击缩放)
-   ============================================================ */
-/* 只要是这三类按钮，按下时全部缩小到 95%，且松开时带有 Q 弹恢复效果 */
+/* 全局按钮终极接管 (平滑过渡) */
+.theme-btn-solid, 
+.theme-btn-soft, 
+.btn-secondary {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 物理按压反馈 (点击时缩小，带有 Q 弹恢复效果) */
 .theme-btn-solid:active:not(:disabled),
 .theme-btn-soft:active:not(:disabled),
 .btn-secondary:active:not(:disabled) {
@@ -415,25 +421,7 @@ input[type="checkbox"]:checked + div {
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* ============================================================
-   全局按钮终极接管 (物理按压 + 平滑过渡 + 禁用状态)
-   ============================================================ */
-
-/* 1. 强制所有按钮平滑过渡，修复“下一步”卡顿的问题 */
-.theme-btn-solid, 
-.theme-btn-soft, 
-.btn-secondary {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* 2. 物理按压反馈 (点击时缩小) */
-.theme-btn-solid:active:not(:disabled),
-.theme-btn-soft:active:not(:disabled),
-.btn-secondary:active:not(:disabled) {
-  transform: scale(0.95) !important;
-}
-
-/* 3. 统一的禁用状态 (完全代替 HTML/JS 里的写死代码) */
+/* 统一的禁用状态 (完全代替 HTML/JS 里的写死代码) */
 .theme-btn-solid:disabled,
 .theme-btn-soft:disabled,
 .btn-secondary:disabled {
@@ -443,12 +431,10 @@ input[type="checkbox"]:checked + div {
   filter: grayscale(30%) !important; /* 变成高级的灰暗态 */
 }
 
-/* ============================================================
-   调色板引擎：中心缩放与外圈状态保持
-   ============================================================ */
+/* 调色板引擎：中心缩放与外圈状态保持 */
 .color-picker-btn {
-  width: 1.875rem !important;  /* 🚀 从 2.5rem 缩小到了 1.875rem (30px)，如果还嫌大可以改成 1.5rem */
-  height: 1.875rem !important; /* 🚀 高度同步缩小 */
+  width: 1.875rem !important;
+  height: 1.875rem !important;
   border-radius: 9999px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
@@ -456,69 +442,64 @@ input[type="checkbox"]:checked + div {
   border: none !important;
   box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
-/* 绝对的中心放大，去掉导致扭曲的 translateY */
 .color-picker-btn:hover {
   transform: scale(1.15) !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
-/* 激活状态的外圈 (靠 outline 生成，完美兼容暗黑模式) */
 .color-picker-btn.active {
   transform: scale(1.15) !important;
-  outline: 2px solid currentColor; /* 外圈变细一点配合小圆圈 */
+  outline: 2px solid currentColor;
   outline-offset: 3px;
 }
 
 /* 跟随主题的魔法彩虹按钮 */
 .follow-theme-btn {
   background: conic-gradient(from 180deg at 50% 50%, #3B82F6 0deg, #10B981 120deg, #F59E0B 240deg, #A855F7 360deg);
-  color: rgb(var(--primary-rgb)); /* 使得它的 outline 跟随全局主题色变化！ */
+  color: rgb(var(--primary-rgb)); 
 }
 
-/* ============================================================
-   修复：Toggle 开关样式强制净化 (解决滑块被染成蓝色的 Bug)
-   ============================================================ */
-
-/* 1. 开启时的滑道：强制使用主题色 */
+/* 修复：Toggle 开关样式强制净化 (合并了重复声明) */
 input[type="checkbox"]:checked + div {
   background-color: rgb(var(--primary-rgb)) !important;
   border-color: rgb(var(--primary-rgb)) !important;
 }
 
-/* 2. 核心修复：无论怎样，中间的圆点滑块必须是纯白色！ */
+/* 添加容器平滑底色过渡 */
+input[type="checkbox"] + div {
+  transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out !important;
+}
+
 input[type="checkbox"] + div::after {
   background-color: #FFFFFF !important; 
   border: 1px solid rgba(0,0,0,0.05) !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+  /* 核心修复：强制使用 transform 和 ease-in-out，杜绝所有的弹跳干扰 */
+  transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out !important;
 }
 
-/* 3. 暗黑模式开关精细适配 */
 html.dark input[type="checkbox"]:not(:checked) + div { 
   background-color: #3E3E42 !important; 
 }
 html.dark input[type="checkbox"] + div::after { 
-  background-color: #D4D4D4 !important; /* 暗黑未开启时，滑块为灰白色，防刺眼 */
+  background-color: #D4D4D4 !important; 
   border-color: transparent !important;
 }
 html.dark input[type="checkbox"]:checked + div::after { 
-  background-color: #FFFFFF !important; /* 开启时，滑块恢复纯白高亮 */
+  background-color: #FFFFFF !important; 
 }
 
-/* ============================================================
-   1. 收藏星星跟随主题
-   ============================================================ */
+
+/* 收藏星星跟随主题 */
 .star-icon.favorited { 
   color: rgb(var(--primary-rgb)) !important; 
   fill: rgb(var(--primary-rgb)) !important; 
 }
 .star-icon.not-favorited { 
-  color: #9CA3AF !important; /* 未收藏时使用中庸的灰色 */
+  color: #9CA3AF !important; 
   opacity: 0.5;
 }
 
-/* ============================================================
-   2. 暗黑模式：字体亮度调节 (解决“太亮了”的问题)
-   ============================================================ */
-/* 在暗黑模式下，通过 color-mix 将主题色与一点点灰色混合，使其更柔和 */
+/* 暗黑模式：字体亮度调节 (解决“太亮了”的问题) */
 html.dark .theme-text,
 html.dark .brand-card.active span,
 html.dark .select-card.selected span,
@@ -526,8 +507,9 @@ html.dark .version-card.selected .font-semibold,
 html.dark .step-item.active .step-text {
   color: color-mix(in srgb, rgb(var(--primary-rgb)), #9CA3AF 20%) !important;
 }
+
 /* ============================================================
-   版本专属色辅助类 (确保暗黑模式下色彩强制覆盖)
+   10. 版本专属色辅助类 (确保暗黑模式下色彩强制覆盖)
    ============================================================ */
 .theme-standard-bg { background-color: var(--theme-standard-bg) !important; }
 .theme-standard-text { color: var(--theme-standard-text) !important; }
@@ -537,3 +519,183 @@ html.dark .step-item.active .step-text {
 
 .theme-lite-bg { background-color: var(--theme-lite-bg) !important; }
 .theme-lite-text { color: var(--theme-lite-text) !important; }
+
+/* ============================================================
+   11. 全局复用：小红点/消息徽章系统 (尺寸优化 & 动静结合)
+   ============================================================ */
+.mkp-badge-dot {
+  position: absolute;
+  top: -3px;   /* 🚀 往上提了一点，防止遮挡图标内部结构 */
+  right: -4px; /* 保持右上角最佳安全距离 */
+  width: 10px; /* 🚀 变大了一圈，视觉冲击力更强 */
+  height: 10px;
+  background-color: #ef4444; /* 醒目红 */
+  border-radius: 50%;
+  border: 1.5px solid #ffffff; /* 白边防粘连 */
+  pointer-events: none; /* 防止挡住鼠标点击 */
+  z-index: 10;
+  
+  /* 基础静止状态：隐藏时的缩小与透明 */
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Q弹弹出曲线 */
+}
+
+/* 暗黑模式下，边框颜色自动跟随深色背景 */
+html.dark .mkp-badge-dot {
+  border-color: #1e1e1e; 
+}
+
+/* 🚀 基础显示状态 (静止不动的红点) */
+.mkp-badge-dot.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 🚀 附加特效：呼吸灯 (通过 JS 的 isPulse 参数赋予) */
+.mkp-badge-dot.pulse {
+  animation: badge-pulse 2s infinite;
+}
+
+@keyframes badge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* ============================================================
+   修复：单选框 (Radio) 方形焦点边框 Bug
+   ============================================================ */
+.custom-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  border: 1.5px solid #D1D5DB; 
+  border-radius: 50% !important; /* 强制绝对圆角 */
+  outline: none !important; /* 彻底干掉浏览器原生的方形虚线 */
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  background-color: transparent;
+}
+html.dark .custom-radio { border-color: #4B5563; } 
+.custom-radio:checked { border-color: rgb(var(--primary-rgb)) !important; }
+/* 新增专属的单选框缩放动画，保护原有的 translate 居中属性不被覆盖 */
+@keyframes radioScaleIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.custom-radio:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0.625rem; height: 0.625rem;
+  border-radius: 50% !important; /* 内部圆点也必须是绝对圆角 */
+  background-color: rgb(var(--primary-rgb)) !important; 
+  /* 替换原有的 scaleIn 为专用的 radioScaleIn */
+  animation: radioScaleIn 0.2s ease-out forwards;
+}
+/* 修复点击时出现的方形光晕 */
+.custom-radio:focus, .custom-radio:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg-page), 0 0 0 4px rgba(var(--primary-rgb), 0.3) !important;
+  border-radius: 50% !important;
+}
+
+
+/* ============================================================
+   🚀 新增：SaaS 级全局弹窗系统 CSS
+   ============================================================ */
+.mkp-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+.mkp-modal-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+.mkp-modal-card {
+  transform: scale(0.95) translateY(10px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mkp-modal-overlay.show .mkp-modal-card {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+/* ============================================================
+   🚀 新增：全局页面布局引擎补充 (锁死标题栏坐标)
+   ============================================================ */
+.page-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 40px; /* 锁死大标题和按钮所在行的高度 */
+}
+.page-header-sub {
+  height: 20px; /* 锁死副标题行的高度 */
+  margin-top: 4px;
+}
+
+/* 1. 开启固定模式时的外层容器 */
+.page:not(.hidden)[data-fixed-header="true"] {
+  padding: 0 !important;
+  overflow: hidden !important; 
+  display: flex;
+  flex-direction: column;
+}
+
+/* 2. 绝对固定的“钢板”头部 */
+.page:not(.hidden)[data-fixed-header="true"] > .page-header {
+  position: relative;
+  z-index: 40;
+  flex-shrink: 0;
+  /* 🚀 修复核心：顶部 40px，底部 24px，左右 32px。彻底解放空间，不再压线！ */
+  padding: 2.5rem 2rem 1.5rem 2rem; 
+  margin-bottom: 0 !important;  
+  background-color: var(--bg-page); 
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  border-bottom: 1px solid transparent; 
+}
+
+/* 当下方内容滚动时，头部浮现投影和优雅的边线 */
+.page:not(.hidden)[data-fixed-header="true"] > .page-header.is-scrolled {
+  border-bottom-color: var(--border);
+  box-shadow: 0 4px 20px -10px rgba(0, 0, 0, 0.05);
+}
+
+/* 3. 真正负责滚动的内部内容区 */
+.page:not(.hidden)[data-fixed-header="true"] > .page-content {
+  flex: 1;
+  overflow-y: auto;
+  /* 🚀 修复核心：内容区顶部留出 24px (1.5rem) 呼吸空间，与标题栏完美衔接 */
+  padding: 1.5rem 2rem 3rem 2rem; 
+  scroll-behavior: smooth;
+}
+
+/* --- 开启普通模式 (false) 时的后备布局 --- */
+.page:not(.hidden)[data-fixed-header="false"] {
+  padding: 2.5rem 2rem !important; 
+  overflow-y: auto !important; 
+  display: block; 
+}
+.page:not(.hidden)[data-fixed-header="false"] > .page-header {
+  margin-bottom: 1.5rem !important; 
+  background-color: transparent;
+  padding: 0;
+}
+.page:not(.hidden)[data-fixed-header="false"] > .page-content {
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* 终极保险：只要有 hidden 类名，天王老子来了也必须隐藏 */
+.page.hidden {
+  display: none !important;
+}

@@ -36,12 +36,57 @@ const printersByBrand = {
 
 // 版本历史数据
 const versions = [
-  { version: 'v2.4.0-stable', date: '2024-05-20', desc: '优化了 Z 轴校准算法，提升精度', status: 'RUNNING', current: true, details: ['新增自动 Z 偏移检测功能', '优化校准算法，精度提升 15%', '修复多机型切换时的数据丢失问题', '更新用户界面交互体验'] },
-  { version: 'v2.3.9-beta', date: '2024-05-15', desc: '新增 XY 轴联合校准功能', status: 'Beta', current: false, details: ['新增 XY 轴联合校准模式', '优化预设下载速度', '修复部分机型识别问题'] },
-  { version: 'v2.3.8-stable', date: '2024-05-10', desc: '修复已知问题，提升稳定性', status: 'Legacy', current: false, details: ['修复启动时的闪退问题', '优化内存占用', '更新多语言支持'] },
-  { version: 'v2.3.5-stable', date: '2024-04-28', desc: '重构参数管理模块', status: 'Legacy', current: false, details: ['重构参数管理架构', '新增参数导入导出功能', '优化参数搜索功能'] },
-  { version: 'v2.3.0-stable', date: '2024-04-15', desc: '新增快拆版预设支持', status: 'Legacy', current: false, details: ['新增快拆版预设模板', '支持自定义预设管理', '优化预设加载速度'] },
-  { version: 'v2.2.0-stable', date: '2024-03-20', desc: '优化界面交互体验', status: 'Legacy', current: false, details: ['全新界面设计', '优化操作流程', '新增暗色主题支持'] },
+  { 
+    version: 'v0.1.9-stable', 
+    date: '2026-03-07', 
+    desc: '里程碑更新：SaaS 弹窗系统与全布局引擎上线', 
+    status: 'RUNNING', 
+    current: true, 
+    details: [
+      '新增 MKPModal 全局异步弹窗引擎（info/warning/error）',
+      '新增 data-fixed-header 布局系统，锁死标题栏坐标防止跳动',
+      '修复单选按钮方形 Bug，重塑 SaaS 风格圆圈样式',
+      '优化 Toggle 开关动画，改为线性缓慢移动切换',
+      '对齐全局按钮文字与图标，修正布局偏差'
+    ] 
+  },
+  { 
+    version: 'v0.1.5', 
+    date: '2026-03-04', 
+    desc: '交互增强：小红点系统与自动更新配置', 
+    status: 'Legacy', 
+    current: false, 
+    details: [
+      '封装 RedDotManager，支持侧边栏图标一键挂载红点',
+      '接入 GitHub Releases 自动更新流，支持静默下载',
+      '重构设置页面为网易云风格锚点导航',
+      '实现校准模型自动提取与系统关联调用逻辑'
+    ] 
+  },
+  { 
+    version: 'v0.1.2', 
+    date: '2026-03-01', 
+    desc: '视觉升级：动态色阶与版本色彩管理', 
+    status: 'Legacy', 
+    current: false, 
+    details: [
+      '引入 color-mix 色阶引擎，支持全局主色调自由定义',
+      '新增版本专属标识色，支持跟随全局或独立设置',
+      '优化暗黑模式下的文字亮度与卡片对比度'
+    ] 
+  },
+  { 
+    version: 'v0.0.1', 
+    date: '2026-02-27', 
+    desc: '项目立项：支撑面改善工具雏形确立', 
+    status: 'Legacy', 
+    current: false, 
+    details: [
+      '建立 Electron 核心主进程与 IPC 通信架构',
+      '实现数据驱动的机型与品牌展示逻辑',
+      '支持后处理脚本路径自动拼接与复制'
+    ] 
+  },
 ];
 
 // FAQ 数据数组
