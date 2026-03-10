@@ -1,0 +1,50 @@
+# release_time: 2025-03-01 12:20:00
+#胶笔配置
+[toolhead]
+speed_limit = 69.0  #涂胶速度限制 (mm/s)
+offset = { x = -1.0, y = 18.6, z = 3.8}# 笔尖偏移
+# 自定义工具头获取 G-code
+custom_mount_gcode = """
+;CustomLock
+;A1
+G92 E0
+G1 E-10 F1800
+G92 E0
+L801
+M204 S10000
+G1 X256 F42000
+G1 X261 F10000
+G1 X266 F10000
+G1 X256 F42000
+G1 F42000
+"""
+# 自定义工具头收起 G-code
+custom_unmount_gcode = """
+;CustomRetract
+M106 S[AUTO]
+G1 X256 F42000
+G1 X261 F10000
+G1 X271 F10000
+G1 X256 F5000
+G1 F42000
+L802
+G92 E0
+G1 E10.5 F1000
+G1 E30 F1500;Wipe
+G92 E0
+G1 F30000
+G1 X0;Wipe
+G1 X-13.5;Wipe
+G1 X0;Wipe
+"""
+#擦嘴配置
+[wiping]
+have_wiping_components = false#使用擦嘴塔而非擦嘴组件Enable wiping components
+wiper_x = 20.0
+wiper_y = 20.0
+wipetower_speed = 200.0 # 擦嘴塔打印速度Wipe tower print speed
+nozzle_cooling_flag = false # 涂胶期间是否降温 Nozzle cooling during gluing
+iron_apply_flag = false # 最小化涂胶区域 Ironing apply flag
+user_dry_time = 0 # 额外干燥时间 User dry time (seconds)
+force_thick_bridge_flag = true # 强制厚桥开关 Force thick bridge flag
+support_extrusion_multiplier = 0.8 # 支撑体挤出倍率 Support extrusion multiplier

@@ -1,0 +1,24 @@
+{
+  "_comment": "release_time: 2025-03-01 12:20:00",
+  "toolhead": {
+    "speed_limit": 69.0,
+    "offset": {
+      "x": -1.0,
+      "y": 18.6,
+      "z": 3.8
+    },
+    "custom_mount_gcode": ";CustomLock\n;A1\nG92 E0\nG1 E-10 F1800\nG92 E0\nL801\nM204 S10000\nG1 X256 F42000\nG1 X261 F10000\nG1 X266 F10000\nG1 X256 F42000\nG1 F42000",
+    "custom_unmount_gcode": ";CustomRetract\nM106 S[AUTO]\nG1 X256 F42000\nG1 X261 F10000\nG1 X271 F10000\nG1 X256 F5000\nG1 F42000\nL802\nG92 E0\nG1 E10.5 F1000\nG1 E30 F1500;Wipe\nG92 E0\nG1 F30000\nG1 X0;Wipe\nG1 X-13.5;Wipe\nG1 X0;Wipe"
+  },
+  "wiping": {
+    "have_wiping_components": false,
+    "wiper_x": 20.0,
+    "wiper_y": 20.0,
+    "wipetower_speed": 200.0,
+    "nozzle_cooling_flag": false,
+    "iron_apply_flag": false,
+    "user_dry_time": 0,
+    "force_thick_bridge_flag": true,
+    "support_extrusion_multiplier": 0.8
+  }
+}

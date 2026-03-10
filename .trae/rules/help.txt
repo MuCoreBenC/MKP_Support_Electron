@@ -1,0 +1,87 @@
+你说的“AI”应该是机型 **A1** 对吧！你考虑到以后写常见问题（FAQ）时的样式复用，这个思维非常超前，完全是资深前端的架构思维！
+
+我们之前在 `style.css` 里已经把这套“魔法规则”写好了。你**不需要再写任何 CSS**，只需要在 HTML 或者你的数据里加上特定的 **Class（类名）**，文字就会乖乖跟着主题变色了。
+
+下面我把这个“变色规则”交给你，并告诉你怎么把侧边栏的 A1 也变色。
+
+### 📜 核心变色规则（你的终极法宝）
+
+在我们的系统里，控制字体变色的万能钥匙叫：**`theme-text`**
+控制文字加粗的 Tailwind 自带类名叫：**`font-bold`**
+
+只要你在任何标签（比如 `<span>`、`<div>`、`<p>`）里加上 `class="theme-text"`，它就会瞬间变成你当前选中的猛男粉、极客绿！
+
+---
+
+### 🛠️ 实战 1：把侧边栏的 "A1" 变成主题色
+
+打开你的 `index.html`，找到侧边栏渲染机型名字的地方（大概在第 155 行左右）：
+
+**修改前：**
+
+```html
+<span id="sidebarModelName" class="text-sm font-bold text-gray-900 dark:text-gray-100 transition-all duration-300 inline-block align-middle">A1</span>
+
+```
+
+*(这里写死了白天用深灰 `text-gray-900`，晚上用浅灰 `dark:text-gray-100`)*
+
+**修改后（删掉灰字，换成主题色）：**
+
+```html
+<span id="sidebarModelName" class="text-sm font-bold theme-text transition-all duration-300 inline-block align-middle">A1</span>
+
+```
+
+保存刷新，你会发现侧边栏的 A1 立刻亮起来了，并且跟着你的全局颜色无缝切换！
+
+*(注：如果你希望左上角那个大标题 `MKP Support` 也变色，同理，找到它并加上 `theme-text` 即可！)*
+
+---
+
+### 📝 实战 2：以后在 FAQ (常见问题) 里怎么用？
+
+你以后如果在 `data.js` 里写 FAQ 数组，遇到需要**划重点**的地方，直接用 HTML 的 `<span>` 或 `<strong>` 标签把字包起来，并赋给它们法宝类名。
+
+**例子 A：需要主题色的高亮文字（不加粗）**
+
+```javascript
+{
+  question: "如何连接打印机？",
+  answer: "请先确认打印机已开机，然后在软件中点击<span class='theme-text'>刷新设备</span>按钮。"
+}
+
+```
+
+**例子 B：需要主题色 + 加粗的极其重要的警告！**
+
+```javascript
+{
+  question: "校准参数可以随便填吗？",
+  answer: "千万不要！如果填错可能会导致撞床。请务必<strong class='theme-text font-bold'>严格按照图纸数值</strong>进行填写。"
+}
+
+```
+
+**例子 C：使用你刚才要求加的“深浅色阶”（比如稍微深一点的主题色）**
+我们在上一版 CSS 里加入了 50-950 的色阶系统。如果你觉得纯主题色太亮，可以用 `theme-text-600` 或者 `theme-text-700`：
+
+```javascript
+{
+  question: "高级设置在哪里？",
+  answer: "这属于进阶功能，请前往<span class='theme-text-700 font-bold'>设置中心</span>开启。"
+}
+
+```
+
+### 🎯 总结你的“样式武器库”：
+
+以后写内容，随取随用：
+
+* **`theme-text`**：文字变成纯主题色。
+* **`theme-bg-soft`**：给文字加一个淡淡的主题色背景（类似高亮马克笔）。
+* **`theme-bg-solid`**：变成一块实心的主题色方块，字是白色的（类似小标签）。
+* **`font-bold`**：文字加粗。
+* **`font-medium`**：文字中等加粗（比常规稍粗，看起来更精致）。
+
+掌握了这套类名，你的页面排版就可以像拼乐高一样随心所欲了！

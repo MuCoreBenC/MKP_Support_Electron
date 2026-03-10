@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-03-05",
+  "presets": [
+    {
+      "id": "A1",
+      "name": "Bambu Lab A1",
+      "file": "A1.toml",
+      "version": "1.2.0",
+      "description": "Bambu Lab A1 打印机的标准预设配置",
+      "compatibility": ["A1"],
+      "author": "MKP Support Team",
+      "lastModified": "2026-03-01"
+    },
+    {
+      "id": "A1M",
+      "name": "Bambu Lab A1 mini",
+      "file": "A1M.toml",
+      "version": "1.1.5",
+      "description": "Bambu Lab A1 mini 打印机的标准预设配置",
+      "compatibility": ["A1 mini"],
+      "author": "MKP Support Team",
+      "lastModified": "2026-02-28"
+    },
+    {
+      "id": "X1",
+      "name": "Bambu Lab X1",
+      "file": "X1.toml",
+      "version": "1.3.0",
+      "description": "Bambu Lab X1 打印机的标准预设配置",
+      "compatibility": ["X1", "X1 Carbon"],
+      "author": "MKP Support Team",
+      "lastModified": "2026-03-02"
+    },
+    {
+      "id": "S1C",
+      "name": "Anycubic S1C",
+      "file": "S1C.toml",
+      "version": "1.0.0",
+      "description": "Anycubic S1C 打印机的标准预设配置",
+      "compatibility": ["Anycubic S1C"],
+      "author": "MKP Support Team",
+      "lastModified": "2026-02-25"
+    }
+  ]
+}
