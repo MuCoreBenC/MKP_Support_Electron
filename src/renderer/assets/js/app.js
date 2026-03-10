@@ -147,7 +147,49 @@ let currentXOffset = 0;
 let currentYOffset = 0;
 
 
+// ==========================================
+// 🚀 企业级网络请求引擎 (GitHub + Gitee 双线容灾)
+// 作用：无论获取 manifest 还是具体的预设 json，都用它！
+// ==========================================
+async function fetchCloudDataWithFallback(fileName) {
+  // 定义双线路节点
+  const urls = [
+    // 线路 1: GitHub 的 jsDelivr 全球加速节点 (国内极速)
+    `https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main/cloud_data/presets/${fileName}`,
+    // 线路 2: Gitee 的直连节点 (备胎容灾)
+    `https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets/${fileName}`
+  ];
 
+  let lastError;
+
+  // 循环尝试线路
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      // 加上时间戳防止浏览器缓存死数据
+      const url = `${urls[i]}?t=${Date.now()}`; 
+      console.log(`[网络请求] 正在尝试线路 ${i + 1}: ${urls[i]}`);
+      
+      // 设置 5 秒超时，不行就赶紧换下一条线，不让用户干等
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error(`HTTP 状态码: ${response.status}`);
+      
+      console.log(`[网络请求] 线路 ${i + 1} 请求成功！`);
+      return await response.json(); // 解析并返回 JSON 数据
+
+    } catch (error) {
+      console.warn(`[网络请求] 线路 ${i + 1} 失败: ${error.message}，准备切换备用线路...`);
+      lastError = error;
+    }
+  }
+
+  // 如果所有线路都失败了
+  throw new Error("云端节点均无法连接，请检查您的网络环境。");
+}
 // ==========================================
 // 2. 底层工具与配置服务
 // ==========================================
@@ -235,16 +277,18 @@ function getPrinterObj(printerId) {
 }
 
 // ==========================================
-// 3. 更新引擎与网络拉取
+// 3. 更新引擎与网络拉取 (真·云端双线容灾版)
 // ==========================================
 const UPDATE_CONFIG = {
   app: {
-    manifestUrl: 'http://localhost:3000/app_manifest.json', 
-    getLocalVersion: () => '0.1.1', 
+    // 💡 替换为 Gitee 实时直链，软件版本修正为 0.2.1
+    manifestUrl: 'https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/app_manifest.json', 
+    getLocalVersion: () => '0.2.1', 
     cooldownMinutes: 5 
   },
   preset: {
-    manifestUrl: 'http://localhost:3000/presets_manifest.json',
+    // 💡 替换为 Gitee 实时直链
+    manifestUrl: 'https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets_manifest.json',
     getLocalVersion: (presetId) => {
       const localPresets = JSON.parse(localStorage.getItem('mkp_local_presets') || '{}');
       return localPresets[presetId] || '0.0.0'; 
@@ -252,6 +296,164 @@ const UPDATE_CONFIG = {
     cooldownMinutes: 5 
   }
 };
+
+// ==========================================
+// 6. 下载、应用与删除控制器
+// ==========================================
+async function handleDownloadOnline(releaseId, fileName, btnElement) {
+  Logger.info(`[O402] DL preset, file:${fileName}`); // 记录触发下载动作
+  const originalHtml = btnElement.innerHTML;
+  const originalClasses = btnElement.className;
+
+  btnElement.disabled = true;
+  btnElement.innerHTML = `
+    <svg class="w-4 h-4 animate-spin theme-text mr-1 inline" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>下载中
+  `;
+
+  try {
+    // 💡 替换点：使用双节点轮询下载文件
+    const downloadUrls = [
+      `https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets/${fileName}`,
+      `https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main/cloud_data/presets/${fileName}`
+    ];
+    
+    let result = { success: false, error: "所有下载节点均失败" };
+    
+    for (const url of downloadUrls) {
+      try {
+        const [res] = await Promise.all([
+          window.mkpAPI.downloadFile(url, fileName),
+          new Promise(resolve => setTimeout(resolve, 800))
+        ]);
+        result = res;
+        if (result.success) break; // 如果成功，立刻跳出尝试
+      } catch (e) {
+        result.error = e.message; // 记录报错，继续尝试下一条线路
+      }
+    }
+
+    if (result.success) {
+      btnElement.className = 'dl-btn px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800';
+      btnElement.innerHTML = `<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>已覆盖本地`;
+
+      const printerData = getPrinterObj(selectedPrinter);
+      await renderPresetList(printerData, selectedVersion);
+
+      setTimeout(() => {
+        const newCard = document.querySelector(`#localPresetsList [data-release-id="${releaseId}"]`);
+        if (newCard) {
+          const isDark = document.documentElement.classList.contains('dark');
+          
+          newCard.style.transition = 'none';
+          newCard.style.zIndex = '10'; 
+          newCard.style.transform = 'scale(1.01)'; 
+          newCard.style.boxShadow = isDark ? '0 8px 20px rgba(0,0,0,0.5)' : '0 8px 20px rgba(0,0,0,0.08)'; 
+          newCard.style.backgroundColor = 'rgba(var(--primary-rgb), 0.1)'; 
+
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              newCard.style.transition = 'all 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
+              newCard.style.backgroundColor = '';
+              newCard.style.boxShadow = '';
+              newCard.style.transform = 'scale(1)';
+              
+              setTimeout(() => {
+                newCard.style.zIndex = '';
+              }, 1200);
+            }, 50);
+          });
+        }
+      }, 50);
+
+      setTimeout(() => {
+        btnElement.disabled = false;
+        btnElement.className = originalClasses;
+        btnElement.innerHTML = originalHtml;
+      }, 2500);
+
+    } else {
+      Logger.error(`[E405] DL save err: ${result.error}`); 
+      alert("下载失败: " + result.error);
+      btnElement.disabled = false;
+      btnElement.innerHTML = originalHtml;
+    }
+  } catch (error) {
+    Logger.error(`[E403] DL timeout: ${error.message}`); 
+    alert("下载过程中发生异常，请检查网络。");
+    btnElement.disabled = false;
+    btnElement.innerHTML = originalHtml;
+  }
+}
+
+async function fetchCloudPresets(printerId, versionType) {
+  try {
+    Logger.info(`[O401] Fetch manifest, p:${printerId}, v:${versionType}`); 
+    
+    // 💡 替换点：使用双节点轮询获取清单
+    const manifestUrls = [
+      `https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets_manifest.json?t=${Date.now()}`,
+      `https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main/cloud_data/presets_manifest.json?t=${Date.now()}`
+    ];
+
+    let response;
+    for (const url of manifestUrls) {
+      try {
+        response = await fetch(url);
+        if (response.ok) break; // 只要有一条线路通了，就跳出
+      } catch (e) {
+        // 静默失败，尝试下一条
+      }
+    }
+    
+    if (!response || !response.ok) {
+      throw new Error(response ? `HTTP_${response.status}` : 'NetworkError');
+    }
+    
+    const cloudData = await response.json();
+    const allPresets = cloudData.presets || [];
+    
+    const matchedPresets = allPresets.filter(p => p.id === printerId && (p.type ? p.type === versionType : true));
+    matchedPresets.sort((a, b) => compareVersionsFront(b.version, a.version));
+
+    const currentAppVer = UPDATE_CONFIG.app.getLocalVersion();
+    const today = new Date().toISOString().split('T')[0];
+
+    const mappedData = matchedPresets.map((p, index) => {
+      let finalChanges = ['常规优化与参数更新'];
+      if (Array.isArray(p.releaseNotes)) finalChanges = p.releaseNotes;
+      else if (typeof p.releaseNotes === 'string') finalChanges = [p.releaseNotes]; 
+      else if (p.description) finalChanges = [p.description];
+
+      return {
+        id: `v${p.version || currentAppVer}`,
+        version: p.version || currentAppVer,
+        date: p.lastModified || today,
+        isLatest: index === 0,
+        fileName: p.file,
+        changes: finalChanges 
+      };
+    });
+
+    return { success: true, data: mappedData };
+
+  } catch (error) {
+    Logger.error(`[E401] Manifest fetch err: ${error.message}`); 
+    
+    let errorMsg = "请求超时或发生未知错误";
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      errorMsg = "无法连接到云端服务器，请检查本地网络或云端节点状态。";
+    } else if (error.message.includes('HTTP_404')) {
+      errorMsg = "云端配置文件不存在 (404)，请联系开发者。";
+    } else if (error.message.includes('JSON')) {
+      errorMsg = "云端数据格式错误，无法解析。";
+    }
+
+    return { success: false, error: errorMsg }; 
+  }
+}
 
 async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
   const config = UPDATE_CONFIG[type];
@@ -321,61 +523,7 @@ async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
   return { success: true, hasUpdate, localVersion, cloudVersion, data: targetData, usedCache };
 }
 
-async function fetchCloudPresets(printerId, versionType) {
-  try {
-    Logger.info(`[O401] Fetch manifest, p:${printerId}, v:${versionType}`); 
-    // 🚨 注意这里的端口也改成了 3000
-    const manifestUrl = `http://localhost:3000/presets_manifest.json?t=${Date.now()}`;
-    const response = await fetch(manifestUrl);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP_${response.status}`);
-    }
-    
-    const cloudData = await response.json();
-    const allPresets = cloudData.presets || [];
-    
-    const matchedPresets = allPresets.filter(p => p.id === printerId && (p.type ? p.type === versionType : true));
-    matchedPresets.sort((a, b) => compareVersionsFront(b.version, a.version));
 
-    const currentAppVer = UPDATE_CONFIG.app.getLocalVersion();
-    const today = new Date().toISOString().split('T')[0];
-
-    const mappedData = matchedPresets.map((p, index) => {
-      let finalChanges = ['常规优化与参数更新'];
-      if (Array.isArray(p.releaseNotes)) finalChanges = p.releaseNotes;
-      else if (typeof p.releaseNotes === 'string') finalChanges = [p.releaseNotes]; 
-      else if (p.description) finalChanges = [p.description];
-
-      return {
-        id: `v${p.version || currentAppVer}`,
-        version: p.version || currentAppVer,
-        date: p.lastModified || today,
-        isLatest: index === 0,
-        fileName: p.file,
-        changes: finalChanges 
-      };
-    });
-
-    // 🌟 修复点：成功时返回标准对象格式！
-    return { success: true, data: mappedData };
-
-  } catch (error) {
-    Logger.error(`[E401] Manifest fetch err: ${error.message}`); 
-    
-    // 🌟 修复点：失败时返回具体的错误原因，不再是空数组 []！
-    let errorMsg = "请求超时或发生未知错误";
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      errorMsg = "无法连接到云端服务器，请检查本地网络或本地服务器(如端口是否正确)。";
-    } else if (error.message.includes('HTTP_404')) {
-      errorMsg = "云端配置文件不存在 (404)，请联系开发者。";
-    } else if (error.message.includes('JSON')) {
-      errorMsg = "云端数据格式错误，无法解析。";
-    }
-
-    return { success: false, error: errorMsg }; 
-  }
-}
 
 async function checkOnlineUpdates() {
   Logger.info(`[O211] Click check preset update`);
@@ -1205,83 +1353,7 @@ function toggleExpandMore() {
   renderVersions();
 }
 
-// ==========================================
-// 6. 下载、应用与删除控制器
-// ==========================================
-async function handleDownloadOnline(releaseId, fileName, btnElement) {
-  Logger.info(`[O402] DL preset, file:${fileName}`); // 记录触发下载动作
-  const originalHtml = btnElement.innerHTML;
-  const originalClasses = btnElement.className;
 
-  btnElement.disabled = true;
-  btnElement.innerHTML = `
-    <svg class="w-4 h-4 animate-spin theme-text mr-1 inline" fill="none" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>下载中
-  `;
-
-  try {
-    const fileUrl = `http://localhost:3000/${fileName}`; 
-    const [result] = await Promise.all([
-      window.mkpAPI.downloadFile(fileUrl, fileName),
-      new Promise(resolve => setTimeout(resolve, 800))
-    ]);
-
-    if (result.success) {
-      btnElement.className = 'dl-btn px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800';
-      btnElement.innerHTML = `<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>已覆盖本地`;
-
-      const printerData = getPrinterObj(selectedPrinter);
-      await renderPresetList(printerData, selectedVersion);
-
-      setTimeout(() => {
-        const newCard = document.querySelector(`#localPresetsList [data-release-id="${releaseId}"]`);
-        if (newCard) {
-          const isDark = document.documentElement.classList.contains('dark');
-          
-          newCard.style.transition = 'none';
-          newCard.style.zIndex = '10'; 
-          newCard.style.transform = 'scale(1.01)'; 
-          newCard.style.boxShadow = isDark ? '0 8px 20px rgba(0,0,0,0.5)' : '0 8px 20px rgba(0,0,0,0.08)'; 
-
-          // 给卡片背景加一点当前的动态颜色
-          newCard.style.backgroundColor = 'rgba(var(--primary-rgb), 0.1)'; 
-
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              newCard.style.transition = 'all 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
-              newCard.style.backgroundColor = '';
-              newCard.style.boxShadow = '';
-              newCard.style.transform = 'scale(1)';
-              
-              setTimeout(() => {
-                newCard.style.zIndex = '';
-              }, 1200);
-            }, 50);
-          });
-        }
-      }, 50);
-
-      setTimeout(() => {
-        btnElement.disabled = false;
-        btnElement.className = originalClasses;
-        btnElement.innerHTML = originalHtml;
-      }, 2500);
-
-    } else {
-      Logger.error(`[E405] DL save err: ${result.error}`); // 记录下载保存错误
-      alert("下载失败: " + result.error);
-      btnElement.disabled = false;
-      btnElement.innerHTML = originalHtml;
-    }
-  } catch (error) {
-    Logger.error(`[E403] DL timeout: ${error.message}`); // 记录下载网络波动
-    alert("下载过程中发生异常，请检查网络。");
-    btnElement.disabled = false;
-    btnElement.innerHTML = originalHtml;
-  }
-}
 
 // ============================================================
 // 极其纯粹的 本地应用 (支持重复点击刷新动画，已修复丢类名Bug)
