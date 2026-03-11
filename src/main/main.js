@@ -5,7 +5,7 @@ const fs = require('fs');
 const { processGcode } = require('./mkp_engine');
 const { exec } = require('child_process');
 const isCliMode = process.argv.includes('--Gcode');
-
+const AdmZip = require('adm-zip'); // 👈 新增引入
 
 // ==========================================
 // 日志系统 (按天轮转 + 自动清理)
@@ -42,7 +42,7 @@ ipcMain.on('write-log', (event, message) => {
 
     fs.appendFileSync(logFile, logLine, 'utf8');
   } catch (error) {
-    console.error("写入日志文件失败:", error);
+    console.error("[E307] Log write err: " + error.message);
   }
 });
 
@@ -142,7 +142,7 @@ ipcMain.handle('init-default-presets', async () => {
         // 💡 核心优化：因为新版文件名自带版本号(如 v3.0.0-r1)，只要文件不存在直接复制即可
         if (!fs.existsSync(targetFile)) {
           fs.copyFileSync(sourceFile, targetFile);
-          console.log(`[系统初始化] ✅ 成功释放新预设: ${file}`);
+          console.log(`[O103] Default preset release, file:${file}`);
           copiedCount++;
         } else {
           // 如果同名文件已存在，说明用户已经有了这个版本的预设，无需覆盖
@@ -155,7 +155,7 @@ ipcMain.handle('init-default-presets', async () => {
     return { success: true, copiedCount };
 
   } catch (error) {
-    console.error("[系统初始化] ❌ 释放预设时发生严重错误:", error);
+    console.error("[E102] Preset release fail: ", error);
     return { success: false, error: error.message };
   }
 });
@@ -168,10 +168,14 @@ if (isCliMode) {
 
   app.whenReady().then(() => {
     try {
+      console.log("[O503] CLI process");
       const gcodePath = process.argv[process.argv.indexOf('--Gcode') + 1];
       const jsonPath = process.argv[process.argv.indexOf('--Json') + 1];
       
-      if (!gcodePath || !jsonPath) throw new Error('参数缺失');
+      if (!gcodePath || !jsonPath) {
+        console.error("[E503] CLI args miss");
+        throw new Error('参数缺失');
+      }
 
       const startTime = Date.now();
       const processedGcode = processGcode(gcodePath, jsonPath);
@@ -183,7 +187,7 @@ if (isCliMode) {
 
       if (Notification.isSupported()) {
         new Notification({
-          title: 'MKP Support',
+          title: 'MKP SupportE',
           body: `✅ 涂胶路径已注入！(耗时: ${costTime}s)\n文件: ${path.basename(outputPath)}`,
           silent: true
         }).show();
@@ -191,6 +195,7 @@ if (isCliMode) {
       
       setTimeout(() => app.quit(), 3000);
     } catch (error) {
+      console.error("[E604] CLI exec err: " + error.message);
       if (Notification.isSupported()) {
         new Notification({ title: 'MKP 处理失败', body: `❌ ${error.message}` }).show();
       }
@@ -224,6 +229,7 @@ if (isCliMode) {
       useContentSize: false, // 彻底关掉内容计算，解决 580px 挤压 bug
       autoHideMenuBar: true, // 隐藏菜单栏
       backgroundColor: '#1A1D1F',
+      show: false, // 👈 2. 核心：刚创建时先隐藏，不要让用户看到黑屏
       icon: path.join(__dirname, '../renderer/assets/icons/logo-main.ico'),
       webPreferences: {
         preload: path.join(__dirname, '../../preload.js'),
@@ -232,10 +238,18 @@ if (isCliMode) {
     });
     // 移除默认菜单
     //mainWindow.removeMenu();
+    // 3. 核心：等 HTML 和代码在后台全部加载渲染完毕后，瞬间弹出！
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
   app.whenReady().then(() => {
+
+    // 1. 强行关闭代理自动发现，解决挂梯子打开软件卡死 10 秒的 Bug！
+    app.commandLine.appendSwitch('no-proxy-server');
+    app.commandLine.appendSwitch('disable-features', 'ProxyConfig');
     // 监听前端发来的主题切换消息
     ipcMain.on('set-native-theme', (event, mode) => {
       nativeTheme.themeSource = mode;
@@ -252,6 +266,64 @@ if (isCliMode) {
     if (process.platform !== 'darwin') app.quit();
   });
 }
+
+
+// ==========================================
+// 🚀 增量热更新引擎 (ZIP 补丁下载与解压覆盖)
+// ==========================================
+ipcMain.handle('apply-hot-update', async (event, zipUrl) => {
+  try {
+    console.log(`[热更新] 准备下载补丁: ${zipUrl}`);
+    
+    // 1. 下载 ZIP 到系统的临时目录
+    const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
+    const response = await fetch(zipUrl);
+    
+    if (!response.ok) throw new Error(`网络请求失败: ${response.status}`);
+    
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tempZipPath, Buffer.from(arrayBuffer));
+    console.log(`[热更新] 补丁下载完成，保存在: ${tempZipPath}`);
+
+    // 2. 确定要覆盖的本地代码目录
+    // 打包后代码在 resources/app 目录；开发环境则在当前项目根目录
+    const targetExtractPath = app.isPackaged 
+      ? path.join(process.resourcesPath, 'app') 
+      : path.join(__dirname, '../../');
+
+    // 3. 解压并强制覆盖原文件
+    const zip = new AdmZip(tempZipPath);
+    zip.extractAllTo(targetExtractPath, true); // true 表示允许覆盖已有文件
+    
+    console.log(`[热更新] 解压覆盖成功！目标目录: ${targetExtractPath}`);
+    return { success: true };
+    
+  } catch (error) {
+    console.error("[热更新] 严重失败:", error);
+    return { success: false, error: error.message };
+  }
+});
+// ==========================================
+// 获取软件真实版本号 (自动读取 package.json)
+// ==========================================
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion(); 
+});
+// ==========================================
+// 🔄 基础系统控制 API (重启与外部跳转)
+// ==========================================
+
+// 收到前端指令后重启软件 (热更新完成后调用)
+ipcMain.handle('restart-app', () => {
+  app.relaunch();
+  app.quit();
+});
+
+// 使用默认浏览器打开外部网页 (用于全量更新下载安装包)
+ipcMain.handle('open-external', (event, targetUrl) => {
+  shell.openExternal(targetUrl);
+  return { success: true };
+});
 
 // ==========================================
 // 数据读写与文件操作引擎

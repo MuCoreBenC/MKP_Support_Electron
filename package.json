@@ -1,6 +1,6 @@
 {
-  "name": "mkp-support",
-  "productName": "MKP Support",
+  "name": "mkp-support-e",
+  "productName": "MKP SupportE",
   "version": "0.2.1",
   "description": "MKP Support Electron Application",
   "main": "src/main/main.js",
@@ -13,6 +13,7 @@
   "author": "Your Name",
   "license": "ISC",
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "electron-updater": "^6.1.8"
   },
   "devDependencies": {
@@ -21,7 +22,8 @@
     "sharp": "^0.34.5"
   },
   "build": {
-    "appId": "com.mkp.support.app",
+    "appId": "com.mkp.support.e.app",
+    "asar": false,
     "directories": {
       "output": "dist"
     },
@@ -29,7 +31,9 @@
       {
         "from": "cloud_data",
         "to": "cloud_data",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "publish": [
@@ -44,15 +48,16 @@
         "nsis"
       ]
     },
-    "nsis": {
+"nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "MKP Support",
-      "license": "license.txt"
+      "shortcutName": "MKP SupportE",
+      "license": "LICENSE",
+      "include": "build/installer.nsh"
     }
   }
 }

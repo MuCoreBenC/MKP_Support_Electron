@@ -67,7 +67,7 @@ function processGcode(gcodePath, jsonPath) {
         isSupportInterface = false;
         
         if (interfaceBuffer.length > 0) {
-          result.push('; ===== MKP Support Glueing Start =====');
+          result.push('; ===== MKP Support Electron Glueing Start =====');
           result.push('M106 S255 ; 开启风扇吹干');
           result.push(`G1 Z${(currentZ + zOffset + 3).toFixed(3)} ; 抬起防撞`);
           result.push(mountGcode.trim()); // 执行JSON里的装笔动作
@@ -81,7 +81,7 @@ function processGcode(gcodePath, jsonPath) {
           
           result.push(unmountGcode.trim()); // 执行卸载笔动作
           result.push(`G1 Z${currentZ.toFixed(3)} ; 恢复高度`);
-          result.push('; ===== MKP Support Glueing End =====');
+          result.push('; ===== MKP Support Electron Glueing End =====');
           
           interfaceBuffer = [];
         }

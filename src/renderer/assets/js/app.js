@@ -146,30 +146,34 @@ let currentZOffset = 0;
 let currentXOffset = 0;
 let currentYOffset = 0;
 
+// ==========================================
+// 🌐 全局云端线路配置 (海陆空三线容灾变量)
+// ==========================================
+let APP_REAL_VERSION = '0.0.0';
+
+const CLOUD_BASES = {
+  gitee: 'https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main',        // 陆军：国内直连 (主节点)
+  jsDelivr: 'https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main', // 海军：CDN 加速
+  github: 'https://raw.githubusercontent.com/MuCoreBenC/MKP_Support_Electron/main' // 空军：原生直链 (专治梯子)
+};
 
 // ==========================================
-// 🚀 企业级网络请求引擎 (GitHub + Gitee 双线容灾)
-// 作用：无论获取 manifest 还是具体的预设 json，都用它！
+// 🚀 企业级网络请求引擎 (海陆空三线容灾)
 // ==========================================
 async function fetchCloudDataWithFallback(fileName) {
-  // 定义双线路节点
   const urls = [
-    // 线路 1: GitHub 的 jsDelivr 全球加速节点 (国内极速)
-    `https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main/cloud_data/presets/${fileName}`,
-    // 线路 2: Gitee 的直连节点 (备胎容灾)
-    `https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets/${fileName}`
+    `${CLOUD_BASES.gitee}/cloud_data/presets/${fileName}`,
+    `${CLOUD_BASES.jsDelivr}/cloud_data/presets/${fileName}`,
+    `${CLOUD_BASES.github}/cloud_data/presets/${fileName}`
   ];
 
   let lastError;
 
-  // 循环尝试线路
   for (let i = 0; i < urls.length; i++) {
     try {
-      // 加上时间戳防止浏览器缓存死数据
       const url = `${urls[i]}?t=${Date.now()}`; 
       console.log(`[网络请求] 正在尝试线路 ${i + 1}: ${urls[i]}`);
       
-      // 设置 5 秒超时，不行就赶紧换下一条线，不让用户干等
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
@@ -179,7 +183,7 @@ async function fetchCloudDataWithFallback(fileName) {
       if (!response.ok) throw new Error(`HTTP 状态码: ${response.status}`);
       
       console.log(`[网络请求] 线路 ${i + 1} 请求成功！`);
-      return await response.json(); // 解析并返回 JSON 数据
+      return await response.json(); 
 
     } catch (error) {
       console.warn(`[网络请求] 线路 ${i + 1} 失败: ${error.message}，准备切换备用线路...`);
@@ -187,9 +191,9 @@ async function fetchCloudDataWithFallback(fileName) {
     }
   }
 
-  // 如果所有线路都失败了
   throw new Error("云端节点均无法连接，请检查您的网络环境。");
 }
+
 // ==========================================
 // 2. 底层工具与配置服务
 // ==========================================
@@ -250,11 +254,13 @@ function saveUserConfig() {
     version: selectedVersion,
     appliedReleases: appliedReleases 
   };
+  Logger.info("Write variable: mkp_user_config");
   localStorage.setItem('mkp_user_config', JSON.stringify(config));
 }
 
 function loadUserConfig() {
   try {
+    Logger.info("Read variable: mkp_user_config");
     const saved = localStorage.getItem('mkp_user_config');
     if (saved) {
       const config = JSON.parse(saved);
@@ -277,25 +283,65 @@ function getPrinterObj(printerId) {
 }
 
 // ==========================================
-// 3. 更新引擎与网络拉取 (真·云端双线容灾版)
+// 3. 更新引擎与网络拉取 (变量整合版)
 // ==========================================
 const UPDATE_CONFIG = {
   app: {
-    // 💡 替换为 Gitee 实时直链，软件版本修正为 0.2.1
-    manifestUrl: 'https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/app_manifest.json', 
-    getLocalVersion: () => '0.2.1', 
+    manifestUrl: `${CLOUD_BASES.gitee}/cloud_data/presets/app_manifest.json`, 
+    getLocalVersion: () => APP_REAL_VERSION,
     cooldownMinutes: 5 
   },
   preset: {
-    // 💡 替换为 Gitee 实时直链
-    manifestUrl: 'https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets_manifest.json',
+    manifestUrl: `${CLOUD_BASES.gitee}/cloud_data/presets/presets_manifest.json`,
     getLocalVersion: (presetId) => {
+      Logger.info("Read variable: mkp_local_presets");
       const localPresets = JSON.parse(localStorage.getItem('mkp_local_presets') || '{}');
       return localPresets[presetId] || '0.0.0'; 
     },
     cooldownMinutes: 5 
   }
 };
+
+// ============================================================
+// 🧭 MKP 全局路由与跳转管理器 (Router)
+// ============================================================
+const MKPRouter = {
+  routes: {
+    // ---- 内部页面跳转 ----
+    'page:model':     () => document.querySelector('[data-page="model"]')?.click(),
+    'page:download':  () => document.querySelector('[data-page="download"]')?.click(),
+    'page:calibrate': () => document.querySelector('[data-page="calibrate"]')?.click(),
+    'page:params':    () => document.querySelector('[data-page="params"]')?.click(),
+    'page:faq':       () => document.querySelector('[data-page="faq"]')?.click(),
+    'page:about':     () => document.querySelector('[data-page="about"]')?.click(),
+    'page:setting':   () => document.querySelector('[data-page="setting"]')?.click(),
+
+    // ---- 外部链接跳转 (调用电脑默认浏览器打开) ----
+    'link:github':    () => MKPRouter.openExt('https://github.com/MuCoreBenC/MKP_Support_Electron'),
+    'link:gitee':     () => MKPRouter.openExt('https://gitee.com/MuCoreBenC/MKP_Support_Electron'),
+    
+    // 👇 这里已经换成了你专属的官方真实链接！
+    'link:bilibili':  () => MKPRouter.openExt('https://space.bilibili.com/1475765743'), 
+    'link:qq':        () => MKPRouter.openExt('https://qm.qq.com/cgi-bin/qm/qr?k=JEQTF6AQ1PUgHFek0-D6lAUJMEKrsJj_&jump_from=webapi&authKey=FPWUUquvsNzy7b8djT9PAFiZ8pjAZMflI6SJTFXMRIEKDWuFF2DavQMjgWm9GgZK')
+  },
+
+  openExt: (url) => {
+    Logger.info(`[Router] 正在跳转外部链接: ${url}`);
+    if (window.mkpAPI && window.mkpAPI.openExternal) {
+      window.mkpAPI.openExternal(url); 
+    } else {
+      window.open(url, '_blank'); 
+    }
+  },
+
+  go: (target) => {
+    const action = MKPRouter.routes[target];
+    if (action) action();
+    else console.warn(`[Router] 未找到跳转目标: ${target}`);
+  }
+};
+
+window.navTo = MKPRouter.go;
 
 // ==========================================
 // 6. 下载、应用与删除控制器
@@ -314,10 +360,10 @@ async function handleDownloadOnline(releaseId, fileName, btnElement) {
   `;
 
   try {
-    // 💡 替换点：使用双节点轮询下载文件
     const downloadUrls = [
-      `https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets/${fileName}`,
-      `https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main/cloud_data/presets/${fileName}`
+      `${CLOUD_BASES.gitee}/cloud_data/presets/${fileName}`,
+      `${CLOUD_BASES.jsDelivr}/cloud_data/presets/${fileName}`,
+      `${CLOUD_BASES.github}/cloud_data/presets/${fileName}`
     ];
     
     let result = { success: false, error: "所有下载节点均失败" };
@@ -329,9 +375,9 @@ async function handleDownloadOnline(releaseId, fileName, btnElement) {
           new Promise(resolve => setTimeout(resolve, 800))
         ]);
         result = res;
-        if (result.success) break; // 如果成功，立刻跳出尝试
+        if (result.success) break; 
       } catch (e) {
-        result.error = e.message; // 记录报错，继续尝试下一条线路
+        result.error = e.message; 
       }
     }
 
@@ -392,19 +438,18 @@ async function fetchCloudPresets(printerId, versionType) {
   try {
     Logger.info(`[O401] Fetch manifest, p:${printerId}, v:${versionType}`); 
     
-    // 💡 替换点：使用双节点轮询获取清单
     const manifestUrls = [
-      `https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/presets_manifest.json?t=${Date.now()}`,
-      `https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main/cloud_data/presets_manifest.json?t=${Date.now()}`
+      `${CLOUD_BASES.gitee}/cloud_data/presets/presets_manifest.json?t=${Date.now()}`,
+      `${CLOUD_BASES.jsDelivr}/cloud_data/presets/presets_manifest.json?t=${Date.now()}`,
+      `${CLOUD_BASES.github}/cloud_data/presets/presets_manifest.json?t=${Date.now()}`
     ];
 
     let response;
     for (const url of manifestUrls) {
       try {
         response = await fetch(url);
-        if (response.ok) break; // 只要有一条线路通了，就跳出
+        if (response.ok) break; 
       } catch (e) {
-        // 静默失败，尝试下一条
       }
     }
     
@@ -461,6 +506,7 @@ async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
 
   const lastCheckKey = `mkp_last_check_${type}`;
   const cacheKey = `mkp_manifest_cache_${type}`;
+  Logger.info("Read variable: " + lastCheckKey);
   const lastCheckTime = localStorage.getItem(lastCheckKey);
 
   let cloudData = null;
@@ -469,6 +515,7 @@ async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
   if (!forceCheck && lastCheckTime) {
     const diffMinutes = (Date.now() - parseInt(lastCheckTime)) / (1000 * 60);
     if (diffMinutes < config.cooldownMinutes) {
+      Logger.info("Read variable: " + cacheKey);
       const cachedStr = localStorage.getItem(cacheKey);
       if (cachedStr) {
         try {
@@ -490,12 +537,15 @@ async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
       if (!response.ok) throw new Error(`HTTP错误: ${response.status}`);
       cloudData = await response.json();
 
+      Logger.info("Write variable: " + cacheKey);
       localStorage.setItem(cacheKey, JSON.stringify(cloudData));
+      Logger.info("Write variable: " + lastCheckKey);
       localStorage.setItem(lastCheckKey, Date.now().toString());
       Logger.info(`[更新引擎] ${type} 清单拉取成功，已更新本地缓存`);
     } catch (error) {
       Logger.error(`[E401] Manifest timeout: ${error.message}`); // 记录清单超时/失败
       Logger.error(`[更新引擎] 网络请求失败:`, error.message);
+      Logger.info("Read variable: " + cacheKey);
       const cachedStr = localStorage.getItem(cacheKey);
       if (cachedStr) {
          cloudData = JSON.parse(cachedStr);
@@ -523,7 +573,78 @@ async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
   return { success: true, hasUpdate, localVersion, cloudVersion, data: targetData, usedCache };
 }
 
+// ==========================================
+// 🚀 软件本体：增量热更新检查引擎
+// ==========================================
+async function checkAppUpdate(isManual = false) {
+  try {
+    if (isManual) console.log("[软件更新] 正在手动检查更新...");
+    
+    const urls = [
+      `${CLOUD_BASES.gitee}/cloud_data/app_manifest.json?t=${Date.now()}`,
+      `${CLOUD_BASES.jsDelivr}/cloud_data/app_manifest.json?t=${Date.now()}`,
+      `${CLOUD_BASES.github}/cloud_data/app_manifest.json?t=${Date.now()}`
+    ];
+    
+    let manifest = null;
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          manifest = await res.json();
+          break; // 拉到就跳出
+        }
+      } catch (e) {}
+    }
 
+    if (!manifest) throw new Error("无法连接到更新服务器");
+
+    const localVer = UPDATE_CONFIG.app.getLocalVersion(); // 当前版本，比如 '0.2.1'
+    const cloudVer = manifest.latestVersion;
+
+    // 2. 版本号比对 (假设你有一个 compareVersionsFront 函数，云端大于本地返回 > 0)
+    if (compareVersionsFront(cloudVer, localVer) > 0) {
+      console.log(`[软件更新] 发现新版本 ${cloudVer}，类型: ${manifest.updateType}`);
+      
+      // 3. 处理增量热更新 (hot_update)
+      if (manifest.updateType === 'hot_update') {
+        // 弹出确认更新的 UI 提示
+        const userConfirm = confirm(`发现新版本 ${cloudVer}！\n\n更新内容：\n${manifest.releaseNotes.join('\n')}\n\n是否立即进行静默增量更新？`);
+        
+        if (userConfirm) {
+          // 💡 动态替换链接：无论配置里写了啥，只要是相对路径或需要修正的，强行转成 Gitee Raw 下载补丁
+          let downloadUrl = manifest.downloadUrl;
+          if (downloadUrl.includes('localhost') || !downloadUrl.startsWith('http')) {
+            downloadUrl = `${CLOUD_BASES.gitee}/cloud_data/${downloadUrl.split('/').pop()}`;
+          }
+          
+          console.log("[软件更新] 正在通知主进程下载并应用补丁...");
+          
+          // 通知主进程去干活 (下载 ZIP 并解压)
+          const result = await window.mkpAPI.applyHotUpdate(downloadUrl);
+          
+          if (result.success) {
+            alert("增量更新完毕！软件即将重启以应用最新版本。");
+            window.mkpAPI.restartApp(); // 重启软件
+          } else {
+            alert("热更新失败: " + result.error);
+          }
+        }
+      } 
+      // 4. 处理全量安装包 (full_install)
+      else if (manifest.updateType === 'full_install') {
+        if(confirm(`发现大版本更新 ${cloudVer}！该版本需要重新安装。\n\n更新内容：\n${manifest.releaseNotes.join('\n')}\n\n是否前往浏览器下载完整安装包？`)) {
+           window.mkpAPI.openExternal(manifest.downloadUrl);
+        }
+      }
+    } else {
+      if (isManual) alert("当前已经是最新版本！");
+    }
+  } catch (error) {
+    console.error(`[软件更新] 失败: ${error.message}`);
+    if (isManual) alert("检查更新失败，请检查网络！");
+  }
+}
 
 async function checkOnlineUpdates() {
   Logger.info(`[O211] Click check preset update`);
@@ -634,6 +755,7 @@ function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const wrapper = document.getElementById('sidebarWrapper');
   sidebarCollapsed = !sidebarCollapsed;
+  Logger.info("Toggle UI: sidebar, collapsed:" + sidebarCollapsed);
   if (sidebarCollapsed) {
     sidebar.classList.add('sidebar-collapsed');
     wrapper.classList.add('sidebar-wrapper-collapsed');
@@ -670,7 +792,7 @@ function updateSidebarVersionBadge(version) {
 }
 
 function selectPrinter(printerId, keepVersion = false) {
-  Logger.info(`[O202] p:${printerId}`); // 记录机型切换
+  Logger.info(`[O202] Select printer, p:${printerId}`); // 记录机型切换
   if (typeof clearOnlineListUI === 'function') {
     clearOnlineListUI(); 
   }
@@ -727,7 +849,7 @@ function renderBrands() {
 }
 
 function selectBrand(brandId) {
-  Logger.info(`[O201] b:${brandId}`); // 记录品牌切换
+  Logger.info(`[O201] Select brand, b:${brandId}`); // 记录品牌切换
   selectedBrand = brandId;
   renderBrands();
   renderPrinters(brandId);
@@ -739,7 +861,7 @@ function selectBrand(brandId) {
 }
 
 function toggleBrandFavorite(brandId) {
-  Logger.info(`[O204] b:${brandId}`); // 记录品牌收藏
+  Logger.info(`[O204] Toggle fav, b:${brandId}`); // 记录品牌收藏
   const brand = brands.find(b => b.id === brandId);
   if (brand) {
     brand.favorite = !brand.favorite;
@@ -749,7 +871,7 @@ function toggleBrandFavorite(brandId) {
 
 function toggleFavorite(event, printerId) {
   event.stopPropagation(); 
-  Logger.info(`[O204] p:${printerId}`); // 记录机型收藏
+  Logger.info(`[O204] Toggle fav, p:${printerId}`); // 记录机型收藏
   const printers = printersByBrand[selectedBrand] || [];
   const printer = printers.find(p => p.id === printerId);
   if (printer) {
@@ -1000,11 +1122,12 @@ function renderVersionCards(containerId, printerData, currentSelectedVersion, on
 
 function renderDownloadVersions(printerData) {
   renderVersionCards('downloadVersionList', printerData, selectedVersion, (vType) => {
-    Logger.info(`[O203] v:${vType}`); // 记录版本切换
+    Logger.info(`[O203] Select version, v:${vType}`); // 记录版本切换
     selectedVersion = vType; 
     saveUserConfig();
     
     const currentKey = `${printerData.id}_${vType}`;
+    Logger.info("Read variable: mkp_current_script_" + currentKey);
     const activeFileName = localStorage.getItem(`mkp_current_script_${currentKey}`);
     if (activeFileName) {
       Logger.info(`[O301] Read preset (Tab switch), apply file:${activeFileName}`);
@@ -1059,9 +1182,9 @@ async function renderPresetList(printerData, versionType) {
   
   // 2. 将文件名组装成 renderListItems 能看懂的对象格式
   for (const fileName of matchedFiles) {
-    // 利用正则从文件名中提取版本号 (例如从 a1mini_quick_v1.0.2.json 提取出 1.0.2)
-    const versionMatch = fileName.match(/_v([\d\.]+)\.json$/i);
-    const versionStr = versionMatch ? versionMatch[1] : '1.0.0';
+    // 利用正则从文件名中提取版本号 (支持 -r1, -beta 等后缀)
+    const versionMatch = fileName.match(/_v([a-zA-Z0-9\.-]+)\.json$/i);
+    const versionStr = versionMatch ? versionMatch[1] : '0.0.1';
     
     localData.push({
       id: `v${versionStr}`,
@@ -1227,7 +1350,7 @@ function renderListItems(container, releases, printerData, versionType, isLocal)
 }
 
 function selectVersion(card, version) {
-  Logger.info(`[O203] v:${version}`); // 记录选定版本
+  Logger.info(`[O203] Select version, v:${version}`); // 记录选定版本
   selectedVersion = version;
   
   document.querySelectorAll('.version-card').forEach(c => {
@@ -1350,6 +1473,7 @@ function renderVersions() {
 
 function toggleExpandMore() {
   versionsExpanded = !versionsExpanded;
+  Logger.info("Toggle UI: expand version history, v:" + versionsExpanded);
   renderVersions();
 }
 
@@ -1363,6 +1487,7 @@ function handleApplyLocal(releaseId, fileName, printerData, clickedBtn = null) {
   // 1. 强制覆盖保存应用状态和文件名，彻底解决旧数据导致的路径卡死 Bug
   const currentKey = `${printerData.id}_${selectedVersion}`;
   appliedReleases[currentKey] = releaseId;
+  Logger.info("Write variable: mkp_current_script_" + currentKey);
   localStorage.setItem(`mkp_current_script_${currentKey}`, fileName);
   saveUserConfig();
 
@@ -1485,8 +1610,10 @@ async function applyPreset(releaseId, isInstalled, fileName) {
     Logger.info(`发现新版预设 v${result.cloudVersion}，准备下载`);
     alert(`发现新版 JSON 预设 (v${result.cloudVersion})！\n\n即将去网络请求下载：${fileName}\n\n下载完成后将为您应用此版本。`);
     
+    Logger.info("Read variable: mkp_local_presets");
     const localPresets = JSON.parse(localStorage.getItem('mkp_local_presets') || '{}');
     localPresets[selectedPrinter] = result.cloudVersion;
+    Logger.info("Write variable: mkp_local_presets");
     localStorage.setItem('mkp_local_presets', JSON.stringify(localPresets));
 
   } else if (isInstalled === 'true') {
@@ -1502,6 +1629,7 @@ async function applyPreset(releaseId, isInstalled, fileName) {
 // 7. 手风琴折叠与 FAQ 系统
 // ==========================================
 function toggleFaq(button) {
+  Logger.info("Toggle UI: FAQ item");
   const item = button.closest('.collapse-item');
   if (item) {
     const wrapper = item.querySelector('.collapse-wrapper');
@@ -1512,6 +1640,7 @@ function toggleFaq(button) {
 }
 
 function toggleCollapse(element) {
+  Logger.info("Toggle UI: collapse item");
   const item = element.closest('.collapse-item');
   if (item) {
     const wrapper = item.querySelector('.collapse-wrapper');
@@ -1523,6 +1652,7 @@ function toggleCollapse(element) {
 }
 
 function expandCollapse(element) {
+  Logger.info("Toggle UI: expand collapse");
   const item = element.closest('.collapse-item');
   if (item) {
     const wrapper = item.querySelector('.collapse-wrapper');
@@ -1534,6 +1664,7 @@ function expandCollapse(element) {
 }
 
 function collapseCollapse(element) {
+  Logger.info("Toggle UI: collapse collapse");
   const item = element.closest('.collapse-item');
   if (item) {
     const wrapper = item.querySelector('.collapse-wrapper');
@@ -1604,17 +1735,20 @@ function filterFaq(keyword) {
 function initOnboardingSetting() {
   const showOnboardingCheckbox = document.getElementById('showOnboarding');
   if (showOnboardingCheckbox) {
+    Logger.info("Read variable: showOnboarding");
     const savedSetting = localStorage.getItem('showOnboarding');
     if (savedSetting !== null) {
       showOnboardingCheckbox.checked = savedSetting === 'true';
     }
     showOnboardingCheckbox.addEventListener('change', function() {
+      Logger.info("Write variable: showOnboarding, v:" + this.checked);
       localStorage.setItem('showOnboarding', this.checked);
     });
   }
 }
 
 function checkShowOnboarding() {
+  Logger.info("Read variable: showOnboarding");
   const savedSetting = localStorage.getItem('showOnboarding');
   return savedSetting !== 'false';
 }
@@ -1816,6 +1950,7 @@ window.presetCache = { path: null, data: null, timestamp: 0 };
 
 async function getActivePresetPath() {
   const currentKey = `${selectedPrinter}_${selectedVersion}`;
+  Logger.info("Read variable: mkp_current_script_" + currentKey);
   const fileName = localStorage.getItem(`mkp_current_script_${currentKey}`);
   if (!fileName) return null;
   const userDataPath = await window.mkpAPI.getUserDataPath();
@@ -1834,10 +1969,9 @@ async function loadActivePreset(forceRefresh = false) {
   }
 
   // 真正去读硬盘
+  Logger.info(`[O301] Read preset, path:${path}`); // 只有真正发生读盘时，才打出这句日志！
   const result = await window.mkpAPI.readPreset(path);
   if (result.success) {
-    Logger.info(`[O301] Read preset, path:${path}`); // 只有真正发生读盘时，才打出这句日志！
-    
     // 存入缓存
     window.presetCache = { path: path, data: result.data, timestamp: now };
     return { path, data: result.data };
@@ -1854,8 +1988,17 @@ async function renderDynamicParamsPage() {
   container.innerHTML = `<div class="col-span-2 py-10 text-center text-gray-500"><svg class="w-8 h-8 animate-spin mx-auto theme-text mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>正在读取 JSON 预设文件...</div>`;
 
   const preset = await loadActivePreset();
-  if (!preset) {
-    container.innerHTML = '<div class="col-span-2 py-10 text-center text-gray-500">当前没有应用的预设。请先在【下载预设】页面应用一个本地配置。</div>';
+if (!preset) {
+    container.innerHTML = `
+      <div class="col-span-full w-full flex flex-col items-center justify-center min-h-[320px] bg-gray-50/50 dark:bg-[#1E1E1E]/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-[#333] transition-all p-8">
+        <svg class="w-16 h-16 text-gray-300 dark:text-gray-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span class="text-lg font-semibold text-gray-500 dark:text-gray-400">当前未应用任何预设</span>
+        <span class="text-sm text-gray-400 dark:text-gray-500 mt-2 text-center">
+          请先前往 
+          <span onclick="navTo('page:download')" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer font-medium hover:underline transition-all">【下载预设】</span> 
+          页面应用一个本地配置
+        </span>
+      </div>`;
     return;
   }
 
@@ -1907,6 +2050,7 @@ async function saveAllDynamicParams() {
   });
 
   const nestedUpdates = unflattenObject(flatUpdates);
+  Logger.info(`[O302] Write preset, path:${preset.path}`);
   const result = await window.mkpAPI.writePreset(preset.path, nestedUpdates);
   
   if(result.success) {
@@ -2160,12 +2304,16 @@ async function openZModel() {
   try {
     Logger.info(`[O304] Copy model`); // 记录拷贝模型触发
     Logger.info(`[O601] Open slicer`); // 记录打开切片触发
+    Logger.info("Read variable: hasOpenedModelBefore");
     const hasOpened = localStorage.getItem('hasOpenedModelBefore');
     const forceOpenWith = !hasOpened;
     const result = await window.mkpAPI.openCalibrationModel('Z', forceOpenWith);
 
     if (result.success) {
-      if (forceOpenWith) localStorage.setItem('hasOpenedModelBefore', 'true');
+      if (forceOpenWith) {
+        Logger.info("Write variable: hasOpenedModelBefore, v:true");
+        localStorage.setItem('hasOpenedModelBefore', 'true');
+      }
       zProgress.classList.add('hidden');
       zGridSelector.classList.remove('hidden');
       
@@ -2324,6 +2472,7 @@ async function saveZOffset() {
     updatePayload = { z_offset: newZ };
   }
 
+  Logger.info(`[O302] Write preset, path:${preset.path}`);
   const result = await window.mkpAPI.writePreset(preset.path, updatePayload);
   if (result.success) {
     Logger.info(`[O302] Write preset`); // 记录成功写入
@@ -2350,8 +2499,11 @@ async function openXYModel() {
   try {
     Logger.info(`[O304] Copy model`); // 记录拷贝模型触发
     Logger.info(`[O601] Open slicer`); // 记录打开切片触发
-    const result = await window.mkpAPI.openCalibrationModel('XY', !localStorage.getItem('hasOpenedModelBefore'));
+    Logger.info("Read variable: hasOpenedModelBefore");
+    const hasOpened = !localStorage.getItem('hasOpenedModelBefore');
+    const result = await window.mkpAPI.openCalibrationModel('XY', hasOpened);
     if (result.success) {
+      Logger.info("Write variable: hasOpenedModelBefore, v:true");
       localStorage.setItem('hasOpenedModelBefore', 'true');
       xyProgress.classList.add('hidden');
       xyGridSelector.classList.remove('hidden');
@@ -2414,7 +2566,7 @@ function bindNavigation() {
 }
 
 function switchPage(page) {
-  Logger.info(`[O206] Switch tab, page:${page}`);
+  Logger.info(`[UI] Switch tab, page:${page}`);
   document.querySelectorAll('.page').forEach(p => {
     p.classList.add('hidden');
   });
@@ -2432,6 +2584,7 @@ function switchPage(page) {
 // ⚙️ 暴露给“设置页面”调用的接口：开关 Mac 动效
 // ==========================================
 function toggleMacDockAnimation(enable) {
+  Logger.info("Write variable: setting_dock_anim, v:" + enable);
   const zGrid = document.getElementById('zGrid');
   if (!zGrid) return;
 
@@ -2536,6 +2689,7 @@ window.scrollToSetting = function(sectionId) {
 // 🚀 动画总开关 (联动右侧滑块变灰)
 // ==========================================
 function toggleMacDockAnimation(enable) {
+  Logger.info("Write variable: setting_dock_anim, v:" + enable);
   const zGrid = document.getElementById('zGrid');
   const scaleContainer = document.getElementById('dockScaleContainer');
   const scaleSlider = document.getElementById('settingDockScaleRange');
@@ -2569,6 +2723,7 @@ window.macDockBaseSize = parseInt(localStorage.getItem('setting_dock_size')) || 
 window.macDockMaxScale = parseFloat(localStorage.getItem('setting_dock_scale')) || 1.5;
 
 function setMacDockSize(sizeValue) {
+  Logger.info("Write variable: setting_dock_size, v:" + sizeValue);
   window.macDockBaseSize = parseInt(sizeValue);
   localStorage.setItem('setting_dock_size', sizeValue);
   document.documentElement.style.setProperty('--dock-base-size', `${sizeValue}px`);
@@ -2576,6 +2731,7 @@ function setMacDockSize(sizeValue) {
 }
 
 function setMacDockScale(scaleValue) {
+  Logger.info("Write variable: setting_dock_scale, v:" + scaleValue);
   window.macDockMaxScale = parseFloat(scaleValue);
   localStorage.setItem('setting_dock_scale', scaleValue);
   // （数字UI相关的代码已彻底删除）
@@ -2584,22 +2740,29 @@ function setMacDockScale(scaleValue) {
 // ==========================================
 // 🌟 软件启动总指挥部 (合并了所有初始化逻辑)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-  
+document.addEventListener('DOMContentLoaded', async () => {
+
   // --------------------------------------------------
   // 1. 初始化用户的设置偏好 (恢复 Z 轴动画状态)
   // --------------------------------------------------
   // 如果之前没设置过，默认给 true；否则读取之前保存的值
+  Logger.info("Read variable: setting_dock_anim");
   const savedAnimState = localStorage.getItem('setting_dock_anim');
   const wantsAnim = savedAnimState === null ? true : savedAnimState === 'true';
   
+  // 1. 获取真实版本号并渲染到界面的 span 标签里
+  const realVersion = await window.mkpAPI.getAppVersion();
+  APP_REAL_VERSION = realVersion; // 存入全局变量给更新引擎用
+  document.getElementById('settingsCurrentVersion').innerText = `v${realVersion}`;
+
   // 更新 UI 上的 Switch 开关状态
   const animCheckbox = document.getElementById('settingMacAnim');
   if (animCheckbox) animCheckbox.checked = wantsAnim;
   
   // 激活底层的 CSS 动画
   toggleMacDockAnimation(wantsAnim);
-
+  APP_REAL_VERSION = realVersion; 
+  document.getElementById('settingsCurrentVersion').innerText = `v${realVersion}`;
   // --------------------------------------------------
   // 2. 监听全局固定表头 (滚动加阴影 & 关于页面 Logo 吸顶)
   // --------------------------------------------------
@@ -2667,7 +2830,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
- 
+  
   // 🌟 1. 初始化 CSS 变量和滑块状态
   document.documentElement.style.setProperty('--dock-base-size', `${window.macDockBaseSize}px`);
   
@@ -2730,16 +2893,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
-
-
-
+  await init();
 });
 
 async function init() {
   Logger.info("[O101] App init start"); // 记录软件初始化开始
   Logger.info("=== 软件启动，开始初始化 ===");
   const currentAppVersion = UPDATE_CONFIG.app.getLocalVersion();
-  document.title = `支撑面改善工具 (MKP Support) v${currentAppVersion}`;
+  document.title = `支撑面改善工具 (MKP SupportE) v${currentAppVersion}`;
   try {
     if (window.mkpAPI && window.mkpAPI.initDefaultPresets) {
       await window.mkpAPI.initDefaultPresets();
@@ -2756,11 +2917,12 @@ async function init() {
   renderBrands();
   if (selectedPrinter) {
     selectPrinter(selectedPrinter, true); 
-    Logger.info(`[O202] p:${selectedPrinter}`); // 你自己加的 O202
+    Logger.info(`[O202] Select printer, p:${selectedPrinter}`); // 你自己加的 O202，已更正
     Logger.info(`自动加载了上次记忆的机型 | 附加数据: {"printer":"${selectedPrinter}"}`);
 
     // 👇 ---------- 新增：主动去查上次绑定的预设并打印 O301 ---------- 👇
     const currentKey = `${selectedPrinter}_${selectedVersion}`;
+    Logger.info("Read variable: mkp_current_script_" + currentKey);
     const activeFileName = localStorage.getItem(`mkp_current_script_${currentKey}`);
     
     if (activeFileName) {
@@ -2768,7 +2930,7 @@ async function init() {
       Logger.info(`[O301] Read preset (Auto-load), apply file:${activeFileName}`);
     } else {
       // 如果发现他是个新用户，或者没应用过预设，也记录下来
-      Logger.warn(`[E301] No active preset found on startup for ${currentKey}`);
+      Logger.warn(`[E301] Preset not found on startup for ${currentKey}`);
     }
     // 👆 ----------------------------------------------------------- 👆
   }

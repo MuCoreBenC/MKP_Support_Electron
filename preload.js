@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('mkpAPI', {
   openCalibrationModel: (type, forceOpenWith) => ipcRenderer.invoke('open-calibration-model', type, forceOpenWith),
   setNativeTheme: (mode) => ipcRenderer.send('set-native-theme', mode),
   exportBugReport: () => ipcRenderer.send('export-bug-report'),
-  getLocalPresets: () => ipcRenderer.invoke('get-local-presets')
+  getLocalPresets: () => ipcRenderer.invoke('get-local-presets'),
+  applyHotUpdate: (url) => ipcRenderer.invoke('apply-hot-update', url),
+  restartApp: () => ipcRenderer.invoke('restart-app'),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version')
 
 });

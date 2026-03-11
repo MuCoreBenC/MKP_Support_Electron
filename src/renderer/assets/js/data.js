@@ -65,7 +65,7 @@ const faqData = [
   {
     question: '如何开始使用支撑面改善工具？',
     answer: `<p>1. 首先在<span class="text-blue-600 font-medium">选择机型</span>页面选择您的 3D 打印机型号</p>
-      <p>2. 进入<span class="text-blue-600 font-medium">下载预设</span>页面，应用或下载对应的 JSON 预设文件</p>
+      <p>2. 进入<span onclick="navTo('page:download')" class="text-blue-500 hover:text-blue-600 cursor-pointer font-medium hover:underline transition-all">下载预设</span>页面，应用或下载对应的 JSON 预设文件</p>
       <p>3. 在切片软件中配置后处理脚本路径</p>
       <p>4. 在本软件中进行 Z 轴和 XY 轴校准，获取最佳打印效果</p>`
   },
@@ -100,10 +100,31 @@ const faqData = [
   },
   {
     question: '如何更新到最新预设？',
-    answer: `<p>1. 进入<span class="text-blue-600 font-medium">软件设置</span>页面</p>
+    answer: `<p>1. 进入<span onclick="navTo('page:setting')" class="text-blue-500 hover:text-blue-600 cursor-pointer font-medium hover:underline transition-all">软件设置</span>页面</p>
       <p>2. 点击<span class="text-blue-600 font-medium">检查更新</span>按钮</p>
       <p>3. 软件会自动向云端请求最新的 <code>-r</code> 优化微调包，并在后台安全替换您的本地旧文件</p>
       <p class="text-gray-500 italic">建议定期检查更新以获取最新的打印调优参数。</p>`
+  },
+  // 👇 ！！！新增的社区互助问题，包含绝美的官方跳转按钮！！！
+  {
+question: '遇到问题如何获取官方帮助？',
+    answer: `<p>如果您在使用过程中遇到任何问题、或者想分享您的完美参数，欢迎加入我们的官方交流社区：</p>
+      <div class="flex flex-wrap gap-3 mt-3">
+        <button onclick="navTo('link:qq')" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#252526] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#444] hover:bg-gray-50 dark:hover:bg-[#333] rounded-xl transition-all duration-200 text-xs font-medium active:scale-95 shadow-sm">
+          <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M11.986 2.007C6.67 2.007 2.364 6.315 2.364 11.626c0 2.502.955 4.786 2.518 6.495-.27.81-.88 2.39-2.616 3.32a.39.39 0 0 0 .185.736c2.81-.077 4.707-1.144 5.753-2.02 1.18.322 2.443.5 3.782.5 5.316 0 9.622-4.308 9.622-9.62-1.01-6.195-6.02-9.03-9.622-9.03zm0 17.037c-1.127 0-2.203-.18-3.21-.52-.303-.102-.63-.053-.896.134-1.14.802-2.793 1.542-4.75 1.765 1.096-1.077 1.637-2.316 1.837-3.155a.4.4 0 0 0-.114-.366 8.814 8.814 0 0 1-2.483-6.276c0-4.877 3.968-8.844 8.845-8.844 4.877 0 8.845 3.967 8.845 8.844 0 4.876-3.968 8.843-8.845 8.843z" fill-rule="evenodd" clip-rule="evenodd"/>
+            <path d="M8.28 10.743a1.442 1.442 0 1 1 0-2.884 1.442 1.442 0 0 1 0 2.884zm7.412 0a1.442 1.442 0 1 1 0-2.884 1.442 1.442 0 0 1 0 2.884z"/>
+          </svg> 
+          加入官方 QQ 群
+        </button>
+
+        <button onclick="navTo('link:bilibili')" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#252526] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#444] hover:bg-gray-50 dark:hover:bg-[#333] rounded-xl transition-all duration-200 text-xs font-medium active:scale-95 shadow-sm">
+          <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.866 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.84-2.733c.267-.249.573-.373.92-.373.347 0 .653.124.92.373.249.249.373.551.373.907 0 .356-.124.658-.373.906l-1.134 1.133zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.764-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.249-.56.373-.933.373s-.684-.124-.933-.373c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.249-.56.373-.933.373s-.684-.124-.933-.373c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/>
+          </svg>
+          关注 B站动态
+        </button>
+      </div>`
   }
 ];
 
