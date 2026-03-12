@@ -4,34 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>支撑面改善工具 (MKP SupportE)</title>
-  <!-- <script src="https://cdn.tailwindcss.com"></script> -->
-  <link rel="stylesheet" href="assets/css/tailwind-compiled.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- <link rel="stylesheet" href="assets/css/tailwind-compiled.css"> -->
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="assets/js/icons.js"></script>
   <script>
     (function() {
-      // 1. 拦截外观模式 (修复 OLED 启动问题)
+      // 1. 拦截外观模式
       try {
         const savedMode = localStorage.getItem('themeMode') || 'light';
-        const isDark = savedMode === 'dark' || savedMode === 'oled' || (savedMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDark = savedMode === 'dark' || (savedMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.setAttribute('data-theme-mode', savedMode);
         if (isDark) document.documentElement.classList.add('dark');
-        if (savedMode === 'oled') document.documentElement.classList.add('oled');
       } catch (e) {}
 
       // 2. 拦截全局主色调
       try {
-        const THEME_PALETTE = { blue: '59, 130, 246', emerald: '16, 185, 129', violet: '139, 92, 246', orange: '245, 158, 11', rose: '244, 63, 94', pink: '236, 72, 153', green: '0, 174, 66', purple: '168, 85, 247' };
+        const THEME_PALETTE = { blue: '59, 130, 246', emerald: '16, 185, 129', violet: '139, 92, 246', orange: '245, 158, 11', rose: '244, 63, 94', pink: '236, 72, 153', green: '34, 197, 94', purple: '168, 85, 247' };
         const savedColor = localStorage.getItem('appThemeColor') || 'blue';
-        if (savedColor === 'custom') {
-            const customRgb = localStorage.getItem('customThemeRgb') || '59, 130, 246';
-            document.documentElement.style.setProperty('--primary-rgb', customRgb);
-        } else if (THEME_PALETTE[savedColor]) {
-            document.documentElement.style.setProperty('--primary-rgb', THEME_PALETTE[savedColor]);
-        }
+        if (THEME_PALETTE[savedColor]) document.documentElement.style.setProperty('--primary-rgb', THEME_PALETTE[savedColor]);
       } catch (e) {}
 
-      // 3. 拦截版本主题色
+      // 3. 拦截版本主题色 (防止卡片闪色)
       try {
         const DEF = { standard: '59, 130, 246', quick: '245, 158, 11', lite: '168, 85, 247' };
         ['standard', 'quick', 'lite'].forEach(ver => {
@@ -377,7 +371,8 @@
                       </div>
                     </div>
                     <div class="flex justify-center mt-4">
-                      <button onclick="saveZOffset(this)" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 Z 轴偏移</button>                    </div>
+                      <button onclick="saveZOffset()" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 Z 轴偏移</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -412,7 +407,8 @@
                     <div id="xyGrid" class="flex-shrink-0"></div>
                   </div>
                   <div class="flex justify-center mt-4 pb-2">
-                    <button onclick="saveXYOffset(this)" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 XY 轴偏移</button>                  </div>
+                    <button onclick="saveXYOffset()" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 XY 轴偏移</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -455,7 +451,7 @@
         <div class="page-header w-full">
           <div class="page-header-top">
             <h1 id="title-page-versions" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">版本控制</h1>
-            <button id="btn-page-check-update" onclick="manualCheckAppUpdate(this)" class="theme-btn-solid px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+            <button id="btn-page-check-update" onclick="manualCheckAppUpdate(this)" class="theme-btn-solid px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               检查更新
             </button>
@@ -581,18 +577,12 @@
                 </div>
 
                 <div class="mb-auto pb-6">
-                  <button class="flex items-center justify-between p-3.5 rounded-xl theme-bg-subtle transition-all w-full text-left group outline-none cursor-pointer">
+                  <button class="flex items-center justify-between p-3.5 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-900/10 hover-theme transition-all w-full text-left group">
                     <div>
-                      <div class="text-sm font-medium theme-text flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                        了解工作原理
-                      </div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">它是如何让底面完美如初的？</div>
+                      <div class="text-sm font-medium text-blue-700 dark:text-blue-400">💡 了解工作原理</div>
+                      <div class="text-[11px] text-blue-500/70 dark:text-blue-400/70 mt-0.5">它是如何让底面完美如初的？</div>
                     </div>
-                    
-                    <div class="w-6 h-6 rounded-full theme-bg-soft flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <svg class="w-3.5 h-3.5 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </div>
+                    <span class="text-blue-500 group-hover:translate-x-1 transition-transform">→</span>
                   </button>
                 </div>
 
@@ -737,31 +727,29 @@
                   <div class="mt-4 bg-gray-50 dark:bg-[#1E1E1E] rounded-xl border border-gray-100 dark:border-[#333] p-5">
                     <div class="grid grid-cols-2 gap-8">
                       
-                    <div>
-                      <div class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">方块基础大小</div>
-                      <div class="flex items-center gap-3">
-                        <span class="text-xs text-gray-400 font-medium">小</span>
-                        <input type="range" id="settingDockSizeRange" min="33" max="43" step="1" 
-                              class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-[#333] transition-all hover:brightness-110"
-                              style="accent-color: rgb(var(--primary-rgb));"
-                              oninput="setMacDockSize(this.value)">
-                        <span class="text-xs text-gray-400 font-medium">大</span>
+                      <div>
+                        <div class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">方块基础大小</div>
+                        <div class="flex items-center gap-3">
+                          <span class="text-xs text-gray-400 font-medium">小</span>
+                          <input type="range" id="settingDockSizeRange" min="33" max="43" step="1" 
+                                 class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-[#333] accent-blue-500 hover:accent-blue-600 transition-all"
+                                 oninput="setMacDockSize(this.value)">
+                          <span class="text-xs text-gray-400 font-medium">大</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <div id="dockScaleContainer" class="transition-all duration-300">
+                      <div>
+                        <div id="dockScaleContainer" class="transition-all duration-300">
                         <div class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">悬停放大系数</div>
                         <div class="flex items-center gap-3">
                           <span class="text-xs text-gray-400 font-medium">小</span>
                           <input type="range" id="settingDockScaleRange" min="1.2" max="1.8" step="0.1" 
-                                class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:brightness-110"
-                                style="accent-color: rgb(var(--primary-rgb));"
-                                oninput="setMacDockScale(this.value)">
+                                 class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-[#333] accent-blue-500 hover:accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                 oninput="setMacDockScale(this.value)">
                           <span class="text-xs text-gray-400 font-medium">大</span>
                         </div>
                       </div>
-                    </div>
+                      </div>
                       
                     </div>
                   </div>
@@ -776,50 +764,37 @@
               
               <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6 transition-colors">
                 <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">外观模式</div>
-                <div class="grid grid-cols-4 gap-3 max-w-[640px]">
-                <button id="btn-mode-light" onclick="setThemeMode('light', event)" class="mode-btn-light flex flex-col items-center gap-2 p-3 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555] transition-colors">
-                  <div class="w-full h-12 rounded-md bg-[#f3f4f6] border border-[#e5e7eb] overflow-hidden flex flex-col">
-                    <div class="h-2.5 bg-[#ffffff] border-b border-[#e5e7eb]"></div>
-                    <div class="flex-1 flex"><div class="w-1/3 bg-[#f9fafb] border-r border-[#e5e7eb]"></div><div class="flex-1 bg-[#ffffff]"></div></div>
-                  </div>
-                  <span class="mode-text-light text-xs font-medium text-gray-700 dark:text-gray-300">白天</span>
-                </button>
-
-                <button id="btn-mode-dark" onclick="setThemeMode('dark', event)" class="mode-btn-dark flex flex-col items-center gap-2 p-3 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555] transition-colors">
-                  <div class="w-full h-12 rounded-md bg-[#1a1a1a] border border-[#333] overflow-hidden flex flex-col">
-                    <div class="h-2.5 bg-[#222] border-b border-[#333]"></div>
-                    <div class="flex-1 flex"><div class="w-1/3 bg-[#111] border-r border-[#333]"></div><div class="flex-1 bg-[#1a1a1a]"></div></div>
-                  </div>
-                  <span class="mode-text-dark text-xs font-medium text-gray-700 dark:text-gray-300">夜间</span>
-                </button>
-
-                <button id="btn-mode-oled" onclick="setThemeMode('oled', event)" class="mode-btn-oled flex flex-col items-center gap-2 p-3 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555] transition-colors outline-none">
-                  
-                  <div class="w-full h-12 rounded-md bg-[#000000] border border-gray-200 dark:border-[#1a1a1a] overflow-hidden flex flex-col">
-                    <div class="h-2.5 bg-[#111] border-b border-gray-200 dark:border-[#1a1a1a]"></div>
-                    <div class="flex-1 flex">
-                      <div class="w-1/3 bg-[#0a0a0a] border-r border-gray-200 dark:border-[#1a1a1a]"></div>
-                      <div class="flex-1 bg-[#000000]"></div>
+                <div class="grid grid-cols-3 gap-4 max-w-[540px]">
+                  <button id="btn-mode-light" onclick="setThemeMode('light', event)" class="mode-btn-light flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
+                    <div class="w-full h-16 rounded-lg bg-[#f3f4f6] border border-[#e5e7eb] overflow-hidden flex flex-col">
+                      <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb]"></div>
+                      <div class="flex-1 flex"><div class="w-1/3 bg-[#f9fafb] border-r border-[#e5e7eb]"></div><div class="flex-1 bg-[#ffffff]"></div></div>
                     </div>
-                  </div>
+                    <span class="mode-text-light text-sm font-medium text-gray-700 dark:text-gray-300">白天</span>
+                  </button>
 
-                  <span class="mode-text-oled text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">OLED黑</span>
-                </button>
+                  <button id="btn-mode-dark" onclick="setThemeMode('dark', event)" class="mode-btn-dark flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
+                    <div class="w-full h-16 rounded-lg bg-[#1a1a1a] border border-[#333] overflow-hidden flex flex-col">
+                      <div class="h-3 bg-[#222] border-b border-[#333]"></div>
+                      <div class="flex-1 flex"><div class="w-1/3 bg-[#111] border-r border-[#333]"></div><div class="flex-1 bg-[#1a1a1a]"></div></div>
+                    </div>
+                    <span class="mode-text-dark text-sm font-medium text-gray-700 dark:text-gray-300">夜间</span>
+                  </button>
 
-                <button id="btn-mode-system" onclick="setThemeMode('system', event)" class="mode-btn-system flex flex-col items-center gap-2 p-3 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555] transition-colors">
-                  <div class="w-full h-12 rounded-md border border-[#e5e7eb] dark:border-[#333] overflow-hidden flex">
-                    <div class="flex-1 bg-[#f3f4f6] flex flex-col border-r border-[#e5e7eb] dark:border-[#333]">
-                      <div class="h-2.5 bg-[#ffffff] border-b border-[#e5e7eb] dark:border-[#333]"></div>
-                      <div class="flex-1 bg-[#ffffff]"></div>
+                  <button id="btn-mode-system" onclick="setThemeMode('system', event)" class="mode-btn-system flex flex-col items-center gap-3 p-4 rounded-xl border-2 dark:border-[#333] cursor-pointer relative z-10 hover:border-gray-300 dark:hover:border-[#555]">
+                    <div class="w-full h-16 rounded-lg border border-[#e5e7eb] dark:border-[#333] overflow-hidden flex">
+                      <div class="flex-1 bg-[#f3f4f6] flex flex-col border-r border-[#e5e7eb] dark:border-[#333]">
+                        <div class="h-3 bg-[#ffffff] border-b border-[#e5e7eb] dark:border-[#333]"></div>
+                        <div class="flex-1 bg-[#ffffff]"></div>
+                      </div>
+                      <div class="flex-1 bg-[#1a1a1a] flex flex-col">
+                        <div class="h-3 bg-[#222] border-b border-[#333]"></div>
+                        <div class="flex-1 bg-[#1a1a1a]"></div>
+                      </div>
                     </div>
-                    <div class="flex-1 bg-[#1a1a1a] flex flex-col">
-                      <div class="h-2.5 bg-[#222] border-b border-[#333]"></div>
-                      <div class="flex-1 bg-[#1a1a1a]"></div>
-                    </div>
-                  </div>
-                  <span class="mode-text-system text-xs font-medium text-gray-700 dark:text-gray-300">跟随系统</span>
-                </button>
-              </div>
+                    <span class="mode-text-system text-sm font-medium text-gray-700 dark:text-gray-300">跟随系统</span>
+                  </button>
+                </div>
               </div>
 
               <div class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-100 dark:border-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 mb-6 transition-colors">
@@ -835,9 +810,6 @@
                   <button onclick="setGlobalThemeColor('green')" class="global-color-btn color-picker-btn" data-color="green" style="color: #22C55E; background-color: #22C55E;" title="极客绿"></button>
                   <button onclick="setGlobalThemeColor('purple')" class="global-color-btn color-picker-btn" data-color="purple" style="color: #A855F7; background-color: #A855F7;" title="深邃紫"></button>
                   <button onclick="setGlobalThemeColor('rose')" class="global-color-btn color-picker-btn" data-color="rose" style="color: #F43F5E; background-color: #F43F5E;" title="玫瑰粉"></button>
-                  <button onclick="openCustomColorPicker()" id="customColorBtnWrapper" class="global-color-btn color-picker-btn follow-theme-btn relative flex items-center justify-center outline-none group" data-color="custom" title="自定义颜色">
-                    <svg class="w-4 h-4 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                  </button>
                 </div>
               </div>
 
@@ -921,24 +893,20 @@
                 </div>
 
                 <div class="space-y-4">
-                  <label class="flex items-start gap-3 cursor-pointer group">
-                      <div class="relative flex items-center justify-center mt-0.5">
-                          <input type="radio" name="updateMode" value="auto" class="custom-radio" onchange="saveUpdateMode(this.value)">
-                      </div>
-                      <div>
-                          <div class="text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-500 transition-colors">自动下载并安装</div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">发现新版本时在后台静默下载，并在下次启动时自动安装</div>
-                      </div>
+                  <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="radio" name="updatePreference" value="auto" class="custom-radio" checked onchange="if(window.saveUpdatePreference) saveUpdatePreference()">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">自动下载并安装</div>
+                      <div class="text-xs text-gray-500 mt-0.5">发现新版本时在后台静默下载，并在下次启动时自动安装</div>
+                    </div>
                   </label>
-
-                  <label class="flex items-start gap-3 cursor-pointer group mt-4">
-                      <div class="relative flex items-center justify-center mt-0.5">
-                          <input type="radio" name="updateMode" value="manual" class="custom-radio" onchange="saveUpdateMode(this.value)">
-                      </div>
-                      <div>
-                          <div class="text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-500 transition-colors">有新版本时仅提醒我</div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">只在界面上显示红点提示，由我手动决定何时下载</div>
-                      </div>
+                  
+                  <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="radio" name="updatePreference" value="remind" class="custom-radio" onchange="if(window.saveUpdatePreference) saveUpdatePreference()">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">有新版本时仅提醒我</div>
+                      <div class="text-xs text-gray-500 mt-0.5">只在界面上显示红点提示，由我手动决定何时下载</div>
+                    </div>
                   </label>
                 </div>
 
@@ -949,9 +917,8 @@
                   <div class="text-xs text-gray-500 mt-1">请生成诊断报告，发送至官方 QQ 群以获取协助</div>
                 </div>
                 <div class="flex gap-3">
-                  <button class="theme-btn-soft px-4 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all" onclick="copyQQGroup(this)">
-                    <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    <span class="font-mono">668350689</span>
+                  <button class="text-xs font-medium text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 transition-colors" onclick="navigator.clipboard.writeText('668350689'); alert('群号668350689\n已复制！');">
+                    复制 QQ 群号
                   </button>
                   <button class="theme-btn-soft px-4 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all" onclick="if(window.mkpAPI) window.mkpAPI.exportBugReport()">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -1092,6 +1059,7 @@
 
   <div id="tooltip" class="tooltip"></div>
 
+  <script src="assets/js/changelog.js"></script>
   <script src="assets/js/data.js"></script>
   <script src="assets/js/theme.js"></script>
   <script src="assets/js/app.js"></script>
@@ -1114,42 +1082,5 @@
       }
     }
   </script>
-<div id="mkp-color-modal" class="fixed inset-0 z-[10000] flex items-center justify-center px-4 transition-all duration-300 opacity-0 pointer-events-none">
-  <div class="absolute inset-0 bg-black/40 dark:bg-black/80 backdrop-blur-sm transition-opacity" onclick="closeCustomColorPicker()"></div>
-  
-  <div class="relative bg-white dark:bg-[#1E1E1E] w-full max-w-[280px] rounded-2xl shadow-2xl transform scale-95 transition-transform duration-300 border border-gray-200 dark:border-[#333] flex flex-col overflow-hidden" id="mkp-color-card">
-    
-    <div class="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-[#333]">
-      <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">自定义主题色</h3>
-      <button onclick="closeCustomColorPicker()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors outline-none">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-
-    <div class="p-4 flex flex-col gap-4">
-      <div id="colorBoard" class="w-full h-36 rounded-lg relative overflow-hidden cursor-crosshair shadow-inner ring-1 ring-black/5 dark:ring-white/5" style="background-color: #ff0000;">
-        <div class="absolute inset-0 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
-        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
-        <div id="colorThumb" class="absolute w-3.5 h-3.5 rounded-full border-2 border-white shadow-[0_1px_3px_rgba(0,0,0,0.5)] pointer-events-none -translate-x-1/2 -translate-y-1/2" style="left: 100%; top: 0%;"></div>
-      </div>
-
-      <div class="relative py-1">
-        <div id="hueSlider" class="w-full h-2.5 rounded-full relative cursor-pointer shadow-inner" style="background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);">
-          <div id="hueThumb" class="absolute w-4 h-4 bg-white rounded-full border border-gray-300 shadow-sm pointer-events-none -translate-x-1/2 -translate-y-[3px]" style="left: 0%;"></div>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <div id="finalColorPreview" class="w-8 h-8 rounded-lg shadow-inner border border-black/10 dark:border-white/10 flex-shrink-0" style="background-color: #ff0000;"></div>
-        <div class="relative flex-1">
-          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-sm">#</span>
-          <input type="text" id="hexColorInput" value="FF0000" maxlength="6" class="w-full pl-6 pr-3 py-1.5 bg-gray-50 dark:bg-[#252526] border border-gray-200 dark:border-[#444] rounded-lg text-sm font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 transition-colors uppercase" oninput="syncFromInput(this.value)">
-        </div>
-      </div>
-
-      <button onclick="applyCustomColor()" class="w-full py-2 mt-1 rounded-xl text-sm font-medium text-white bg-gray-900 hover:bg-black dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white transition-all shadow-sm outline-none active:scale-95">确认应用</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>

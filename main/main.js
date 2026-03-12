@@ -41,47 +41,6 @@ function extractPatch(tempFilePath, targetAppPath) {
   }
 }
 
-// 📡 IPC 接收器：保存云端最新的 manifest 到本地
-ipcMain.handle('save-local-manifest', async (event, jsonStr) => {
-  try {
-    // 💡 这里的路径必须和你的热更新解压目录保持绝对一致！
-    // 这样它才能真正覆盖软件里的旧数据，确保下次断网启动时读到的是新数据
-    const targetPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app', 'app_manifest.json') 
-      : path.join(__dirname, '../../app_manifest.json'); // 这里根据你开发环境的相对路径微调
-
-    // 覆盖写入
-    fs.writeFileSync(targetPath, jsonStr, 'utf-8');
-    console.log('[版本引擎] 本地 app_manifest.json 已成功覆盖为最新云端版本');
-    
-    return { success: true };
-  } catch (error) {
-    console.error("[版本引擎] 保存本地 manifest 失败:", error);
-    return { success: false, error: error.message };
-  }
-});
-
-
-// 📡 IPC 接收器：前端呼叫强行读取本地 manifest (绕过 fetch 限制)
-ipcMain.handle('read-local-manifest', async () => {
-  try {
-    const manifestPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app', 'app_manifest.json') 
-      : path.join(__dirname, '../../app_manifest.json');
-      
-    if (fs.existsSync(manifestPath)) {
-      const data = fs.readFileSync(manifestPath, 'utf-8');
-      return JSON.parse(data);
-    } else {
-      console.warn('[版本引擎] 本地未找到 app_manifest.json');
-      return null;
-    }
-  } catch (error) {
-    console.error('[版本引擎] 读取本地 manifest 失败:', error);
-    return null;
-  }
-});
-
 // 📡 IPC 接收器：前端呼叫热更新
 ipcMain.handle('apply-hot-update', async (event, zipUrl) => {
   try {

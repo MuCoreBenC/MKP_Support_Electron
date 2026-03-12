@@ -1,13 +1,14 @@
 {
   "name": "mkp-support-e",
   "productName": "MKP SupportE",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "MKP Support Electron Application",
   "main": "src/main/main.js",
   "scripts": {
     "start": "chcp 65001 && electron .",
     "pack": "electron-builder --dir",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win",
+    "dev": "npx tailwindcss -i ./src/input.css -o ./assets/css/tailwind-compiled.css --watch"
   },
   "keywords": [],
   "author": "Your Name",
@@ -17,9 +18,12 @@
     "electron-updater": "^6.1.8"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.27",
     "electron": "^29.0.0",
     "electron-builder": "^24.9.1",
-    "sharp": "^0.34.5"
+    "postcss": "^8.5.8",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.19"
   },
   "build": {
     "appId": "com.mkp.support.e.app",
@@ -48,7 +52,7 @@
         "nsis"
       ]
     },
-"nsis": {
+    "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowElevation": true,

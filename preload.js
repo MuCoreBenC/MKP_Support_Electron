@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('mkpAPI', {
   applyHotUpdate: (url) => ipcRenderer.invoke('apply-hot-update', url),
   restartApp: () => ipcRenderer.invoke('restart-app'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
-  getAppVersion: () => ipcRenderer.invoke('get-app-version')
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  saveLocalManifest: (jsonStr) => ipcRenderer.invoke('save-local-manifest', jsonStr),
+  readLocalManifest: () => ipcRenderer.invoke('read-local-manifest')
 
 });
