@@ -5,7 +5,77 @@ const fs = require('fs');
 const { processGcode } = require('./mkp_engine');
 const { exec } = require('child_process');
 const isCliMode = process.argv.includes('--Gcode');
-const AdmZip = require('adm-zip'); // 👈 新增引入
+const AdmZip = require('adm-zip');
+
+// ==========================================
+// 🚀 增量热更新引擎 (ZIP 下载与智能解压覆盖)
+// ==========================================
+// 🛠️ 内部工具：智能解压防呆函数
+function extractPatch(tempFilePath, targetAppPath) {
+  const zip = new AdmZip(tempFilePath);
+  const zipEntries = zip.getEntries();
+  
+  if (zipEntries.length === 0) throw new Error("下载的补丁包是空的！");
+
+  // 💡 智能判断：检测压缩包是不是多套了一层文件夹
+  const firstEntryName = zipEntries[0].entryName;
+  const hasWrapperFolder = firstEntryName.includes('/') && zipEntries.every(entry => entry.entryName.startsWith(firstEntryName.split('/')[0] + '/'));
+
+  if (hasWrapperFolder) {
+    const wrapperFolderName = firstEntryName.split('/')[0] + '/';
+    console.log(`[热更新] 检测到外层文件夹 [${wrapperFolderName}]，正在智能剥离...`);
+    
+    zipEntries.forEach(entry => {
+      if (!entry.isDirectory) {
+        // 算出剥离外层文件夹后的真实目标路径
+        const targetPath = path.join(targetAppPath, entry.entryName.replace(wrapperFolderName, ''));
+        // 确保目标文件夹存在
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        // 单个文件覆盖提取
+        zip.extractEntryTo(entry, path.dirname(targetPath), false, true); 
+      }
+    });
+  } else {
+    console.log("[热更新] 压缩包层级正确，直接覆盖解压...");
+    zip.extractAllTo(targetAppPath, true); // true 表示允许覆盖已有文件
+  }
+}
+
+// 📡 IPC 接收器：前端呼叫热更新
+ipcMain.handle('apply-hot-update', async (event, zipUrl) => {
+  try {
+    console.log(`[热更新] 准备下载补丁: ${zipUrl}`);
+    
+    // 1. 下载 ZIP 到系统的临时目录 (Temp)
+    const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
+    const response = await fetch(zipUrl);
+    
+    if (!response.ok) throw new Error(`云端下载失败，HTTP状态码: ${response.status}`);
+    
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tempZipPath, Buffer.from(arrayBuffer));
+    console.log(`[热更新] 补丁下载完成，保存在: ${tempZipPath}`);
+
+    // 2. 确定要覆盖的本地代码老巢 (resources/app)
+    const targetExtractPath = app.isPackaged 
+      ? path.join(process.resourcesPath, 'app') 
+      : path.join(__dirname, '../../');
+
+    // 3. 呼叫智能解压工具
+    extractPatch(tempZipPath, targetExtractPath);
+    
+    console.log(`[热更新] 解压覆盖成功！目标目录: ${targetExtractPath}`);
+    
+    // 4. 打扫战场 (删除临时压缩包)
+    try { fs.unlinkSync(tempZipPath); } catch(e) {}
+
+    return { success: true };
+    
+  } catch (error) {
+    console.error("[热更新] 严重失败:", error);
+    return { success: false, error: error.message };
+  }
+});
 
 // ==========================================
 // 日志系统 (按天轮转 + 自动清理)
@@ -268,41 +338,9 @@ if (isCliMode) {
 }
 
 
-// ==========================================
-// 🚀 增量热更新引擎 (ZIP 补丁下载与解压覆盖)
-// ==========================================
-ipcMain.handle('apply-hot-update', async (event, zipUrl) => {
-  try {
-    console.log(`[热更新] 准备下载补丁: ${zipUrl}`);
-    
-    // 1. 下载 ZIP 到系统的临时目录
-    const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
-    const response = await fetch(zipUrl);
-    
-    if (!response.ok) throw new Error(`网络请求失败: ${response.status}`);
-    
-    const arrayBuffer = await response.arrayBuffer();
-    fs.writeFileSync(tempZipPath, Buffer.from(arrayBuffer));
-    console.log(`[热更新] 补丁下载完成，保存在: ${tempZipPath}`);
 
-    // 2. 确定要覆盖的本地代码目录
-    // 打包后代码在 resources/app 目录；开发环境则在当前项目根目录
-    const targetExtractPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app') 
-      : path.join(__dirname, '../../');
 
-    // 3. 解压并强制覆盖原文件
-    const zip = new AdmZip(tempZipPath);
-    zip.extractAllTo(targetExtractPath, true); // true 表示允许覆盖已有文件
-    
-    console.log(`[热更新] 解压覆盖成功！目标目录: ${targetExtractPath}`);
-    return { success: true };
-    
-  } catch (error) {
-    console.error("[热更新] 严重失败:", error);
-    return { success: false, error: error.message };
-  }
-});
+
 // ==========================================
 // 获取软件真实版本号 (自动读取 package.json)
 // ==========================================

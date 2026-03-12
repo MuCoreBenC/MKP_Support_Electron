@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>支撑面改善工具 (MKP SupportE)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- <link rel="stylesheet" href="assets/css/tailwind-compiled.css"> -->
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="assets/js/icons.js"></script>
   <script>
@@ -47,8 +45,9 @@
 
   <div id="mainApp" class="flex h-screen">
     
-    <div id="sidebarWrapper" class="sidebar-wrapper relative flex-shrink-0" style="width: 200px;">
-      <aside id="sidebar" class="w-[200px] h-screen bg-white border-r border-gray-200 dark:border-[#333] flex flex-col duration-300 ease-in-out overflow-hidden transition-colors">
+    <div id="sidebarWrapper" class="sidebar-wrapper relative flex-shrink-0 transition-all duration-300 ease-in-out" style="width: 200px;">
+      
+<aside id="sidebar" style="width: 200px;" class="h-screen bg-white border-r border-gray-200 dark:border-[#333] flex flex-col duration-300 ease-in-out overflow-hidden transition-all whitespace-nowrap">
         
         <div class="sidebar-header-bar px-3 py-2 border-b border-gray-100 dark:border-[#333] flex items-center transition-colors">
           <button id="btn-toggle-sidebar" onclick="toggleSidebar()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left hover:bg-gray-100 dark:hover:bg-[#2A2D2E] transition-colors" title="折叠侧边栏">
@@ -62,10 +61,14 @@
         </div>
 
         <div class="py-4 sidebar-content border-b border-gray-100 dark:border-[#333] flex flex-col items-center justify-center min-h-[84px] cursor-default pointer-events-none transition-colors">
-          <div class="flex items-center justify-center whitespace-nowrap overflow-hidden duration-300">
-            <span id="sidebarBrand" class="text-sm font-medium text-gray-500 dark:text-gray-400 duration-300 overflow-hidden inline-block align-middle">Bambu Lab</span>
-            <span id="sidebarBrandSpace" class="duration-300 inline-block"></span>
-            <span id="sidebarModelName" class="text-sm font-bold theme-text duration-300 inline-block align-middle">A1</span>
+          <div class="flex items-center justify-center whitespace-nowrap overflow-hidden">
+  
+            <div id="brandWrapper" class="transition-all duration-300 ease-in-out overflow-hidden flex items-center justify-end" style="max-width: 90px; opacity: 1;">
+              <span id="sidebarBrand" class="text-sm font-medium text-gray-500 dark:text-gray-400">Bambu Lab</span>
+              <span id="sidebarBrandSpace" class="w-1.5 inline-block flex-shrink-0"></span>
+            </div>
+            
+            <span id="sidebarModelName" class="text-sm font-bold theme-text inline-block align-middle relative transition-transform duration-300">A1</span>
           </div>
           <div class="mt-1.5 flex items-center justify-center overflow-hidden w-full">
             <span id="sidebarVersionBadge" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-[#333] text-gray-400 dark:text-gray-500 whitespace-nowrap duration-300 transition-colors">未选择</span>
@@ -141,7 +144,7 @@
             <span id="text-nav-theme" class="sidebar-text text-gray-700 dark:text-gray-300">软件设置</span>
           </button>
         </div>
-        
+
       </aside>
     </div>
 
@@ -247,11 +250,11 @@
                         <p class="text-xs text-gray-500">已存放在您电脑中的配置，点击即可应用</p>
                       </div>
                     </div>
-                    <button id="checkUpdateBtn" onclick="checkOnlineUpdates()" class="relative text-sm font-medium flex items-center gap-1.5 px-4 py-2 rounded-lg theme-btn-soft transition-all">
-                      <svg id="refreshIcon" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="checkUpdateBtn" onclick="checkOnlineUpdates(this)" class="relative text-sm font-medium flex items-center gap-1.5 px-4 py-2 rounded-lg theme-btn-soft transition-all">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                       </svg>
-                      <span id="checkUpdateText">检查更新</span>
+                      <span>检查预设</span>
                     </button>
                   </div>
                   <div id="localPresetsContainer" class="bg-white dark:bg-[#252526] rounded-2xl border border-gray-200 dark:border-[#333] shadow-sm overflow-hidden duration-300 transition-colors">
@@ -304,10 +307,10 @@
               <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">粘贴到:工艺->其他->后处理脚本</div>
               <div class="flex items-center gap-2">
                 <input type="text" id="scriptPath" class="input-field input-readonly flex-1 px-4 py-2.5 rounded-lg text-sm" readonly title="后处理脚本路径" placeholder="请先选择机型和版本">
-                <button id="scriptCopyBtn" onclick="copyPath()" class="btn-secondary px-3 py-2.5 rounded-lg transition-all" title="复制路径" disabled>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
-                  </svg>
+                <button id="scriptCopyBtn" onclick="copyPath()" class="theme-btn-soft h-9 min-w-[36px] px-2 rounded-lg flex items-center justify-center transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                    </svg>
                 </button>
               </div>
             </div>
@@ -448,7 +451,7 @@
         <div class="page-header w-full">
           <div class="page-header-top">
             <h1 id="title-page-versions" class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">版本控制</h1>
-            <button id="btn-page-check-update" onclick="checkForUpdates()" class="theme-btn-solid px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+            <button id="btn-page-check-update" onclick="manualCheckAppUpdate(this)" class="theme-btn-solid px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               检查更新
             </button>
@@ -882,7 +885,7 @@
                   </div>
                   <div class="flex gap-3">
                     <button id="btn-setting-about" class="btn-secondary px-4 py-2 text-sm rounded-lg transition-all" onclick="document.querySelector('[data-page=\'about\']').click()">关于我们</button>
-                    <button id="btn-setting-check-update" class="theme-btn-solid px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all" onclick="checkAppUpdate(true)">
+                    <button id="btn-setting-check-update" class="theme-btn-solid px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all" onclick="manualCheckAppUpdate(this)">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                       检查更新
                     </button>
@@ -935,30 +938,27 @@
   </div>
 
 
-  <div id="mkp-global-modal" class="mkp-modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
-    <div class="mkp-modal-card bg-white dark:bg-[#252526] w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 dark:border-[#333] overflow-hidden flex flex-col md:flex-row md:items-start p-6 gap-5">
-      
-      <div id="mkp-modal-icon-box" class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 theme-bg-soft">
-        <svg id="mkp-modal-icon" class="w-6 h-6 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
+<div id="mkp-global-modal" class="fixed inset-0 z-[9999] flex items-center justify-center px-4 transition-all duration-300 opacity-0 pointer-events-none">
+  <div class="absolute inset-0 bg-black/50 dark:bg-[#000000] dark:bg-opacity-70 transition-opacity duration-300" onclick="MKPModal.cancel()"></div>
+  
+  <div class="relative bg-white dark:bg-[#252526] w-full max-w-sm rounded-2xl shadow-2xl transform scale-95 transition-transform duration-300 p-6 flex flex-col gap-6" id="mkp-modal-card">
+    
+    <div class="flex items-start gap-4">
+      <div id="mkp-modal-icon-box" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+        <svg id="mkp-modal-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
       </div>
-
-      <div class="flex-1 w-full">
-        <h3 id="mkp-modal-title" class="text-lg font-bold text-gray-900 dark:text-white mb-2">提示</h3>
-        <p id="mkp-modal-msg" class="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed break-words"></p>
-        
-        <div class="flex items-center justify-end gap-3 mt-auto">
-          <button id="mkp-modal-cancel" onclick="MKPModal.cancel()" class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors">
-            取消
-          </button>
-          <button id="mkp-modal-confirm" onclick="MKPModal.confirmBtn()" class="theme-btn-solid px-5 py-2.5 rounded-xl text-sm font-medium transition-all">
-            确认
-          </button>
-        </div>
+      <div class="flex-1 mt-0.5">
+        <h3 id="mkp-modal-title" class="text-base font-bold text-gray-900 dark:text-gray-100"></h3>
+        <div id="mkp-modal-msg" class="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed"></div>
       </div>
     </div>
+    
+    <div class="flex justify-end gap-3">
+      <button id="mkp-modal-cancel" onclick="MKPModal.cancel()" class="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-[#2a2a2a] dark:text-gray-300 dark:hover:bg-[#333] transition-colors">取消</button>
+      <button id="mkp-modal-confirm" onclick="MKPModal.confirmBtn()" class="px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm active:scale-95">确定</button>
+    </div>
   </div>
+</div>
 
   <div id="onboarding" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8 transition-opacity">
     <div class="bg-white rounded-2xl card-shadow w-[520px] max-h-[90vh] animate-scale-in flex flex-col overflow-hidden border border-transparent dark:border-[#333333]">

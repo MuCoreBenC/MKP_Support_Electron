@@ -1,3 +1,26 @@
+/* ==========================================
+   🌟 0KB 极致轻量：原生系统 UI 字体终极调优
+   ========================================== */
+body {
+  /* 优先调用 Windows 专属的 UI 版微软雅黑，字间距更现代 */
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif !important;
+  
+  /* 开启平滑抗锯齿 */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  
+  /* 🪄 核心魔法：放弃粗暴的描边，改用 0.2px 的微缩阴影。
+     这会像给字体加上了“光晕”，让字变得扎实饱满，但绝不会糊成一团！ */
+  text-shadow: 0 0 0.2px currentColor !important;
+  
+  /* 正文基础字重 */
+  font-weight: 400; 
+}
+
+/* 针对标题等需要加粗的地方，明确使用 Bold */
+h1, h2, h3, .font-bold {
+  font-weight: 700 !important;
+}
 /* ==================== 1. CSS 变量定义 ==================== */
 :root {
   /* 🚀 核心：全局主色调 RGB */
@@ -760,29 +783,40 @@ html.dark .custom-radio { border-color: #4B5563; }
 }
 
 /* ==========================================
-   🚀 复制按钮高级微交互 (Vercel/Stripe 风格)
+   🚀 通用高级微交互 (Vercel/Stripe 苹果级手感)
    ========================================== */
-#scriptCopyBtn {
-  width: 42px; /* 锁定初始正方形宽度 */
+
+/* 1. 给需要动画的按钮打底 */
+.btn-q-bounce {
   overflow: hidden;
   white-space: nowrap; /* 绝对禁止内部换行 */
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* 极致 Q弹的苹果级非线性过渡曲线 */
+  /* 极致 Q弹的苹果级非线性过渡曲线，掌管一切宽度和颜色的变化 */
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
-#scriptCopyBtn.is-copied {
-  width: 92px; /* 魔法展开：变成胶囊形 */
-  background-color: rgba(16, 185, 129, 0.1) !important; /* 翡翠绿底色 */
-  border-color: #10B981 !important; /* 翡翠绿边框 */
+/* 2. 翡翠绿展开态 (用于复制成功等) */
+.btn-expand-green {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border-color: #10B981 !important;
+  color: #10B981 !important;
 }
-
-/* 暗黑模式下的色彩微调 */
-html.dark #scriptCopyBtn.is-copied {
+html.dark .btn-expand-green {
   background-color: rgba(16, 185, 129, 0.15) !important;
 }
+
+/* 3. 海洋蓝展开态 (用于检查更新加载中) */
+.btn-expand-blue {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: #3B82F6 !important;
+  color: #3B82F6 !important;
+}
+
+/* ----------------------------------
+   🎨 核心神级动画帧 (原封不动保留)
+   ---------------------------------- */
 
 /* 勾号弹射入场 */
 @keyframes checkPopBounce {

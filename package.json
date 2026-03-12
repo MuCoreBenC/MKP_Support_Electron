@@ -1,11 +1,11 @@
 {
   "name": "mkp-support-e",
   "productName": "MKP SupportE",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MKP Support Electron Application",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "chcp 65001 && electron .",
     "pack": "electron-builder --dir",
     "build": "electron-builder --win"
   },

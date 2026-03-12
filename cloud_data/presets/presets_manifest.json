@@ -49,7 +49,7 @@
     {
       "id": "p1",
       "type": "lite",
-      "file": "p1_lite_v2.4.2.json",
+      "file": "p1_lite_v2.4.2-r1.json",
       "version": "2.4.2",
       "description": "lite版初始参数",
       "releaseNotes": [
@@ -59,10 +59,10 @@
     },
     {
       "id": "x1",
-      "type": "standard",
-      "file": "x1_standard_v2.4.2.json",
+      "type": "lite",
+      "file": "x1_lite_v2.4.2-r1.json",
       "version": "2.4.2",
-      "description": "标准版初始参数",
+      "description": "lite版初始参数",
       "releaseNotes": [
         "同步原版X1v2.4.2初始参数"
       ],
@@ -71,7 +71,7 @@
     {
       "id": "s1c",
       "type": "standard",
-      "file": "s1c_standard_v1.2.0.json",
+      "file": "s1c_standard_v1.2.0-r1.json",
       "version": "1.2.0",
       "description": "标准版初始参数",
       "releaseNotes": [

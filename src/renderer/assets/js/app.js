@@ -22,10 +22,7 @@ const Logger = {
 };
 
 // ============================================================
-// 🚀 MKP 全局 SaaS 级弹窗系统 (支持 Promise 异步等待)
-// 使用方法:
-// await MKPModal.confirm({ title: '警告', msg: '确定要删除吗？', type: 'warning' });
-// await MKPModal.alert({ title: '成功', msg: '保存完毕！', type: 'success' });
+// 🚀 MKP 全局 SaaS 级弹窗系统 (紧凑纯色 + 主题跟随版)
 // ============================================================
 const MKPModal = {
   _resolve: null,
@@ -35,6 +32,7 @@ const MKPModal = {
       this._resolve = resolve;
       
       const overlay = document.getElementById('mkp-global-modal');
+      const card = document.getElementById('mkp-modal-card');
       const iconBox = document.getElementById('mkp-modal-icon-box');
       const iconSvg = document.getElementById('mkp-modal-icon');
       const titleEl = document.getElementById('mkp-modal-title');
@@ -46,40 +44,43 @@ const MKPModal = {
       titleEl.textContent = options.title || '提示';
       msgEl.innerHTML = options.msg || '';
 
-      // 2. 根据不同类型设置主题 (info, warning, error, success)
       const type = options.type || 'info';
       
-      // 清除旧颜色
-      iconBox.className = 'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 mb-4 md:mb-0';
-      confirmBtn.className = 'px-5 py-2.5 rounded-xl text-sm font-medium transition-all text-white';
+      // 2. 清理旧样式，注入基础样式
+      iconBox.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0';
+      confirmBtn.className = 'px-5 py-2 rounded-xl text-sm font-medium transition-all shadow-sm active:scale-95 text-white';
 
-      if (type === 'warning') {
-        iconBox.classList.add('bg-amber-100', 'dark:bg-amber-900/30');
-        iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
-        iconSvg.className = 'w-6 h-6 text-amber-500';
-        confirmBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');
-        confirmBtn.textContent = options.confirmText || '确定';
-      } else if (type === 'error') {
-        iconBox.classList.add('bg-red-100', 'dark:bg-red-900/30');
+      // 3. 🎨 核心：主题色判断
+      if (type === 'error') {
+        // 严重错误保留红色，但暗黑模式下变柔和
+        iconBox.classList.add('bg-red-50', 'dark:bg-red-900/20');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
-        iconSvg.className = 'w-6 h-6 text-red-500';
+        iconSvg.className = 'w-5 h-5 text-red-500';
         confirmBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-        confirmBtn.textContent = options.confirmText || '危险操作';
+        confirmBtn.textContent = options.confirmText || '确定';
       } else if (type === 'success') {
-        iconBox.classList.add('bg-green-100', 'dark:bg-green-900/30');
+        // 成功保留绿色
+        iconBox.classList.add('bg-green-50', 'dark:bg-green-900/20');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>';
-        iconSvg.className = 'w-6 h-6 text-green-500';
+        iconSvg.className = 'w-5 h-5 text-green-500';
         confirmBtn.classList.add('bg-green-500', 'hover:bg-green-600');
         confirmBtn.textContent = options.confirmText || '好的';
-      } else { // 默认 info 主题色
+      } else {
+        // 💡 重点：Warning 和 Info 全部使用系统的全局主题色！
         iconBox.classList.add('theme-bg-soft');
-        iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
-        iconSvg.className = 'w-6 h-6 theme-text';
+        iconSvg.className = 'w-5 h-5 theme-text';
         confirmBtn.classList.add('theme-btn-solid');
-        confirmBtn.textContent = options.confirmText || '确认';
+
+        if (type === 'warning') {
+          iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
+          confirmBtn.textContent = options.confirmText || '确定'; // 覆盖掉直男的“危险操作”
+        } else {
+          iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+          confirmBtn.textContent = options.confirmText || '确认';
+        }
       }
 
-      // 3. 按钮显示逻辑 (alert 模式隐藏取消按钮)
+      // 4. 显示/隐藏 取消按钮
       if (options.mode === 'alert') {
         cancelBtn.classList.add('hidden');
       } else {
@@ -87,34 +88,34 @@ const MKPModal = {
         cancelBtn.textContent = options.cancelText || '取消';
       }
 
-      // 4. 显示动画
-      overlay.classList.add('show');
+      // 5. 显示入场动画 (兼容 Tailwind 的 opacity 控制)
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
     });
   },
 
   hide: function () {
     const overlay = document.getElementById('mkp-global-modal');
-    overlay.classList.remove('show');
+    const card = document.getElementById('mkp-modal-card');
+    overlay.classList.add('opacity-0', 'pointer-events-none');
+    card.classList.add('scale-95');
   },
 
-  // 用户点击取消
   cancel: function () {
     this.hide();
-    if (this._resolve) this._resolve(false);
+    // 延迟一点 resolve，让动画播完
+    setTimeout(() => { if (this._resolve) this._resolve(false); }, 200);
   },
 
-  // 用户点击确认
   confirmBtn: function () {
     this.hide();
-    if (this._resolve) this._resolve(true);
+    setTimeout(() => { if (this._resolve) this._resolve(true); }, 200);
   },
 
-  // 快捷接口：询问框
   confirm: function (options) {
     return this.show({ ...options, mode: 'confirm' });
   },
 
-  // 快捷接口：提示框
   alert: function (options) {
     return this.show({ ...options, mode: 'alert' });
   }
@@ -574,123 +575,178 @@ async function checkUpdateEngine(type, targetId = null, forceCheck = false) {
 }
 
 // ==========================================
-// 🚀 软件本体：增量热更新检查引擎
+// 🚀 软件本体：统一检查更新引擎 (带按钮转圈动效与 SaaS 弹窗)
 // ==========================================
-async function checkAppUpdate(isManual = false) {
+async function manualCheckAppUpdate(btnElement) {
+  Logger.info("[O104] Manual check app update");
+
+  // 1. 记录按钮原形态，并开启转圈加载动画
+  const originalHtml = btnElement.innerHTML;
+  const originalWidth = btnElement.offsetWidth; 
+  btnElement.style.minWidth = `${originalWidth}px`; // 锁死宽度，防止转圈时按钮忽大忽小闪烁
+  btnElement.disabled = true;
+  
+  // 注入 Tailwind 转圈 SVG
+  btnElement.innerHTML = `
+    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span>检查中...</span>
+  `;
+
   try {
-    if (isManual) console.log("[软件更新] 正在手动检查更新...");
-    
+    // 2. 模拟微小的视觉延迟，让用户能看清转圈动画 (提升质感)
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    // 3. 多节点并发拉取版本清单
     const urls = [
       `${CLOUD_BASES.gitee}/cloud_data/app_manifest.json?t=${Date.now()}`,
       `${CLOUD_BASES.jsDelivr}/cloud_data/app_manifest.json?t=${Date.now()}`,
       `${CLOUD_BASES.github}/cloud_data/app_manifest.json?t=${Date.now()}`
     ];
-    
+
     let manifest = null;
     for (const url of urls) {
       try {
         const res = await fetch(url);
         if (res.ok) {
           manifest = await res.json();
-          break; // 拉到就跳出
+          break; // 只要有一个通了就跳出
         }
       } catch (e) {}
     }
 
-    if (!manifest) throw new Error("无法连接到更新服务器");
+    if (!manifest) throw new Error("所有的云端节点均无法连接");
 
-    const localVer = UPDATE_CONFIG.app.getLocalVersion(); // 当前版本，比如 '0.2.1'
+    const localVer = UPDATE_CONFIG.app.getLocalVersion();
     const cloudVer = manifest.latestVersion;
 
-    // 2. 版本号比对 (假设你有一个 compareVersionsFront 函数，云端大于本地返回 > 0)
+    // 4. 版本比对逻辑
     if (compareVersionsFront(cloudVer, localVer) > 0) {
-      console.log(`[软件更新] 发现新版本 ${cloudVer}，类型: ${manifest.updateType}`);
-      
-      // 3. 处理增量热更新 (hot_update)
+      Logger.info(`[软件更新] 发现新版本 ${cloudVer}`);
+
+      // 4.1 热更新处理
       if (manifest.updateType === 'hot_update') {
-        // 弹出确认更新的 UI 提示
-        const userConfirm = confirm(`发现新版本 ${cloudVer}！\n\n更新内容：\n${manifest.releaseNotes.join('\n')}\n\n是否立即进行静默增量更新？`);
-        
+        const userConfirm = await MKPModal.confirm({
+          title: `发现新版本 v${cloudVer}`,
+          msg: `更新内容：<br><br>${manifest.releaseNotes.join('<br>')}<br><br>是否立即在后台静默更新？`,
+          confirmText: '立即更新',
+          type: 'info'
+        });
+
         if (userConfirm) {
-          // 💡 动态替换链接：无论配置里写了啥，只要是相对路径或需要修正的，强行转成 Gitee Raw 下载补丁
+          // 用户同意后，按钮变成下载状态
+          btnElement.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>下载补丁...</span>`;
+          
           let downloadUrl = manifest.downloadUrl;
           if (downloadUrl.includes('localhost') || !downloadUrl.startsWith('http')) {
-            downloadUrl = `${CLOUD_BASES.gitee}/cloud_data/${downloadUrl.split('/').pop()}`;
+             downloadUrl = `${CLOUD_BASES.gitee}/cloud_data/${downloadUrl.split('/').pop()}`;
           }
-          
-          console.log("[软件更新] 正在通知主进程下载并应用补丁...");
-          
-          // 通知主进程去干活 (下载 ZIP 并解压)
+
           const result = await window.mkpAPI.applyHotUpdate(downloadUrl);
-          
+
           if (result.success) {
-            alert("增量更新完毕！软件即将重启以应用最新版本。");
-            window.mkpAPI.restartApp(); // 重启软件
+            await MKPModal.alert({ title: '更新完毕', msg: '增量补丁安装成功！软件即将重启以应用最新版本。', type: 'success'});
+            window.mkpAPI.restartApp();
           } else {
-            alert("热更新失败: " + result.error);
+            await MKPModal.alert({ title: '更新失败', msg: '热更新应用失败: ' + result.error, type: 'error',confirmText: '确定' });
           }
         }
       } 
-      // 4. 处理全量安装包 (full_install)
+      // 4.2 全量安装包处理
       else if (manifest.updateType === 'full_install') {
-        if(confirm(`发现大版本更新 ${cloudVer}！该版本需要重新安装。\n\n更新内容：\n${manifest.releaseNotes.join('\n')}\n\n是否前往浏览器下载完整安装包？`)) {
-           window.mkpAPI.openExternal(manifest.downloadUrl);
-        }
+        const userConfirm = await MKPModal.confirm({
+          title: `发现大版本更新 v${cloudVer}`,
+          msg: `该版本需要重新安装。<br><br>更新内容：<br>${manifest.releaseNotes.join('<br>')}<br><br>是否前往浏览器下载完整安装包？`,
+          confirmText: '前往下载',
+          type: 'info'
+        });
+        if (userConfirm) window.mkpAPI.openExternal(manifest.downloadUrl);
       }
+
     } else {
-      if (isManual) alert("当前已经是最新版本！");
+      // 没发现新版，调用你高大上的 MKPModal 提示
+      await MKPModal.alert({
+        title: '已是最新版',
+        msg: `当前软件已是最新版本 (v${localVer})，无需更新。`,
+        type: 'success'
+      });
     }
+
   } catch (error) {
-    console.error(`[软件更新] 失败: ${error.message}`);
-    if (isManual) alert("检查更新失败，请检查网络！");
+    Logger.error(`[软件更新] 失败: ${error.message}`);
+    // 网络错误，调用高大上的 MKPModal 红色警告
+    await MKPModal.alert({
+      title: '网络请求失败',
+      msg: `无法连接到更新服务器，请检查您的网络设置。<br><span class="text-xs text-gray-400 mt-2 block">报错信息: ${error.message}</span>`,
+      type: 'error',
+      confirmText: '确定'
+    });
+  } finally {
+    // 5. 无论成功还是失败，最后都要把按钮状态恢复原样
+    btnElement.disabled = false;
+    btnElement.innerHTML = originalHtml;
+    btnElement.style.minWidth = '';
   }
 }
 
-async function checkOnlineUpdates() {
+// ==========================================
+// 🚀 云端预设：在线检查更新引擎 (带按钮统一动效)
+// ==========================================
+async function checkOnlineUpdates(btnElement) {
   Logger.info(`[O211] Click check preset update`);
   const onlineEmpty = document.getElementById('onlineEmptyState');
   const onlineList = document.getElementById('onlinePresetsList');
   
-  const refreshIcon = document.getElementById('refreshIcon');
-  const checkUpdateBtn = document.getElementById('checkUpdateBtn');
-  const checkUpdateText = document.getElementById('checkUpdateText');
-  
+  // 1. 状态防呆拦截：如果没有选机型，直接弹窗警告并退出
   if (!selectedPrinter || !selectedVersion) {
-    Logger.warn(`[E202] Invalid UI state: 未选机型就触发检查云端`); // 记录界面状态拦截
-    alert("请先选择机型和版本类型");
+    Logger.warn(`[E202] Invalid UI state: 未选机型就触发检查云端`); 
+    await MKPModal.alert({ title: '提示', msg: '请先在左侧选择机型和版本类型，再检查预设更新。', type: 'warning' ,confirmText: '确定'});
     return;
   }
 
-  if (refreshIcon) refreshIcon.classList.add('animate-spin');
-  if (checkUpdateBtn) checkUpdateBtn.disabled = true;
-  if (checkUpdateText) checkUpdateText.textContent = '检查中...';
+  // 2. 按钮动效：锁死宽度 + 开启转圈
+  let originalHtml = '';
+  if (btnElement) {
+    originalHtml = btnElement.innerHTML;
+    const originalWidth = btnElement.offsetWidth;
+    btnElement.style.minWidth = `${originalWidth}px`;
+    btnElement.disabled = true;
+    btnElement.innerHTML = `
+      <svg class="w-4 h-4 animate-spin theme-text" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <span>同步中...</span>
+    `;
+  }
 
+  // 3. 列表区域展示：显示巨大的加载中动画
   onlineEmpty.classList.add('hidden');
   onlineList.classList.remove('hidden');
   onlineList.classList.add('flex');
-  
   onlineList.innerHTML = `
     <div class="p-8 flex flex-col items-center justify-center text-center space-y-3">
       <svg class="w-8 h-8 theme-text animate-spin" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <div class="text-sm text-gray-500">正在与云端服务器同步...</div>
+      <div class="text-sm text-gray-500">正在与云端服务器同步预设...</div>
     </div>
   `;
 
   try {
     const printerData = getPrinterObj(selectedPrinter);
+    // 强制等待 600ms 让视觉动效跑一会儿
     const [cloudResult] = await Promise.all([
       fetchCloudPresets(printerData.id, selectedVersion),
       new Promise(resolve => setTimeout(resolve, 600)) 
     ]);
 
- // 🚨 第一重拦截：网络彻底失败，展示醒目的红色错误面板！
+    // 4. 彻底失败：网络不通
     if (!cloudResult.success) {
-      // 💡 核心修复：加一个兜底，防止 fetchCloudPresets 漏传 error 字段
-      const errorText = cloudResult.error || "无法连接到云端服务器，请检查您的本地网络或代理设置(如 TUN 模式)。";
-
+      const errorText = cloudResult.error || "无法连接到云端服务器，请检查您的本地网络或代理设置。";
       onlineList.innerHTML = `
         <div class="p-8 text-center flex flex-col items-center justify-center">
           <div class="w-12 h-12 mb-3 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500">
@@ -700,70 +756,65 @@ async function checkOnlineUpdates() {
           <div class="text-xs text-red-500 max-w-[250px] leading-relaxed">${errorText}</div>
         </div>
       `;
+      // 同时弹出高级弹窗提醒
+      await MKPModal.alert({ title: '网络请求失败', msg: errorText, type: 'error' ,confirmText: '确定'});
       return;
     }
 
-    // 第二重拦截：网络通了，但是这个机型云端确实还没传文件
-    const releases = cloudResult.data; // 把数据剥离出来
+    // 5. 成功返回但为空：云端确实还没传该机型的文件
+    const releases = cloudResult.data;
     if (releases.length === 0) {
-      onlineList.innerHTML = `<div class="p-8 text-center text-sm text-gray-500">云端暂未发布该版本的预设文件。</div>`;
+      onlineList.innerHTML = `<div class="p-8 text-center text-sm text-gray-500">云端暂未发布该机型和版本的预设文件。</div>`;
       return;
     }
     
-    // 第三重：一切正常，渲染出下载列表
+    // 6. 完美成功：渲染出下载列表
     renderListItems(onlineList, releases, printerData, selectedVersion, false);
     
   } catch (error) {
-    // 这里的 catch 只用来兜底 UI 渲染中可能发生的极其罕见的语法报错
     Logger.error("渲染在线列表发生崩溃:", error);
     onlineList.innerHTML = `<div class="p-8 text-center text-sm text-red-500">界面渲染发生异常。</div>`;
   } finally {
-    const refreshIcon = document.getElementById('refreshIcon');
-    const checkUpdateBtn = document.getElementById('checkUpdateBtn');
-    const checkUpdateText = document.getElementById('checkUpdateText');
-    if (refreshIcon) refreshIcon.classList.remove('animate-spin');
-    if (checkUpdateBtn) checkUpdateBtn.disabled = false;
-    if (checkUpdateText) checkUpdateText.textContent = '检查更新';
-  }
-
-
-}
-
-async function checkForUpdates() {
-  Logger.info("[O104] Check update"); // 记录触发版本更新
-  Logger.info("用户点击了检查更新按钮，强制突破缓存限制");
-  const result = await checkUpdateEngine('app', null, true);
-
-  if (!result.success) {
-    alert('网络请求失败，请检查网络设置。');
-    return;
-  }
-
-  if (result.hasUpdate) {
-    if (confirm(`发现软件新版本 v${result.cloudVersion}！\n是否立即前往下载？`)) {
-      Logger.info('用户同意跳转下载', { url: result.data.downloadUrl });
+    // 7. 动画结束，还原按钮原本的面貌
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = originalHtml;
+      btnElement.style.minWidth = '';
     }
-  } else {
-    alert(`当前软件已是最新版本 (v${result.localVersion})！\n\n您使用的是最新版。`);
   }
 }
 
-// ==========================================
-// 4. 界面渲染引擎：侧边栏、品牌、机型
-// ==========================================
+
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const wrapper = document.getElementById('sidebarWrapper');
+  const brandWrapper = document.getElementById('brandWrapper'); 
+
   sidebarCollapsed = !sidebarCollapsed;
   Logger.info("Toggle UI: sidebar, collapsed:" + sidebarCollapsed);
+  
   if (sidebarCollapsed) {
     sidebar.classList.add('sidebar-collapsed');
     wrapper.classList.add('sidebar-wrapper-collapsed');
-    wrapper.style.width = '72px';  
+    // 💡 让外壳和内部侧边栏同时、同尺寸缩小，拒绝挤压！
+    wrapper.style.width = '72px';
+    sidebar.style.width = '72px';
+    
+    if (brandWrapper) {
+      brandWrapper.style.maxWidth = '0px';
+      brandWrapper.style.opacity = '0';
+    }
   } else {
     sidebar.classList.remove('sidebar-collapsed');
     wrapper.classList.remove('sidebar-wrapper-collapsed');
-    wrapper.style.width = '200px'; 
+    // 💡 让外壳和内部侧边栏同时恢复 200px
+    wrapper.style.width = '200px';
+    sidebar.style.width = '200px';
+    
+    if (brandWrapper) {
+      brandWrapper.style.maxWidth = '90px';
+      brandWrapper.style.opacity = '1';
+    }
   }
 }
 
@@ -1398,6 +1449,9 @@ function updateVersionListForPrinter() {
   }
 }
 
+// 全局变量控制是否显示历史（放在函数外面）
+let isLegacyVisible = false; 
+
 function renderVersions() {
   const versionList = document.getElementById('versionList');
   if (!versionList) return;
@@ -1405,25 +1459,42 @@ function renderVersions() {
 
   const stableVersion = versions.find(v => v.status === 'RUNNING' || v.status === 'Stable');
   const betaVersion = versions.find(v => v.status === 'Beta');
+  // 过滤出所有非当前运行、非 Beta 的旧版本
   const legacyVersions = versions.filter(v => v !== stableVersion && v !== betaVersion);
 
+  // 渲染函数 (保持你刚才修改好的带置灰逻辑的版本)
   const createCard = (version, type) => {
     let badgeClass = 'bg-gray-100 text-gray-800';
     let btnText = '回退';
     let btnClass = 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+    let btnAction = ''; 
+    let isDisabled = false;
 
     if (type === 'stable') {
       badgeClass = 'theme-bg-soft';
-      btnText = version.current ? '已是最新' : '下载并更新';
+      btnText = version.current ? '已是最新' : '检查更新';
       btnClass = 'theme-btn-solid';
+      if (version.current) {
+        isDisabled = true;
+      } else {
+        btnAction = `onclick="manualCheckAppUpdate(this)"`;
+      }
     } else if (type === 'beta') {
       badgeClass = 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-400';
       btnText = '立即尝鲜';
       btnClass = 'theme-btn-soft';
+    } else {
+      if (version.version.includes('-')) {
+        isDisabled = true;
+        btnText = '不可回退';
+        btnClass = 'bg-gray-50 text-gray-400 cursor-not-allowed dark:bg-[#1e1e1e] opacity-60';
+      } else {
+        btnAction = `onclick="handleRollback(this, '${version.version}')"`;
+      }
     }
 
     return `
-      <div class="bg-white dark:bg-[#252526] rounded-xl border border-gray-200 dark:border-[#333] p-5 mb-4 shadow-sm">
+      <div class="bg-white dark:bg-[#252526] rounded-xl border border-gray-200 dark:border-[#333] p-5 mb-4 shadow-sm transition-all hover:shadow-md animate-fade-in">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
             <div class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}">${version.status}</div>
@@ -1433,7 +1504,7 @@ function renderVersions() {
             </div>
           </div>
           <button class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${btnClass}" 
-                  ${version.current && type === 'stable' ? 'disabled' : ''}>
+                  ${isDisabled ? 'disabled' : ''} ${btnAction}>
             ${btnText}
           </button>
         </div>
@@ -1441,7 +1512,7 @@ function renderVersions() {
         <div class="space-y-1">
           ${version.details.map(detail => `
             <div class="flex items-start gap-2 text-xs text-gray-500">
-              <svg class="w-3.5 h-3.5 theme-text mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <svg class="w-3.5 h-3.5 theme-text mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
               <span>${detail}</span>
             </div>
           `).join('')}
@@ -1450,31 +1521,183 @@ function renderVersions() {
     `;
   };
 
+  // 1. 渲染当前版本和 Beta 
   if (stableVersion) versionList.innerHTML += createCard(stableVersion, 'stable');
   if (betaVersion) versionList.innerHTML += createCard(betaVersion, 'beta');
 
-  if (legacyVersions.length > 0) {
-    const legacyContainer = document.createElement('div');
-    legacyContainer.className = 'collapse-item mt-6';
-    legacyContainer.innerHTML = `
-      <button class="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-3" onclick="toggleCollapse(this)">
-        <svg class="collapse-arrow w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        <span>查看历史旧版本 (${legacyVersions.length})</span>
-      </button>
-      <div class="collapse-wrapper">
-        <div class="collapse-inner">
-          ${legacyVersions.map(v => createCard(v, 'legacy')).join('')}
-        </div>
-      </div>
-    `;
-    versionList.appendChild(legacyContainer);
+  // 2. 只有当顶部按钮开启时，才渲染历史版本
+  if (isLegacyVisible && legacyVersions.length > 0) {
+    // 插入一个简单的分割线或提示
+    versionList.innerHTML += `<div class="py-4 text-xs font-bold text-gray-400 flex items-center gap-2">
+      <div class="h-px flex-1 bg-gray-100 dark:bg-[#333]"></div>
+      历史归档 (${legacyVersions.length})
+      <div class="h-px flex-1 bg-gray-100 dark:bg-[#333]"></div>
+    </div>`;
+    
+    legacyVersions.forEach(v => {
+      versionList.innerHTML += createCard(v, 'legacy');
+    });
   }
 }
 
 function toggleExpandMore() {
-  versionsExpanded = !versionsExpanded;
-  Logger.info("Toggle UI: expand version history, v:" + versionsExpanded);
+  // 切换显示状态
+  isLegacyVisible = !isLegacyVisible;
+  
+  Logger.info("Toggle UI: expand version history, active: " + isLegacyVisible);
+  
+  // 修改顶部按钮文字
+  const btnText = document.getElementById('expandBtnText');
+  if (btnText) {
+    btnText.innerText = isLegacyVisible ? '收起历史' : '历史版本';
+  }
+  
+  // 核心：直接触发重新渲染，列表就会根据 isLegacyVisible 自动变长或缩短
   renderVersions();
+}
+
+// ==========================================
+// ⏪ 历史版本回退引擎
+// ==========================================
+async function handleRollback(btnElement, targetVersion) {
+  // 1. 拦截弹窗：二次确认警告
+  const userConfirm = await MKPModal.confirm({
+    title: `确认回退至 ${targetVersion}?`,
+    msg: `回退后将覆盖当前版本的所有代码。<br><br><span class="text-red-500 font-bold">⚠️ 注意：</span> 旧版本可能缺少最新的功能或存在已知 Bug。您确定要继续吗？`,
+    confirmText: '确定回退',
+    type: 'warning'
+  });
+
+  if (!userConfirm) return; // 用户点取消，直接退出
+
+// 2. 🚀 启动 Q弹伸缩引擎 (因为文字较长，我们设定目标宽度为 100px，蓝色主题)
+  const SPIN_ICON = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+  const reset = setButtonStatus(btnElement, '100px', '请求中...', SPIN_ICON, 'btn-expand-blue');
+
+  try {
+    // 3. 从云端拉取总路由表
+    const url = `${CLOUD_BASES.gitee}/cloud_data/app_manifest.json?t=${Date.now()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("无法连接到云端服务器验证补丁。");
+    const manifest = await res.json();
+
+    // 4. 去 history 列表里精准匹配下载链接
+    // 注意：我们要把 "v0.2.0" 里的 "v" 去掉再匹配，因为 json 里写的是 "0.2.0"
+    const pureVersion = targetVersion.replace('v', '');
+    const historyList = manifest.history || [];
+    const targetData = historyList.find(item => item.version === pureVersion);
+
+    if (!targetData || !targetData.downloadUrl) {
+      throw new Error(`云端暂未提供 ${targetVersion} 的回退补丁包，请联系开发者。`);
+    }
+
+    // 5. 调用底层热更新引擎，执行真正的下载覆盖
+    btnElement.innerHTML = `<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 下载中...`;
+    
+    const result = await window.mkpAPI.applyHotUpdate(targetData.downloadUrl);
+
+    if (result.success) {
+      // 成功！通知重启
+      await MKPModal.alert({ title: '回退完成', msg: `已成功回退至 ${targetVersion}，软件即将自动重启。`, type: 'success' });
+      window.mkpAPI.restartApp();
+    } else {
+      throw new Error(`回退补丁应用失败: ${result.error}`);
+    }
+
+  } catch (error) {
+    Logger.error(`[回退失败] ${error.message}`);
+    await MKPModal.alert({ title: '回退失败', msg: error.message, type: 'error' ,confirmText: '确定'});
+  } finally {
+    // 恢复按钮状态
+      reset();
+  }
+}
+
+/**
+ * 🚀 Vercel 风格按钮状态转换器 (物理宽度拉伸引擎)
+ * @param {HTMLElement} btn - 按钮元素本身
+ * @param {String} targetWidth - 展开后的目标宽度 (例如 '92px', '110px')
+ * @param {String} text - 显示的文字
+ * @param {String} iconSvg - 图标的 SVG
+ * @param {String} themeClass - 主题色类名 ('btn-expand-green' 或 'btn-expand-blue')
+ */
+function setButtonStatus(btn, targetWidth, text, iconSvg, themeClass) {
+    if (!btn) return;
+    
+    // 1. 备份初始状态
+    const originalHtml = btn.innerHTML;
+    const originalWidth = btn.offsetWidth; // 获取按钮现在的真实像素宽度
+    
+    // 2. 锁定初始宽度，准备起飞
+    btn.style.width = originalWidth + 'px';
+    btn.classList.add('btn-q-bounce'); // 确保赋予了 Q 弹基因
+    
+    // 强制浏览器重绘一次，确立起点
+    btn.offsetHeight; 
+
+    // 3. 执行魔法伸展：改宽度 + 加颜色
+    btn.style.width = targetWidth;
+    btn.classList.add(themeClass);
+    btn.disabled = true;
+
+    // 4. 注入原汁原味的动画结构
+    btn.innerHTML = `
+      <div id="btnInnerContent" class="flex items-center justify-center gap-1.5 transition-opacity duration-200" style="width: 100%;">
+        <div style="animation: checkPopBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+            ${iconSvg}
+        </div>
+        <span class="text-xs font-bold" style="animation: textSlideIn 0.3s ease-out forwards;">
+            ${text}
+        </span>
+      </div>
+    `;
+
+    // 5. 返回还原函数
+    return () => {
+        // 先让内部的文字和图标淡出
+        const inner = document.getElementById('btnInnerContent');
+        if (inner) inner.style.opacity = '0';
+        
+        // 同时触发按钮物理缩回
+        btn.style.width = originalWidth + 'px';
+        btn.classList.remove(themeClass);
+        
+        // 延迟 300ms (等缩回动作基本完成)，完美恢复初始状态
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.style.width = ''; // 清除内联宽度，让其恢复自由
+            btn.disabled = false;
+            
+            const newIcon = btn.querySelector('svg');
+            if (newIcon) newIcon.style.animation = 'iconFadeIn 0.3s ease-out forwards';
+        }, 300);
+    };
+}
+
+async function copyPath() {
+    Logger.info(`[O307] Copy script`); 
+    const scriptPath = document.getElementById('scriptPath');
+    const copyBtn = document.getElementById('scriptCopyBtn');
+    if (!scriptPath || !copyBtn) return;
+
+    try {
+        // 🔒 第一步：先老老实实执行系统复制，绝对不碰 DOM
+        await navigator.clipboard.writeText(scriptPath.value);
+        
+        // ✨ 第二步：复制成功了，启动魔法动画！
+        const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
+        
+        // 传参说明：目标伸长到 92px，绿勾，绿色主题
+        const reset = setButtonStatus(copyBtn, '92px', '已复制', CHECK_ICON, 'btn-expand-green');
+        
+        // 3秒后自动缩回
+        setTimeout(reset, 3000);
+
+    } catch (err) {
+        Logger.error(`[E203] Copy failed: ${err}`); 
+        // 弹窗提示
+        await MKPModal.alert({ title: '复制失败', msg: '无法访问剪贴板，请手动全选复制。', type: 'error', confirmText: '确定' });
+    }
 }
 
 
@@ -1508,33 +1731,25 @@ function handleApplyLocal(releaseId, fileName, printerData, clickedBtn = null) {
         // 判断当前是不是“重新应用”的点击
         const isReapply = (btn.textContent.trim() === '已应用') && (btn === clickedBtn);
         
-        // 💡 修复：确保 className 永远包含 'dl-btn' 和 'theme-btn-solid'
-        btn.className = 'dl-btn theme-btn-solid cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium shadow-sm';
+        // 💡 基础类名：确保带有 'dl-btn' 和 我们的 'btn-q-bounce' 动力学基因
+        btn.className = 'dl-btn theme-btn-solid btn-q-bounce cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium shadow-sm';
         
         if (isReapply) {
-          // 【重新应用动画】：转圈 -> 变绿提示 -> 恢复
-          btn.innerHTML = `<svg class="w-3.5 h-3.5 mr-1 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>刷新`;
+          // 🚀 重新应用：直接呼叫大招！一行代码搞定变绿、拉伸、淡入、防重点击
+          const CHECK_ICON = `<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
           
-          setTimeout(() => {
-            btn.innerHTML = `<svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>已应用`;
-            // 临时变绿
-            btn.style.backgroundColor = '#10B981'; 
-            btn.style.color = '#FFFFFF';
-            
-            setTimeout(() => {
-              btn.innerHTML = '已应用';
-              // 移除内联样式，恢复到 theme-btn-solid 的全局主题色
-              btn.style.backgroundColor = ''; 
-              btn.style.color = '';
-            }, 1200);
-          }, 500);
+          // 目标拉伸到 96px，显示“已刷新”，采用绿色主题
+          const reset = setButtonStatus(btn, '96px', '已刷新', CHECK_ICON, 'btn-expand-green');
+          
+          // 1.5 秒后自动完美缩回原状（原状就是下面的 '已应用'）
+          setTimeout(reset, 1500);
         } else {
-          // 第一次点击应用，瞬间变即可
+          // 第一次点击应用，瞬间变成主题色的“已应用”
           btn.innerHTML = '已应用';
         }
       }
       
-      // 添加“当前使用”小徽章
+      // 添加“当前使用”小徽章 (逻辑保持不变)
       if (badgeContainer) {
         const hasBadge = Array.from(badgeContainer.children).some(el => el.textContent.includes('当前使用'));
         if (!hasBadge) {
@@ -1546,8 +1761,8 @@ function handleApplyLocal(releaseId, fileName, printerData, clickedBtn = null) {
       // 剥夺其他卡片的“已应用”状态
       if (btn) {
         btn.innerHTML = '应用';
-        // 💡 修复：绝对不能把 'dl-btn' 弄丢了！
-        btn.className = 'dl-btn theme-btn-soft cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium';
+        // 💡 基础类名：同样确保带有 'dl-btn' 和 'btn-q-bounce'，退回柔和主题色
+        btn.className = 'dl-btn theme-btn-soft btn-q-bounce cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium';
       }
       if (badgeContainer) {
         const badges = Array.from(badgeContainer.children);
@@ -2156,50 +2371,8 @@ async function updateScriptPathDisplay() {
   }
 }
 
-// ==========================================
-// 现代化复制脚本路径功能 (带顶级微交互 2.0 终极无缝版)
-// ==========================================
-async function copyPath() {
-  Logger.info(`[O307] Copy script`); 
-  const scriptPath = document.getElementById('scriptPath');
-  const copyBtn = document.getElementById('scriptCopyBtn');
-  
-  try {
-    await navigator.clipboard.writeText(scriptPath.value);
-    
-    copyBtn.classList.add('is-copied');
-    
-    // 💡 修复点 1：外层包裹的 div 加上了 transition-opacity duration-200，并给了个 ID
-    copyBtn.innerHTML = `
-      <div id="copyBtnInner" class="flex items-center justify-center gap-1.5 transition-opacity duration-200">
-        <svg class="w-4 h-4 text-green-500" style="animation: checkPopBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-        </svg>
-        <span class="text-xs font-bold text-green-600 dark:text-green-500" style="animation: textSlideIn 0.3s ease-out forwards;">已复制</span>
-      </div>
-    `;
-    copyBtn.title = '已复制';
-    
-    setTimeout(() => {
-      // 💡 修复点 2：在按钮收缩前，先让内部的“已复制”文字和绿勾平滑淡出，彻底杜绝“挤压残留”！
-      const inner = document.getElementById('copyBtnInner');
-      if (inner) inner.style.opacity = '0';
-      
-      // 同一时间，按钮开始向内收缩
-      copyBtn.classList.remove('is-copied');
-      
-      // 💡 修复点 3：等按钮基本缩回正方形时，插入原始图标，并附带刚刚写的 iconFadeIn 淡入动画！
-      setTimeout(() => {
-         copyBtn.innerHTML = `<svg class="w-4 h-4" style="animation: iconFadeIn 0.3s ease-out forwards;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>`;
-         copyBtn.title = '复制路径';
-      }, 250); // 250ms 是最完美的切换点，毫无破绽
-    }, 2000);
 
-  } catch (err) {
-    Logger.error(`[E203] Copy failed: ${err}`); 
-    alert("复制到剪贴板失败，请手动全选复制！");
-  }
-}
+
 
 function manualSelectPath() {
   alert('请选择Bambu Studio安装路径');
@@ -2955,7 +3128,6 @@ async function init() {
   Logger.info("[O102] App init done"); // 记录软件主窗口渲染初始化完成
 }
 
-document.addEventListener('DOMContentLoaded', init);
 
 // ==========================================
 // 开发者辅助小工具：实时显示窗口分辨率
