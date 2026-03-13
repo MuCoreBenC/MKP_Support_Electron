@@ -1,20 +1,36 @@
 {
-  "latestVersion": "0.2.4",
+  "latestVersion": "0.2.5",
   "updateType": "hot_update",
-  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.4.zip",
+  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.5.zip",
   "forceUpdate": false,
-  "releaseDate": "2026-03-14",
-  "shortDesc": "美学巅峰：Figma 级色彩引擎与状态快照重构",
-  "canRollback": false,
+  "releaseDate": "2026-03-15",
+  "shortDesc": "架构革命：离线优先网络与高级资产管理引擎",
+  "canRollback": true,
   "releaseNotes": [
-    "重塑全局主题系统，引入 Figma 级悬浮拾色面板，自研底层 HSV 色彩空间矩阵转换算法，支持高精度十六进制拾取。",
-    "新增「OLED 黑」极简外观模式，以 #000000 绝对纯黑底色与高对比度重组界面，打造极致深邃的极客视觉体验。",
-    "重构全站交互动效为「状态快照 (Snapshot) 引擎」，彻底剥离复杂 DOM 嵌套，实现时间轴完美对称的无损平滑连招。",
-    "攻克 Electron 底层 ThemeSource 权限陷阱，修复“跟随系统”模式下的状态死循环，实现操作系统级外观的无缝热切。",
-    "深度净化 CSS 渲染层级，应用绝对定位悬浮膜黑客技术，斩断基线对齐(Baseline)冲突，彻底实现像素级“零抖动”反馈。",
-    "升级字体样式智能提取算法，严苛过滤原生灰色类名污染，恢复高级 SaaS 标配的「浅色半透明背景 + 高纯度彩色字体」美学。"
+    "重构预设加载架构为「绝对离线优先」，实现本地清单 0 延迟秒开，彻底解除断网环境下的展示限制。",
+    "引入 Windows DOS 8.3 短路径底层解析引擎，彻底消灭 Bambu Studio 遇到中文/空格路径崩溃的史诗级 Bug。",
+    "新增 SaaS 级本地预设管理器，支持批量多选删除、HTML5 物理拖拽排序，并完美记忆用户自定义顺位。",
+    "上线桌面级极客右键菜单 (Context Menu)，支持无缝资源管理器定位、预设卡片一键置顶锁定。",
+    "重构预设克隆机制，分离「底层定长英文文件名」与「表层内嵌中文展示名」，彻底终结无限套娃后缀与乱码危机。",
+    "升级 MKPModal 全局弹窗系统，新增 Prompt 交互模式，深度集成防乱码的无感重命名工作流。"
   ],
   "history": [
+    {
+      "version": "0.2.4",
+      "updateType": "hot_update",
+      "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.4.zip",
+      "releaseDate": "2026-03-14",
+      "shortDesc": "美学巅峰：Figma 级色彩引擎与状态快照重构",
+      "canRollback": true,
+      "releaseNotes": [
+        "重塑全局主题系统，引入 Figma 级悬浮拾色面板，自研底层 HSV 色彩空间矩阵转换算法，支持高精度十六进制拾取。",
+        "新增「OLED 黑」极简外观模式，以 #000000 绝对纯黑底色与高对比度重组界面，打造极致深邃的极客视觉体验。",
+        "重构全站交互动效为「状态快照 (Snapshot) 引擎」，彻底剥离复杂 DOM 嵌套，实现时间轴完美对称的无损平滑连招。",
+        "攻克 Electron 底层 ThemeSource 权限陷阱，修复“跟随系统”模式下的状态死循环，实现操作系统级外观的无缝热切。",
+        "深度净化 CSS 渲染层级，应用绝对定位悬浮膜黑客技术，斩断基线对齐(Baseline)冲突，彻底实现像素级“零抖动”反馈。",
+        "升级字体样式智能提取算法，严苛过滤原生灰色类名污染，恢复高级 SaaS 标配的「浅色半透明背景 + 高纯度彩色字体」美学。"
+      ]
+    },
     {
       "version": "0.2.3",
       "updateType": "hot_update",

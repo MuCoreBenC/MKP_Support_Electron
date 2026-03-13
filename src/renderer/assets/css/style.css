@@ -101,7 +101,10 @@ body {
 .sidebar-collapsed .sidebar-content { padding: 8px 4px; }
 .sidebar-model-label { transition: opacity 0.2s ease; white-space: nowrap; }
 .sidebar-collapsed .sidebar-model-label { opacity: 0; }
+#brandWrapper { will-change: max-width, opacity; }
+#sidebarBrand, #sidebarBrandSpace { will-change: max-width, width, opacity; }
 #sidebarBrand { max-width: 120px; opacity: 1; }
+.sidebar-collapsed #brandWrapper { max-width: 0 !important; opacity: 0; }
 .sidebar-collapsed #sidebarBrand { max-width: 0px; opacity: 0; }
 #sidebarBrandSpace { width: 4px; }
 .sidebar-collapsed #sidebarBrandSpace { width: 0px; }
@@ -137,9 +140,7 @@ body {
   transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 @media (max-width: 1002px) { .brand-prefix { max-width: 0 !important; opacity: 0 !important; margin-right: 0 !important; } }
-@media (min-width: 1003px) and (max-width: 1133px) {
-  #sidebarWrapper:not(.sidebar-wrapper-collapsed) ~ main .brand-prefix { max-width: 0 !important; opacity: 0 !important; margin-right: 0 !important; }
-}
+#mainApp.compact-brand-prefix .brand-prefix { max-width: 0 !important; opacity: 0 !important; margin-right: 0 !important; }
 
 .brand-card, .select-card, .version-card, .mode-btn-light, .mode-btn-dark, .mode-btn-system {
   border-width: 1.5px !important;

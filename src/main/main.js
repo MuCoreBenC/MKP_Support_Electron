@@ -41,6 +41,110 @@ function extractPatch(tempFilePath, targetAppPath) {
   }
 }
 
+function normalizeVersionValue(value) {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return null;
+  }
+
+  const normalized = String(value).trim().replace(/^v/i, '');
+  return normalized && /\d/.test(normalized) ? normalized : null;
+}
+
+function findVersionInJsonData(jsonData) {
+  if (!jsonData || typeof jsonData !== 'object') {
+    return null;
+  }
+
+  const directCandidates = [
+    jsonData.version,
+    jsonData.presetVersion,
+    jsonData.preset_version,
+    jsonData.profileVersion,
+    jsonData.profile_version,
+    jsonData.realVersion,
+    jsonData.real_version,
+    jsonData.meta && jsonData.meta.version,
+    jsonData.info && jsonData.info.version,
+    jsonData.preset && jsonData.preset.version,
+    jsonData.profile && jsonData.profile.version
+  ];
+
+  for (const candidate of directCandidates) {
+    const normalized = normalizeVersionValue(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  const visited = new Set();
+  const queue = [{ value: jsonData, depth: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || !current.value || typeof current.value !== 'object') {
+      continue;
+    }
+
+    if (visited.has(current.value) || current.depth > 4) {
+      continue;
+    }
+    visited.add(current.value);
+
+    for (const [key, value] of Object.entries(current.value)) {
+      if (/version/i.test(key)) {
+        const normalized = normalizeVersionValue(value);
+        if (normalized) {
+          return normalized;
+        }
+      }
+
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        queue.push({ value, depth: current.depth + 1 });
+      }
+    }
+  }
+
+  return null;
+}
+
+function inspectPatchArchive(tempFilePath) {
+  const zip = new AdmZip(tempFilePath);
+  const zipEntries = zip.getEntries();
+
+  if (zipEntries.length === 0) {
+    throw new Error('下载的补丁包为空，无法应用更新。');
+  }
+
+  const packageEntries = zipEntries
+    .filter((entry) => !entry.isDirectory && /(^|\/)package\.json$/i.test(entry.entryName))
+    .sort((left, right) => left.entryName.split('/').length - right.entryName.split('/').length);
+
+  let packageVersion = null;
+  if (packageEntries.length > 0) {
+    const packageJson = JSON.parse(packageEntries[0].getData().toString('utf8'));
+    packageVersion = normalizeVersionValue(packageJson.version);
+  }
+
+  return {
+    zipEntries,
+    packageVersion
+  };
+}
+
+function readAppPackageVersion(targetAppPath) {
+  try {
+    const packageJsonPath = path.join(targetAppPath, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      return null;
+    }
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    return normalizeVersionValue(packageJson.version);
+  } catch (error) {
+    return null;
+  }
+}
+
 
 // ==========================================
 // 🚀 预设文件本地复制引擎 (防中文/防无限叠加/内置展示名)
@@ -159,7 +263,8 @@ ipcMain.handle('read-local-manifest', async () => {
 });
 
 // 📡 IPC 接收器：前端呼叫热更新
-ipcMain.handle('apply-hot-update', async (event, zipUrl) => {
+ipcMain.handle('apply-hot-update', async (event, payload) => {
+  const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
   try {
     console.log(`[热更新] 准备下载补丁: ${zipUrl}`);
     
@@ -528,6 +633,34 @@ function mergeDeep(target, source) {
   return target;
 }
 
+function getPresetsDirectory() {
+  return path.join(app.getPath('userData'), 'Presets');
+}
+
+function extractPresetVersion(fileName, jsonData = null) {
+  const contentVersion = findVersionInJsonData(jsonData);
+  if (contentVersion) {
+    return contentVersion;
+  }
+
+  if (jsonData && typeof jsonData === 'object') {
+    return '0.0.0';
+  }
+
+  const versionMatch = String(fileName || '').match(/_v([a-zA-Z0-9.\-]+)/i);
+  return versionMatch ? versionMatch[1] : '0.0.1';
+}
+
+function buildPresetDisplayName(fileName, printerId, versionType, jsonData = null) {
+  if (jsonData && typeof jsonData._custom_name === 'string' && jsonData._custom_name.trim()) {
+    return jsonData._custom_name.trim();
+  }
+
+  const baseName = String(fileName || '').replace(/\.json$/i, '');
+  const prefix = printerId && versionType ? `${printerId}_${versionType}_` : '';
+  return prefix && baseName.startsWith(prefix) ? baseName.slice(prefix.length) : baseName;
+}
+
 // ==========================================
 // 获取本地预设文件夹中的所有 JSON 文件名
 // ==========================================
@@ -543,6 +676,123 @@ ipcMain.handle('get-local-presets', () => {
   } catch (error) {
     console.error("获取本地文件列表失败:", error);
     return [];
+  }
+});
+
+ipcMain.removeHandler('apply-hot-update');
+ipcMain.handle('apply-hot-update', async (event, payload) => {
+  const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
+
+  try {
+    const urls = Array.isArray(payload?.urls)
+      ? payload.urls.filter(Boolean)
+      : [payload?.url || payload?.downloadUrl || payload].filter((item) => typeof item === 'string' && item.trim());
+    const expectedVersion = normalizeVersionValue(payload?.expectedVersion);
+
+    if (urls.length === 0) {
+      throw new Error('未提供可用的补丁下载地址。');
+    }
+
+    let appliedUrl = null;
+    let archiveInfo = null;
+    let lastError = null;
+
+    for (const zipUrl of urls) {
+      try {
+        const response = await fetch(zipUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        fs.writeFileSync(tempZipPath, Buffer.from(arrayBuffer));
+
+        archiveInfo = inspectPatchArchive(tempZipPath);
+        if (expectedVersion) {
+          if (!archiveInfo.packageVersion) {
+            throw new Error('补丁包缺少 package.json，无法校验目标版本。');
+          }
+          if (archiveInfo.packageVersion !== expectedVersion) {
+            throw new Error(`补丁包版本 ${archiveInfo.packageVersion} 与预期 ${expectedVersion} 不一致。`);
+          }
+        }
+
+        appliedUrl = zipUrl;
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (!appliedUrl || !archiveInfo) {
+      throw lastError || new Error('所有补丁下载线路都失败了。');
+    }
+
+    const targetExtractPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'app')
+      : path.join(__dirname, '../../');
+
+    extractPatch(tempZipPath, targetExtractPath);
+
+    const installedVersion = readAppPackageVersion(targetExtractPath);
+    if (expectedVersion && installedVersion !== expectedVersion) {
+      throw new Error(`补丁已解压，但当前程序版本仍是 ${installedVersion || 'unknown'}，未达到预期版本 ${expectedVersion}。`);
+    }
+
+    return {
+      success: true,
+      appliedUrl,
+      version: installedVersion || archiveInfo.packageVersion || expectedVersion || null
+    };
+  } catch (error) {
+    console.error('[HotUpdate] apply failed:', error);
+    return { success: false, error: error.message };
+  } finally {
+    try { fs.unlinkSync(tempZipPath); } catch (error) {}
+  }
+});
+
+ipcMain.handle('list-local-presets-detailed', (event, query = {}) => {
+  try {
+    const userDataPath = getPresetsDirectory();
+    if (!fs.existsSync(userDataPath)) {
+      return { success: true, data: [] };
+    }
+
+    const printerId = query.printerId || '';
+    const versionType = query.versionType || '';
+    const prefix = printerId && versionType ? `${printerId}_${versionType}_` : '';
+
+    const files = fs.readdirSync(userDataPath)
+      .filter((file) => file.toLowerCase().endsWith('.json'))
+      .filter((file) => file !== 'presets_manifest.json')
+      .filter((file) => !prefix || file.startsWith(prefix));
+
+    const data = files.map((fileName) => {
+      const absolutePath = path.join(userDataPath, fileName);
+      const stats = fs.statSync(absolutePath);
+
+      let jsonData = null;
+      try {
+        jsonData = JSON.parse(fs.readFileSync(absolutePath, 'utf-8'));
+      } catch (error) {
+        jsonData = null;
+      }
+
+      return {
+        fileName,
+        realVersion: extractPresetVersion(fileName, jsonData),
+        customName: jsonData && typeof jsonData._custom_name === 'string' ? jsonData._custom_name : null,
+        displayName: buildPresetDisplayName(fileName, printerId, versionType, jsonData),
+        modifiedAt: stats.mtimeMs,
+        createdAt: stats.birthtimeMs || stats.ctimeMs,
+        size: stats.size
+      };
+    });
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message, data: [] };
   }
 });
 
@@ -602,6 +852,41 @@ ipcMain.handle('delete-file', (event, fileName) => {
     return { success: false, error: '文件不存在' };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-preset-files', (event, fileNames = []) => {
+  try {
+    const deleted = [];
+    const failed = [];
+    const userDataPath = getPresetsDirectory();
+
+    fileNames.forEach((fileName) => {
+      try {
+        const filePath = path.join(userDataPath, fileName);
+        if (!fs.existsSync(filePath)) {
+          failed.push({ fileName, error: '文件不存在' });
+          return;
+        }
+
+        fs.unlinkSync(filePath);
+        deleted.push(fileName);
+      } catch (error) {
+        failed.push({ fileName, error: error.message });
+      }
+    });
+
+    return {
+      success: failed.length === 0,
+      deleted,
+      failed
+    };
+  } catch (error) {
+    return {
+      success: false,
+      deleted: [],
+      failed: fileNames.map((fileName) => ({ fileName, error: error.message }))
+    };
   }
 });
 

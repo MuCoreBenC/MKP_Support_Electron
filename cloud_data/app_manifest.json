@@ -1,20 +1,36 @@
 {
-  "latestVersion": "0.2.5",
+  "latestVersion": "0.2.6",
   "updateType": "hot_update",
-  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.5.zip",
+  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.6.zip",
   "forceUpdate": false,
-  "releaseDate": "2026-03-15",
-  "shortDesc": "架构革命：离线优先网络与高级资产管理引擎",
+  "releaseDate": "2026-03-16",
+  "shortDesc": "架构优化：模块化重构与功能增强",
   "canRollback": true,
   "releaseNotes": [
-    "重构预设加载架构为「绝对离线优先」，实现本地清单 0 延迟秒开，彻底解除断网环境下的展示限制。",
-    "引入 Windows DOS 8.3 短路径底层解析引擎，彻底消灭 Bambu Studio 遇到中文/空格路径崩溃的史诗级 Bug。",
-    "新增 SaaS 级本地预设管理器，支持批量多选删除、HTML5 物理拖拽排序，并完美记忆用户自定义顺位。",
-    "上线桌面级极客右键菜单 (Context Menu)，支持无缝资源管理器定位、预设卡片一键置顶锁定。",
-    "重构预设克隆机制，分离「底层定长英文文件名」与「表层内嵌中文展示名」，彻底终结无限套娃后缀与乱码危机。",
-    "升级 MKPModal 全局弹窗系统，新增 Prompt 交互模式，深度集成防乱码的无感重命名工作流。"
+    "重构 app.js 核心架构为模块化设计，拆分为多个功能独立的子模块，提升代码可维护性与扩展性。",
+    "修复 HTML 页面多处布局与交互 bug，包括侧边栏折叠状态记忆、弹窗层级显示等问题。",
+    "强化预设管理功能，新增右键菜单系统，支持快速复制、删除、重命名等操作。",
+    "优化预设加载性能，采用懒加载策略减少启动时间，提升大型预设库的加载速度。",
+    "完善全局错误处理机制，增强应用稳定性，提供更友好的错误提示。",
+    "升级 IPC 通信架构，优化主进程与渲染进程间的数据传输效率。"
   ],
   "history": [
+    {
+      "version": "0.2.5",
+      "updateType": "hot_update",
+      "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.5.zip",
+      "releaseDate": "2026-03-15",
+      "shortDesc": "架构革命：离线优先网络与高级资产管理引擎",
+      "canRollback": true,
+      "releaseNotes": [
+        "重构预设加载架构为「绝对离线优先」，实现本地清单 0 延迟秒开，彻底解除断网环境下的展示限制。",
+        "引入 Windows DOS 8.3 短路径底层解析引擎，彻底消灭 Bambu Studio 遇到中文/空格路径崩溃的史诗级 Bug。",
+        "新增 SaaS 级本地预设管理器，支持批量多选删除、HTML5 物理拖拽排序，并完美记忆用户自定义顺位。",
+        "上线桌面级极客右键菜单 (Context Menu)，支持无缝资源管理器定位、预设卡片一键置顶锁定。",
+        "重构预设克隆机制，分离「底层定长英文文件名」与「表层内嵌中文展示名」，彻底终结无限套娃后缀与乱码危机。",
+        "升级 MKPModal 全局弹窗系统，新增 Prompt 交互模式，深度集成防乱码的无感重命名工作流。"
+      ]
+    },
     {
       "version": "0.2.4",
       "updateType": "hot_update",

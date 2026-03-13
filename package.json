@@ -1,7 +1,7 @@
 {
   "name": "mkp-support-e",
   "productName": "MKP SupportE",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "MKP Support Electron Application",
   "main": "src/main/main.js",
   "scripts": {

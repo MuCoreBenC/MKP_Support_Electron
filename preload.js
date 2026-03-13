@@ -18,7 +18,8 @@ contextBridge.exposeInMainWorld('mkpAPI', {
   setNativeTheme: (mode) => ipcRenderer.send('set-native-theme', mode),
   exportBugReport: () => ipcRenderer.send('export-bug-report'),
   getLocalPresets: () => ipcRenderer.invoke('get-local-presets'),
-  applyHotUpdate: (url) => ipcRenderer.invoke('apply-hot-update', url),
+  listLocalPresetsDetailed: (query) => ipcRenderer.invoke('list-local-presets-detailed', query),
+  applyHotUpdate: (payload) => ipcRenderer.invoke('apply-hot-update', payload),
   restartApp: () => ipcRenderer.invoke('restart-app'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
@@ -27,6 +28,7 @@ contextBridge.exposeInMainWorld('mkpAPI', {
   readLocalPresetsManifest: () => ipcRenderer.invoke('read-local-presets-manifest'),
   saveLocalPresetsManifest: (jsonStr) => ipcRenderer.invoke('save-local-presets-manifest', jsonStr),
   duplicatePreset: (payload) => ipcRenderer.invoke('duplicate-preset', payload),
+  deletePresetFiles: (fileNames) => ipcRenderer.invoke('delete-preset-files', fileNames),
   getShortPath: (absolutePath) => ipcRenderer.invoke('get-short-path', absolutePath),
   renamePresetDisplay: (payload) => ipcRenderer.invoke('rename-preset-display', payload),
   showItemInFolder: (fileName) => ipcRenderer.invoke('show-item-in-folder', fileName)
