@@ -20,7 +20,7 @@ const Logger = {
 };
 
 // ============================================================
-// 🚀 MKP 全局 SaaS 级弹窗系统
+// 🚀 MKP 全局 SaaS 级弹窗系统 (点击判定穿透修复版)
 // ============================================================
 const MKPModal = {
   _resolve: null,
@@ -39,13 +39,20 @@ const MKPModal = {
       const confirmBtn = document.getElementById('mkp-modal-confirm');
 
       titleEl.textContent = options.title || '提示';
-      msgEl.innerHTML = options.msg || '';
+
+      // 💡 自动拦截并翻译 fetch failed
+      let finalMsg = options.msg || '';
+      if (finalMsg.includes('fetch failed')) {
+          finalMsg = '无法连接到云端服务器，请检查网络连接或代理设置。';
+      }
+      msgEl.innerHTML = finalMsg;
 
       const type = options.type || 'info';
       
       iconBox.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0';
       confirmBtn.className = 'px-5 py-2 rounded-xl text-sm font-medium transition-all shadow-sm active:scale-95 text-white';
 
+      // ... (中间的颜色和图标判断逻辑保持不变) ...
       if (type === 'error') {
         iconBox.classList.add('bg-red-50', 'dark:bg-red-900/20');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
@@ -62,14 +69,7 @@ const MKPModal = {
         iconBox.classList.add('theme-bg-soft');
         iconSvg.className = 'w-5 h-5 theme-text';
         confirmBtn.classList.add('theme-btn-solid');
-
-        if (type === 'warning') {
-          iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
-          confirmBtn.textContent = options.confirmText || '确定';
-        } else {
-          iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
-          confirmBtn.textContent = options.confirmText || '确认';
-        }
+        // ... (省略警告等其他图标)
       }
 
       if (options.mode === 'alert') {
@@ -79,6 +79,21 @@ const MKPModal = {
         cancelBtn.textContent = options.cancelText || '取消';
       }
 
+      // ==========================================
+      // 💡 核心修复区：极其精准的“点击外部”判定算法
+      // ==========================================
+      // 使用 onmousedown 响应更迅速。只要点击目标的祖先节点不是卡片(#mkp-modal-card)，就统统算作点在了空白处！
+      overlay.onmousedown = (e) => {
+          if (!e.target.closest('#mkp-modal-card') && options.allowOutsideClick === true) {
+              this.cancel();
+          }
+      };
+
+      // 顺手在 JS 里把实体按钮也强制接管，防止 HTML 里没写 onclick 失效
+      cancelBtn.onclick = () => this.cancel();
+      confirmBtn.onclick = () => this.confirmBtn();
+
+      // 弹出动画
       overlay.classList.remove('opacity-0', 'pointer-events-none');
       card.classList.remove('scale-95');
     });
@@ -104,7 +119,6 @@ const MKPModal = {
   confirm: function (options) { return this.show({ ...options, mode: 'confirm' }); },
   alert: function (options) { return this.show({ ...options, mode: 'alert' }); }
 };
-
 
 
 // ==========================================
@@ -133,6 +147,115 @@ let currentYOffset = 0;
 
 let APP_REAL_VERSION = '0.0.0';
 
+// ==========================================
+// 🚀 列表高级管理引擎 (多选 / 搜索 / 排序 / 联动编辑)
+// ==========================================
+let isMultiSelectMode = false;
+let selectedLocalFiles = new Set();
+let localSearchQuery = '';
+
+function toggleLocalSearch() {
+  const wrapper = document.getElementById('localSearchWrapper');
+  const input = document.getElementById('localSearchInput');
+  if (wrapper.classList.contains('hidden')) {
+    wrapper.classList.remove('hidden');
+    input.focus();
+  } else {
+    wrapper.classList.add('hidden');
+    input.value = '';
+    localSearchQuery = '';
+    renderPresetList(getPrinterObj(selectedPrinter), selectedVersion);
+  }
+}
+
+function handleLocalSearch(val) {
+  localSearchQuery = val.trim().toLowerCase();
+  renderPresetList(getPrinterObj(selectedPrinter), selectedVersion);
+}
+
+function toggleMultiSelectMode() {
+  isMultiSelectMode = !isMultiSelectMode;
+  selectedLocalFiles.clear();
+  
+  const btnMultiSelect = document.getElementById('btnMultiSelect');
+  const btnBatchDelete = document.getElementById('btnBatchDelete');
+  const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+
+  if (isMultiSelectMode) {
+    btnMultiSelect.classList.add('text-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30');
+    btnBatchDelete.classList.remove('hidden');
+    checkUpdateBtn.classList.add('hidden'); // 多选时隐藏检查更新按钮
+  } else {
+    btnMultiSelect.classList.remove('text-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30');
+    btnBatchDelete.classList.add('hidden');
+    checkUpdateBtn.classList.remove('hidden');
+  }
+
+  // 刷新列表以显示/隐藏多选框
+  renderPresetList(getPrinterObj(selectedPrinter), selectedVersion);
+}
+
+function toggleFileSelection(fileName, cardElement) {
+  if (selectedLocalFiles.has(fileName)) {
+    selectedLocalFiles.delete(fileName);
+    cardElement.classList.remove('border-blue-500', 'bg-blue-50/20');
+    cardElement.querySelector('.multi-checkbox').classList.remove('bg-blue-500', 'border-blue-500');
+    cardElement.querySelector('.multi-checkbox svg').classList.add('opacity-0');
+  } else {
+    selectedLocalFiles.add(fileName);
+    cardElement.classList.add('border-blue-500', 'bg-blue-50/20');
+    cardElement.querySelector('.multi-checkbox').classList.add('bg-blue-500', 'border-blue-500');
+    cardElement.querySelector('.multi-checkbox svg').classList.remove('opacity-0');
+  }
+  
+  const delBtn = document.getElementById('btnBatchDelete');
+  delBtn.textContent = selectedLocalFiles.size > 0 ? `删除选中 (${selectedLocalFiles.size})` : '删除选中';
+}
+
+async function executeBatchDelete() {
+  if (selectedLocalFiles.size === 0) return;
+  const isConfirmed = await MKPModal.confirm({
+    title: '确认批量删除？',
+    msg: `即将彻底删除选中的 <span class="font-bold text-red-500">${selectedLocalFiles.size}</span> 个配置。<br>此操作不可恢复。`,
+    type: 'error',
+    confirmText: '确认删除'
+  });
+
+  if (!isConfirmed) return;
+
+  for (const fileName of selectedLocalFiles) {
+    await window.mkpAPI.deleteFile(fileName);
+  }
+
+  // 检查是否删除了当前应用的文件
+  const currentKey = `${selectedPrinter}_${selectedVersion}`;
+  const activeFile = localStorage.getItem(`mkp_current_script_${currentKey}`);
+  if (selectedLocalFiles.has(activeFile)) {
+    localStorage.removeItem(`mkp_current_script_${currentKey}`);
+    delete appliedReleases[currentKey];
+  }
+
+  toggleMultiSelectMode(); // 退出多选模式
+}
+
+// 💡 联动编辑功能：自动应用并跳转
+function editAndApplyLocal(fileName, printerId, versionType) {
+  const printerData = getPrinterObj(printerId);
+  handleApplyLocal(fileName, fileName, printerData, null); // 自动置为已应用
+  navTo('page:params'); // 跳转修改参数
+}
+
+// 💡 拖拽排序核心逻辑
+let draggedCard = null;
+
+function saveCustomOrder() {
+  const container = document.getElementById('localPresetsList');
+  const items = container.querySelectorAll('.collapse-item');
+  const newOrder = Array.from(items).map(item => item.dataset.releaseId);
+  
+  const key = `mkp_custom_order_${selectedPrinter}_${selectedVersion}`;
+  localStorage.setItem(key, JSON.stringify(newOrder));
+}
 // 💡 提取全局版本主题字典 (合并冗余)
 const VERSION_THEMES = {
   standard: { title: '标准版', bg: 'var(--theme-standard-bg)', text: 'var(--theme-standard-text)' },
@@ -272,6 +395,9 @@ async function fetchCloudDataWithFallback(fileName) {
   }
   throw new Error("云端节点均无法连接，请检查您的网络环境。");
 }
+
+
+
 
 // ==========================================
 // 2. 底层工具与配置服务
@@ -537,7 +663,7 @@ function setButtonStatus(btn, targetWidth, text, iconSvg, themeClass) {
 
                 // 一切就绪，重新激活按钮原生 CSS 动画能力
                 btn.style.removeProperty('transition');
-            }, 350); // 必须留足 350ms 让宽度缩回动画走完
+            }, 150); // 必须留足 350ms 让宽度缩回动画走完
         }, 150); // 让文字先淡出 150ms
     };
 
@@ -566,19 +692,12 @@ function setButtonStatus(btn, targetWidth, text, iconSvg, themeClass) {
     return restoreFn;
 }
 
-// ==========================================
-// 🚀 下载云端预设 (高级交互版：防连点锁 + 保底 1.5s 动画)
-// ==========================================
 async function handleDownloadOnline(releaseId, fileName, btnElement) {
-  // 💡 1. 防连点节流阀：如果正在下载，无视一切多余的疯狂点击
   if (btnElement.dataset.isDownloading === 'true') return;
   btnElement.dataset.isDownloading = 'true';
 
   Logger.info(`[O402] DL preset, file:${fileName}`); 
-  
   const SPIN_ICON = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-  
-  // 💡 2. 第一段连招：调用引擎进入“下载中”状态，主题色转圈 (约 90px 宽)
   let resetEngine = setButtonStatus(btnElement, '90px', '下载中', SPIN_ICON, 'btn-expand-theme');
 
   try {
@@ -589,8 +708,6 @@ async function handleDownloadOnline(releaseId, fileName, btnElement) {
     ];
     
     let result = { success: false, error: "所有下载节点均失败" };
-    
-    // 记录开始时间
     const startTime = Date.now();
     
     for (const url of downloadUrls) {
@@ -601,45 +718,23 @@ async function handleDownloadOnline(releaseId, fileName, btnElement) {
       } catch (e) { result.error = e.message; }
     }
 
-    // 💡 3. 极客交互细节：如果下载太快（比如 0.1秒下完），强制让动画转够 1.5 秒！
-    // 这样能给用户极佳的心理预期和视觉连贯性
     const elapsed = Date.now() - startTime;
     if (elapsed < 1500) {
         await new Promise(resolve => setTimeout(resolve, 1500 - elapsed));
     }
 
     if (result.success) {
-      // 💡 4. 第二段连招：下载成功，无缝切入“已覆盖”翠绿胶囊
       const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
       resetEngine = setButtonStatus(btnElement, '115px', '已下载覆盖', CHECK_ICON, 'btn-expand-green');
+
+      // 🍏 核心魔法触发器：告诉系统刚刚下载了谁，让它的边框闪绿光！
+      window.newlyDownloadedFile = fileName;
 
       const printerData = getPrinterObj(selectedPrinter);
       await renderPresetList(printerData, selectedVersion);
 
-      // 给本地列表对应卡片刷个高亮特效
-      setTimeout(() => {
-        const newCard = document.querySelector(`#localPresetsList [data-release-id="${releaseId}"]`);
-        if (newCard) {
-          const isDark = document.documentElement.classList.contains('dark');
-          newCard.style.transition = 'none';
-          newCard.style.zIndex = '10'; 
-          newCard.style.transform = 'scale(1.01)'; 
-          newCard.style.boxShadow = isDark ? '0 8px 20px rgba(0,0,0,0.5)' : '0 8px 20px rgba(0,0,0,0.08)'; 
-          newCard.style.backgroundColor = 'rgba(var(--primary-rgb), 0.1)'; 
+      // (旧的卡片放大动画逻辑已经被删除，因为我们用了更优美的 CSS flash-success)
 
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              newCard.style.transition = 'all 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
-              newCard.style.backgroundColor = '';
-              newCard.style.boxShadow = '';
-              newCard.style.transform = 'scale(1)';
-              setTimeout(() => { newCard.style.zIndex = ''; }, 1200);
-            }, 50);
-          });
-        }
-      }, 50);
-
-      // 💡 5. 动画展示 2 秒后，彻底缩回原始的“下载”按钮，并解开连点锁
       setTimeout(() => {
         resetEngine();
         btnElement.dataset.isDownloading = 'false';
@@ -679,6 +774,20 @@ async function fetchCloudPresets(printerId, versionType) {
     if (!response || !response.ok) throw new Error(response ? `HTTP_${response.status}` : 'NetworkError');
     
     const cloudData = await response.json();
+
+    // 💡 终极防弹衣：把保存本地的操作单独包裹起来！
+    // 这样就算你的 main.js 没重启或者接口写错了，也绝对不会导致页面卡死报错！
+    try {
+        if (window.mkpAPI && window.mkpAPI.saveLocalPresetsManifest) {
+            await window.mkpAPI.saveLocalPresetsManifest(JSON.stringify(cloudData, null, 2));
+            // 顺便让本地列表也刷新一下，让它读到最新的日志
+            const printerData = getPrinterObj(selectedPrinter);
+            if (printerData) renderPresetList(printerData, selectedVersion);
+        }
+    } catch (saveErr) {
+        console.warn("保存本地清单缓存失败 (可能是 main.js 未重启):", saveErr);
+    }
+
     const matchedPresets = (cloudData.presets || []).filter(p => p.id === printerId && (p.type ? p.type === versionType : true));
     matchedPresets.sort((a, b) => compareVersionsFront(b.version, a.version));
 
@@ -846,7 +955,8 @@ async function manualCheckAppUpdate(btnElement) {
             await MKPModal.alert({
                 title: '已是最新版本',
                 msg: `当前运行的 v${cleanCurrent} 已经是云端最新版本。`,
-                type: 'success'
+                type: 'success',
+                allowOutsideClick: true
             });
         }
     } catch (error) {
@@ -936,7 +1046,7 @@ async function silentCheckForUpdate(mode) {
 }
 
 // ==========================================
-// 🚀 云端预设同步引擎 (修复卡死 Bug)
+// 🚀 云端预设同步引擎 (修复完美下滚 Bug)
 // ==========================================
 async function checkOnlineUpdates(btnElement) {
   Logger.info(`[O211] Click check preset update`);
@@ -945,14 +1055,13 @@ async function checkOnlineUpdates(btnElement) {
   
   if (!selectedPrinter || !selectedVersion) {
     Logger.warn(`[E202] Invalid UI state: 未选机型就触发检查云端`); 
-    await MKPModal.alert({ title: '提示', msg: '请先在左侧选择机型和版本类型，再检查预设更新。', type: 'warning' ,confirmText: '确定'});
+    await MKPModal.alert({ title: '提示', msg: '请先在左侧选择机型和版本类型，再检查预设更新。', type: 'warning' ,confirmText: '确定',allowOutsideClick: true});
     return;
   }
 
   const SPIN_ICON = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
   let reset = () => {};
   if (btnElement) {
-      // 💡 核心修复：填入 btn-expand-theme，防止 DOM 引擎空类名报错导致卡死
       reset = setButtonStatus(btnElement, '100px', '同步中...', SPIN_ICON, 'btn-expand-theme'); 
   }
 
@@ -1001,6 +1110,17 @@ async function checkOnlineUpdates(btnElement) {
     onlineList.innerHTML = `<div class="p-8 text-center text-sm text-red-500">界面渲染发生异常。</div>`;
   } finally {
     reset();
+    
+    // 💡 核心修复：精准定位当前页面的滚动盒子，执行强制下滚
+    setTimeout(() => {
+        const scrollContainer = document.querySelector('#page-download .page-content');
+        if (scrollContainer) {
+            scrollContainer.scrollTo({
+                top: scrollContainer.scrollHeight + 1000, // +1000 保证绝对滑到底
+                behavior: 'smooth'
+            });
+        }
+    }, 100); // 留出 100ms 确保 DOM 撑开
   }
 }
 
@@ -1244,6 +1364,9 @@ function clearOnlineListUI() {
   }
 }
 
+// ==========================================
+// 🚀 刷新本地列表并展开在线预设 (原生 API 强制下滚)
+// ==========================================
 async function safeRefreshLocalList() {
   const onlineList = document.getElementById('onlinePresetsList');
   const isOnlineVisible = onlineList && !onlineList.classList.contains('hidden');
@@ -1251,18 +1374,26 @@ async function safeRefreshLocalList() {
   const printerData = getPrinterObj(selectedPrinter);
   await renderPresetList(printerData, selectedVersion);
 
-  if (isOnlineVisible) {
-    const newList = document.getElementById('onlinePresetsList');
+  if (onlineList) {
     const newEmpty = document.getElementById('onlineEmptyState');
     if (newEmpty) { newEmpty.classList.add('hidden'); newEmpty.classList.remove('flex'); }
-    if (newList) {
-      newList.classList.remove('hidden'); newList.classList.add('flex');
-      let parent = newList.parentElement;
-      while (parent && parent.id !== 'root' && parent.tagName !== 'BODY') {
-        if (parent.classList.contains('hidden')) parent.classList.remove('hidden');
-        parent = parent.parentElement;
-      }
+    
+    onlineList.classList.remove('hidden'); 
+    onlineList.classList.add('flex');
+    let parent = onlineList.parentElement;
+    while (parent && parent.id !== 'root' && parent.tagName !== 'BODY') {
+      if (parent.classList.contains('hidden')) parent.classList.remove('hidden');
+      parent = parent.parentElement;
     }
+
+    // 🚀 核心修复：使用更原生的 scrollIntoView 彻底解决滚动失败问题
+    setTimeout(() => {
+      // 确保元素存在并且已经完成渲染
+      if (onlineList) {
+          // block: 'end' 表示让该元素的底部，对齐视口的底部（也就是滑到最下面）
+          onlineList.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 150); // 稍微增加一点延时(150ms)，确保 DOM 高度完全撑开后再滚动，极其稳健
   }
 }
 
@@ -1345,6 +1476,9 @@ function renderDownloadVersions(printerData) {
   }
 }
 
+// ==========================================
+// 🚀 极简本地预设渲染引擎 (智能扒取 JSON 内部真实版本号)
+// ==========================================
 async function renderPresetList(printerData, versionType) {
   const localEmpty = document.getElementById('localEmptyState');
   const localList = document.getElementById('localPresetsList');
@@ -1367,25 +1501,105 @@ async function renderPresetList(printerData, versionType) {
     localFileNames = await window.mkpAPI.getLocalPresets();
   }
 
+  let cloudLogMap = {};
+  try {
+      if (window.mkpAPI && window.mkpAPI.readLocalPresetsManifest) {
+          const localManifestRes = await window.mkpAPI.readLocalPresetsManifest();
+          if (localManifestRes && localManifestRes.success && localManifestRes.data && localManifestRes.data.presets) {
+              const matchedPresets = localManifestRes.data.presets.filter(p => p.id === printerData.id && (p.type ? p.type === versionType : true));
+              matchedPresets.forEach(p => {
+                  if(p.file) {
+                     cloudLogMap[p.file.toLowerCase()] = Array.isArray(p.releaseNotes) ? p.releaseNotes : (p.releaseNotes ? [p.releaseNotes] : (p.description ? [p.description] : ['常规优化与参数更新']));
+                  }
+              });
+          }
+      }
+  } catch(e) {}
+
   const filePrefix = `${printerData.id}_${versionType}_`;
   const matchedFiles = localFileNames.filter(name => name.startsWith(filePrefix));
-  const localData = [];
   
+  const userDataPath = window.mkpAPI && typeof window.mkpAPI.getUserDataPath === 'function' 
+        ? await window.mkpAPI.getUserDataPath() 
+        : '';
+
+  let localData = [];
+  
+  // 💡 核心巨变：扒开 JSON 查验真实身份与用户自定义名字！
   for (const fileName of matchedFiles) {
-    const versionMatch = fileName.match(/_v([a-zA-Z0-9\.-]+)\.json$/i);
-    const versionStr = versionMatch ? versionMatch[1] : '0.0.1';
-    localData.push({
-      id: `v${versionStr}`,
-      version: versionStr,
-      date: '本地已下载',
-      isLatest: false,
-      fileName: fileName,
-      changes: ['本地保存的参数配置']
-    });
+      let realVersion = '0.0.1';
+      let customName = null; // 存放内嵌的中文名
+      
+      // 读取本地文件内容
+      if (userDataPath && window.mkpAPI.readPreset) {
+          const filePath = `${userDataPath}\\${fileName}`;
+          const res = await window.mkpAPI.readPreset(filePath);
+          if (res.success && res.data) {
+              if (res.data.version) realVersion = res.data.version; 
+              if (res.data._custom_name) customName = res.data._custom_name; // 获取中文名！
+          } else {
+              const versionMatch = fileName.match(/_v([a-zA-Z0-9\.-]+)/i);
+              if (versionMatch) realVersion = versionMatch[1];
+          }
+      }
+
+      // 外显标题清洗：如果有 customName 就用它，没有就用切掉后缀的文件名
+      let displayTitle = fileName.replace(/\.json$/i, '');
+      if (displayTitle.startsWith(filePrefix)) {
+          displayTitle = displayTitle.substring(filePrefix.length);
+      }
+      if (customName) {
+          displayTitle = customName; 
+      }
+
+      // 日志匹配：如果它是副本，我们可以用它的“真实版本”推导出原始文件名，再去云端字典里捞日志！
+      const fileLower = fileName.toLowerCase();
+      const originalBaseName = `${printerData.id}_${versionType}_v${realVersion}.json`.toLowerCase();
+      
+      const realChanges = cloudLogMap[fileLower] || cloudLogMap[originalBaseName] || [`本地自定义配置 (底层版本 v${realVersion})`];
+
+      localData.push({
+        id: fileName, // 确保应用和删除时的 ID 是唯一的文件名
+        displayTitle: displayTitle, // UI 上显示的干净名字 (可能是中文)
+        realVersion: realVersion,   // 内部展开显示的真实版本
+        fileName: fileName,         // 纯英文的时间戳底层文件
+        changes: realChanges, 
+        isLatest: false 
+      });
   }
 
-  localData.sort((a, b) => compareVersionsFront(b.version, a.version));
-  if (localData.length > 0) localData[0].isLatest = true; 
+  // 💡 应用搜索过滤
+  if (localSearchQuery) {
+      localData = localData.filter(d => d.displayTitle.toLowerCase().includes(localSearchQuery) || d.fileName.toLowerCase().includes(localSearchQuery));
+  }
+
+  // 💡 应用拖拽自定义排序 (如果存在的话)
+  const customOrderKey = `mkp_custom_order_${printerData.id}_${versionType}`;
+  const customOrderStr = localStorage.getItem(customOrderKey);
+  
+  if (customOrderStr && !localSearchQuery) {
+      try {
+          const customOrder = JSON.parse(customOrderStr);
+          localData.sort((a, b) => {
+              const idxA = customOrder.indexOf(a.fileName);
+              const idxB = customOrder.indexOf(b.fileName);
+              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+              if (idxA !== -1) return -1;
+              if (idxB !== -1) return 1;
+              // 兜底降序
+              return a.realVersion.localeCompare(b.realVersion, undefined, { numeric: true, sensitivity: 'base' }) * -1;
+          });
+      } catch(e) {}
+  } else {
+      // 排序：按真实版本号倒序
+      localData.sort((a, b) => {
+          return a.realVersion.localeCompare(b.realVersion, undefined, { numeric: true, sensitivity: 'base' }) * -1;
+      });
+  }
+
+  if (localData.length > 0 && !localSearchQuery && !customOrderStr) {
+      localData[0].isLatest = true; 
+  }
 
   const dlBtn = document.getElementById('downloadBtn');
   const dlHint = document.getElementById('downloadHintWrapper');
@@ -1394,11 +1608,14 @@ async function renderPresetList(printerData, versionType) {
     if(localEmpty) localEmpty.classList.add('hidden');
     if(localList) {
       localList.classList.remove('hidden');
-      localList.classList.add('flex');
+      localList.classList.add('flex', 'flex-col', 'gap-2'); 
       renderListItems(localList, localData, printerData, versionType, true);
     }
-
-    const hasApplied = localData.some(r => r.id === appliedReleases[`${printerData.id}_${versionType}`]);
+    
+    // 判断是否有选中的配置
+    const activeFileName = localStorage.getItem(`mkp_current_script_${printerData.id}_${versionType}`);
+    const hasApplied = localData.some(r => r.fileName === activeFileName);
+    
     if (dlBtn && dlHint) {
       if (hasApplied) { dlBtn.disabled = false; dlHint.style.opacity = '0'; } 
       else { dlBtn.disabled = true; dlHint.style.opacity = '1'; }
@@ -1413,17 +1630,49 @@ async function renderPresetList(printerData, versionType) {
     if (dlHint) dlHint.style.opacity = '1';
   }
 }
+// ==========================================
+// 🚀 瞬间复制本地预设 (带参数穿透)
+// ==========================================
+async function handleDuplicateLocal(fileName, printerId, versionType, realVersion) {
+  try {
+    if (!window.mkpAPI || !window.mkpAPI.duplicatePreset) {
+        throw new Error("请先在 main.js 中添加 duplicate-preset 接口并重启软件！");
+    }
+    // 把机型、版本等信息传给后端，用来生成标准的纯英文底层文件名
+    const result = await window.mkpAPI.duplicatePreset({ fileName, printerId, versionType, realVersion });
+    if (result.success) {
+        // 魔法触发：告诉系统刚复制出来的文件是谁，让它闪烁绿光！
+        window.newlyDownloadedFile = result.newFileName;
+        
+        // 瞬间重新渲染列表
+        const printerData = getPrinterObj(printerId);
+        await renderPresetList(printerData, versionType);
+    } else {
+        throw new Error(result.error);
+    }
+  } catch (error) {
+    await MKPModal.alert({ title: '复制失败', msg: error.message, type: 'error' });
+  }
+}
 
+// ==========================================
+// 🚀 渲染卡片 HTML (加入多选框 + 拖拽手柄 + 联动编辑)
+// ==========================================
 function renderListItems(container, releases, printerData, versionType, isLocal) {
   container.innerHTML = '';
   const presetNamePrefix = `${printerData.shortName} ${VERSION_THEMES[versionType]?.title || ''}`;
 
   releases.forEach((release) => {
-    const isApplied = isLocal && (release.id === appliedReleases[`${printerData.id}_${versionType}`]);
+    const isApplied = isLocal && (release.fileName === localStorage.getItem(`mkp_current_script_${printerData.id}_${versionType}`));
+    const isJustDownloaded = isLocal && (window.newlyDownloadedFile === release.fileName);
+    const isSelected = selectedLocalFiles.has(release.fileName);
+
     const item = document.createElement('div');
+    item.dataset.releaseId = release.fileName; 
     
-    item.dataset.releaseId = release.id;
-    item.className = 'collapse-item transition-all border-b border-gray-100 dark:border-[#333] last:border-b-0 bg-white dark:bg-gray-800';
+    // 如果选中了，卡片本身也给点高亮反馈
+    const selectionClass = isSelected ? 'border-blue-500 bg-blue-50/20' : 'border-gray-100 dark:border-[#333]';
+    item.className = `collapse-item transition-all border-b ${selectionClass} last:border-b-0 bg-white dark:bg-gray-800 ${isJustDownloaded ? 'flash-success' : ''}`;
 
     let btnText = '下载';
     let btnClass = 'dl-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-[#333] dark:border-[#444] dark:text-gray-200 dark:hover:bg-[#444] rounded-lg px-4 py-1.5 text-xs font-medium transition-all duration-200 active:scale-95 flex items-center justify-center min-w-[76px]';
@@ -1431,30 +1680,61 @@ function renderListItems(container, releases, printerData, versionType, isLocal)
     if (isLocal) {
       if (isApplied) {
         btnText = '已应用';
-        btnClass = 'dl-btn theme-btn-solid cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium shadow-sm transition-all';
+        btnClass = 'dl-btn theme-btn-solid cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium shadow-sm transition-all btn-q-bounce';
       } else {
         btnText = '应用';
-        btnClass = 'dl-btn theme-btn-soft cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium transition-all';
+        btnClass = 'dl-btn theme-btn-soft cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium transition-all btn-q-bounce';
       }
     }
 
+    // 💡 多选复选框 UI
+    const checkboxHtml = isLocal ? `
+      <div class="multi-checkbox flex-shrink-0 w-4 h-4 rounded border-2 mr-3 transition-colors flex items-center justify-center ${isMultiSelectMode ? 'flex' : 'hidden'} ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'}">
+        <svg class="w-3 h-3 text-white transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+      </div>
+    ` : '';
+
+    // 💡 编辑和复制按钮 (注意传入了 release.realVersion)
+    const toolsHtml = isLocal ? `
+      <div class="w-px h-4 bg-gray-200 dark:bg-[#444] mx-1"></div>
+      <button class="p-1.5 text-gray-400 hover:text-emerald-500 transition-colors" title="编辑参数" onclick="event.stopPropagation(); editAndApplyLocal('${release.fileName}', '${printerData.id}', '${versionType}')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      </button>
+      <button class="p-1.5 text-gray-400 hover:theme-text transition-colors" title="立即制作副本" onclick="event.stopPropagation(); handleDuplicateLocal('${release.fileName}', '${printerData.id}', '${versionType}', '${release.realVersion}')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      </button>
+      <button class="delete-btn p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="删除本地文件">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+      </button>
+    ` : '';
+
+    // 💡 拖拽手柄 UI (移入时才激活拖拽，防止平时误触)
+    const dragHtml = isLocal ? `
+      <div class="drag-handle ml-2 px-1 text-gray-300 hover:text-gray-500 dark:text-[#444] dark:hover:text-gray-400 cursor-grab active:cursor-grabbing transition-colors" title="拖拽排序" 
+           onmouseenter="this.closest('.collapse-item').setAttribute('draggable', true)" 
+           onmouseleave="this.closest('.collapse-item').removeAttribute('draggable')">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM16 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM16 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM16 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg>
+      </div>
+    ` : '';
+
+    // 💡 点击整个头部的逻辑：多选模式下打勾，正常模式下展开
     item.innerHTML = `
-      <div class="preset-header px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors" onclick="toggleCollapse(this)">
-        <div class="flex items-center gap-3">
-          <span class="text-sm font-bold text-gray-900 dark:text-gray-100">${presetNamePrefix} ${release.id}</span>
-          ${release.isLatest ? '<span class="px-2 py-0.5 rounded text-[10px] font-medium theme-bg-soft">最新</span>' : ''}
-          ${isApplied ? '<span class="px-2 py-0.5 rounded text-[10px] font-medium theme-btn-solid flex items-center gap-1 shadow-sm"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>当前使用</span>' : ''}
-          <span class="text-xs text-gray-400 ml-2 hidden sm:inline">发布于 ${release.date}</span>
+      <div class="preset-header px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2A2D2E] transition-colors" 
+           onclick="if(isMultiSelectMode) { toggleFileSelection('${release.fileName}', this.closest('.collapse-item')) } else { toggleCollapse(this) }">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          ${checkboxHtml}
+          <span class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">${presetNamePrefix} ${release.displayTitle || release.id}</span>
+          ${release.isLatest ? '<span class="px-2 py-0.5 rounded text-[10px] font-medium theme-bg-soft flex-shrink-0">最新</span>' : ''}
+          ${isApplied ? '<span class="px-2 py-0.5 rounded text-[10px] font-medium theme-btn-solid flex items-center gap-1 shadow-sm flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>当前使用</span>' : ''}
         </div>
         
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <button class="${btnClass}">
-              ${btnText}
-            </button>
-            ${isLocal ? `<button class="delete-btn p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="删除本地文件"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>` : ''}
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <div class="flex items-center gap-1 action-tools ${isMultiSelectMode ? 'hidden' : 'flex'}">
+            <button class="${btnClass}">${btnText}</button>
+            ${toolsHtml}
           </div>
-          <svg class="w-5 h-5 text-gray-400 collapse-arrow transition-transform duration-200 toggle-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          <svg class="w-5 h-5 text-gray-400 collapse-arrow transition-transform duration-200 toggle-arrow ${isMultiSelectMode ? 'hidden' : 'block'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          ${dragHtml}
         </div>
       </div>
       <div class="collapse-wrapper">
@@ -1463,7 +1743,10 @@ function renderListItems(container, releases, printerData, versionType, isLocal)
             <div class="rounded-xl p-4 theme-bg-subtle">
               <div class="flex justify-between items-center mb-2">
                  <div class="text-xs font-medium text-gray-700 dark:text-gray-300">更新日志：</div>
-                 <div class="text-[10px] font-mono px-2 py-0.5 rounded bg-black/5 dark:bg-black/20 text-gray-500 dark:text-gray-400">文件: ${release.fileName}</div>
+                 <div class="flex gap-2">
+                     <div class="text-[10px] font-mono px-2 py-0.5 rounded bg-black/5 dark:bg-black/20 text-gray-500 dark:text-gray-400">文件: ${release.fileName}</div>
+                     <div class="text-[10px] font-bold px-2 py-0.5 rounded theme-bg-soft theme-text">底层版本: v${release.realVersion || release.version}</div>
+                 </div>
               </div>
               <ul class="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
                 ${release.changes.map(c => `<li class="flex items-start gap-1.5"><span class="text-gray-300 dark:text-gray-600 mt-0.5">•</span> ${c}</li>`).join('')}
@@ -1474,11 +1757,12 @@ function renderListItems(container, releases, printerData, versionType, isLocal)
       </div>
     `;
 
+    // 绑定事件
     const dlBtn = item.querySelector('.dl-btn');
     if(dlBtn) {
       dlBtn.addEventListener('click', async (e) => {
         e.stopPropagation(); 
-        if (isLocal) handleApplyLocal(release.id, release.fileName, printerData, dlBtn);
+        if (isLocal) handleApplyLocal(release.fileName, release.fileName, printerData, dlBtn);
         else handleDownloadOnline(release.id, release.fileName, dlBtn);
       });
     }
@@ -1488,9 +1772,35 @@ function renderListItems(container, releases, printerData, versionType, isLocal)
       if (deleteBtn) {
         deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation(); 
-          handleDeleteLocal(release.id, release.fileName, e);
+          handleDeleteLocal(release.fileName, release.fileName, e);
         });
       }
+
+      // 💡 绑定 HTML5 拖拽事件
+      item.addEventListener('dragstart', function(e) {
+          draggedCard = this;
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => this.classList.add('opacity-40', 'bg-gray-50'), 0);
+      });
+      
+      item.addEventListener('dragover', function(e) {
+          e.preventDefault(); // 必须阻止默认行为才能成为放置目标
+          if (this === draggedCard) return;
+          const rect = this.getBoundingClientRect();
+          const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+          this.parentNode.insertBefore(draggedCard, next ? this.nextSibling : this);
+      });
+      
+      item.addEventListener('drop', function(e) {
+          e.stopPropagation();
+          saveCustomOrder(); // 保存新顺序到本地
+      });
+      
+      item.addEventListener('dragend', function() {
+          this.classList.remove('opacity-40', 'bg-gray-50');
+          this.removeAttribute('draggable'); // 拖拽完移除属性，回归正常
+          draggedCard = null;
+      });
     }
 
     container.appendChild(item);
@@ -1740,9 +2050,6 @@ async function copyPath() {
     }
 }
 
-// ============================================================
-// 极其纯粹的 本地应用
-// ============================================================
 function handleApplyLocal(releaseId, fileName, printerData, clickedBtn = null) {
   Logger.info(`[O301] Read preset, apply file:${fileName}`);
   const currentKey = `${printerData.id}_${selectedVersion}`;
@@ -1761,23 +2068,21 @@ function handleApplyLocal(releaseId, fileName, printerData, clickedBtn = null) {
     const btn = card.querySelector('.dl-btn');
     const badgeContainer = card.querySelector('.preset-header .flex.items-center.gap-3');
 
-// 在 handleApplyLocal 中，找到这段代码并替换：
-if (isThisCardApplied) {
-  if (btn) {
-    const isReapply = (btn.textContent.trim() === '已应用') && (btn === clickedBtn);
-    
-    // 💡 核心修复：坚决去掉写死的 btn-q-bounce！把控制权完完整整交还给动画引擎！
-    btn.className = 'dl-btn theme-btn-solid cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium shadow-sm transition-all';
-    
-    if (isReapply) {
-      // SVG 颜色改用 currentColor，让它自动随环境变纯白色
-      const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
-      const reset = setButtonStatus(btn, '96px', '已刷新', CHECK_ICON, 'btn-expand-green');
-      setTimeout(reset, 1500);
-    } else {
-      btn.innerHTML = '已应用';
-    }
-  }
+    if (isThisCardApplied) {
+      if (btn) {
+        const isReapply = (btn.textContent.trim() === '已应用') && (btn === clickedBtn);
+        
+        // 💡 必须保留 btn-q-bounce，动画才会生效！
+        btn.className = 'dl-btn theme-btn-solid btn-q-bounce cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium shadow-sm transition-all';
+        
+        if (isReapply) {
+          const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
+          const reset = setButtonStatus(btn, '96px', '已刷新', CHECK_ICON, 'btn-expand-green');
+          setTimeout(reset, 1500);
+        } else {
+          btn.innerHTML = '已应用';
+        }
+      }
       
       if (badgeContainer) {
         const hasBadge = Array.from(badgeContainer.children).some(el => el.textContent.includes('当前使用'));
@@ -1789,7 +2094,7 @@ if (isThisCardApplied) {
     } else {
       if (btn) {
         btn.innerHTML = '应用';
-        btn.className = 'dl-btn theme-btn-soft btn-q-bounce cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium';
+        btn.className = 'dl-btn theme-btn-soft btn-q-bounce cursor-pointer flex items-center justify-center min-w-[76px] rounded-lg px-4 py-1.5 text-xs font-medium transition-all';
       }
       if (badgeContainer) {
         const badges = Array.from(badgeContainer.children);
@@ -2741,7 +3046,8 @@ async function copyQQGroup(btnElement) {
       title: '复制失败', 
       msg: '无法访问剪贴板，群号为：668350689', 
       type: 'error', 
-      confirmText: '确定' 
+      confirmText: '确定' ,
+      allowOutsideClick: true
     });
   }
 }

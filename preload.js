@@ -23,6 +23,14 @@ contextBridge.exposeInMainWorld('mkpAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   saveLocalManifest: (jsonStr) => ipcRenderer.invoke('save-local-manifest', jsonStr),
-  readLocalManifest: () => ipcRenderer.invoke('read-local-manifest')
+  readLocalManifest: () => ipcRenderer.invoke('read-local-manifest'),
+  readLocalPresetsManifest: () => ipcRenderer.invoke('read-local-presets-manifest'),
+  saveLocalPresetsManifest: (jsonStr) => ipcRenderer.invoke('save-local-presets-manifest', jsonStr),
+  duplicatePreset: (payload) => ipcRenderer.invoke('duplicate-preset', payload),
+  getShortPath: (absolutePath) => ipcRenderer.invoke('get-short-path', absolutePath),
+  renamePresetDisplay: (payload) => ipcRenderer.invoke('rename-preset-display', payload),
+  showItemInFolder: (fileName) => ipcRenderer.invoke('show-item-in-folder', fileName)
+  
+
 
 });

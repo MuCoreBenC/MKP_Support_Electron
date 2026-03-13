@@ -41,6 +41,56 @@ function extractPatch(tempFilePath, targetAppPath) {
   }
 }
 
+
+// ==========================================
+// 🚀 预设文件本地复制引擎 (防中文/防无限叠加/内置展示名)
+// ==========================================
+ipcMain.handle('duplicate-preset', (event, payload) => {
+  try {
+    const { fileName, printerId, versionType, realVersion } = payload;
+    const dir = path.join(app.getPath('userData'), 'Presets');
+    const srcPath = path.join(dir, fileName);
+
+    if (!fs.existsSync(srcPath)) throw new Error("源文件不存在");
+
+    // 1. 生成 12 位纯数字时间戳 (如: 260313122011)
+    const d = new Date();
+    const ts = String(d.getFullYear()).slice(-2) +
+               String(d.getMonth() + 1).padStart(2, '0') +
+               String(d.getDate()).padStart(2, '0') +
+               String(d.getHours()).padStart(2, '0') +
+               String(d.getMinutes()).padStart(2, '0') +
+               String(d.getSeconds()).padStart(2, '0');
+
+    // 2. 拼接纯英文、固定长度的文件名 (杜绝无限叠加！)
+    // 不管源文件叫什么，新文件永远是: a1_quick_v3.0.0-r1_260313122011.json
+    const newFileName = `${printerId}_${versionType}_v${realVersion}_${ts}.json`;
+    const destPath = path.join(dir, newFileName);
+
+    // 3. 读取源文件，注入中文显示名 `_custom_name`
+    const rawData = fs.readFileSync(srcPath, 'utf-8');
+    const jsonData = JSON.parse(rawData);
+
+    // 提取原有的 _custom_name 或基于版本号生成
+    let baseName = jsonData._custom_name;
+    if (!baseName) {
+        baseName = `v${realVersion}`; // 如果原文件没起名字，就叫 v3.0.0-r1
+    }
+    // 智能清洗：把旧的“副本_xxxx”字样砍掉，防止在 UI 上变成“副本 副本 副本”
+    baseName = baseName.replace(/\s*副本_\d{4}$/, '');
+
+    // 注入新的展示名，例如: "v3.0.0-r1 副本_2011"
+    jsonData._custom_name = `${baseName} 副本_${ts.slice(-4)}`;
+
+    // 重新写入硬盘
+    fs.writeFileSync(destPath, JSON.stringify(jsonData, null, 2), 'utf-8');
+
+    return { success: true, newFileName };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 // 📡 IPC 接收器：保存云端最新的 manifest 到本地
 ipcMain.handle('save-local-manifest', async (event, jsonStr) => {
   try {
@@ -57,6 +107,32 @@ ipcMain.handle('save-local-manifest', async (event, jsonStr) => {
     return { success: true };
   } catch (error) {
     console.error("[版本引擎] 保存本地 manifest 失败:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ==========================================
+// 🚀 预设清单 (Manifest) 本地读写引擎
+// ==========================================
+ipcMain.handle('read-local-presets-manifest', async () => {
+  try {
+    const manifestPath = path.join(app.getPath('userData'), 'Presets', 'presets_manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      const data = fs.readFileSync(manifestPath, 'utf-8');
+      return { success: true, data: JSON.parse(data) };
+    }
+    return { success: false, error: '本地清单不存在' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-local-presets-manifest', async (event, jsonStr) => {
+  try {
+    const manifestPath = path.join(app.getPath('userData'), 'Presets', 'presets_manifest.json');
+    fs.writeFileSync(manifestPath, jsonStr, 'utf-8');
+    return { success: true };
+  } catch (error) {
     return { success: false, error: error.message };
   }
 });
@@ -587,6 +663,59 @@ ipcMain.handle('open-calibration-model', async (event, modelType, forceOpenWith 
       if (openError) return { success: false, error: `无法打开模型: ${openError}` };
       return { success: true, path: targetPath };
     }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ==========================================
+// 🚀 Windows DOS 8.3 短路径转换引擎 (专治各种切片软件乱码/空格 Bug)
+// ==========================================
+ipcMain.handle('get-short-path', (event, targetPath) => {
+  if (process.platform !== 'win32') return targetPath; // Mac 和 Linux 不需要，它们原生支持良好
+  try {
+    const { execSync } = require('child_process');
+    // 调用 cmd 内部的 %~sI 魔法修饰符，获取物理短路径
+    const command = `for %I in ("${targetPath}") do @echo %~sI`;
+    // 执行并去掉换行符
+    const shortPath = execSync(command, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    
+    return shortPath || targetPath;
+  } catch (error) {
+    console.error("[短路径引擎] 转换失败，降级为原路径:", error);
+    return targetPath;
+  }
+});
+
+// ==========================================
+// 🚀 高级文件管理引擎 (重命名显示名 & 资源管理器定位)
+// ==========================================
+ipcMain.handle('rename-preset-display', (event, payload) => {
+  try {
+    const { fileName, newName } = payload;
+    const destPath = path.join(app.getPath('userData'), 'Presets', fileName);
+    if (!fs.existsSync(destPath)) throw new Error("文件不存在");
+    
+    // 扒开 JSON，注入 _custom_name，完美规避底层中文路径报错！
+    const rawData = fs.readFileSync(destPath, 'utf-8');
+    const jsonData = JSON.parse(rawData);
+    jsonData._custom_name = newName;
+    
+    fs.writeFileSync(destPath, JSON.stringify(jsonData, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('show-item-in-folder', (event, fileName) => {
+  try {
+    const destPath = path.join(app.getPath('userData'), 'Presets', fileName);
+    if (fs.existsSync(destPath)) {
+      shell.showItemInFolder(destPath);
+      return { success: true };
+    }
+    return { success: false, error: "文件不存在" };
   } catch (error) {
     return { success: false, error: error.message };
   }
