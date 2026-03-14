@@ -44,6 +44,10 @@ function getBundledAppManifestPath() {
   return path.join(getBundledCloudDataPath(), 'app_manifest.json');
 }
 
+function getCachedRemoteManifestPath() {
+  return path.join(app.getPath('userData'), 'update_cache', 'app_manifest.remote.json');
+}
+
 function getReleaseRuntimeOptions() {
   return {
     projectRoot: getAppContentRootPath(),
@@ -1192,6 +1196,41 @@ ipcMain.handle('apply-hot-update', async (event, payload) => {
     return { success: false, error: error.message };
   } finally {
     try { fs.unlinkSync(tempZipPath); } catch (error) {}
+  }
+});
+
+ipcMain.removeHandler('save-local-manifest');
+ipcMain.handle('save-local-manifest', async (event, jsonStr) => {
+  try {
+    const targetPath = getCachedRemoteManifestPath();
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, jsonStr, 'utf-8');
+    console.log('[VersionEngine] Cached latest remote app_manifest.json');
+    return { success: true };
+  } catch (error) {
+    console.error('[VersionEngine] Failed to cache remote manifest:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.removeHandler('read-local-manifest');
+ipcMain.handle('read-local-manifest', async () => {
+  try {
+    const cachedManifestPath = getCachedRemoteManifestPath();
+    const bundledManifestPath = getBundledAppManifestPath();
+    const manifestPath = fs.existsSync(cachedManifestPath)
+      ? cachedManifestPath
+      : bundledManifestPath;
+
+    if (!fs.existsSync(manifestPath)) {
+      console.warn('[VersionEngine] No local app_manifest.json found');
+      return null;
+    }
+
+    return JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  } catch (error) {
+    console.error('[VersionEngine] Failed to read local manifest:', error);
+    return null;
   }
 });
 

@@ -1,27 +1,42 @@
 {
-  "latestVersion": "0.2.8",
+  "latestVersion": "0.2.9",
   "updateType": "hot_update",
-  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.8.zip",
+  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.9.zip",
   "forceUpdate": false,
   "releaseDate": "2026-03-14",
-  "shortDesc": "首页机型页重构与展示优化",
+  "shortDesc": "修复更新功能小红点提示",
   "canRollback": true,
   "releaseNotes": [
-    "0.2.8",
-    "重做首页机型选择布局，品牌改为顶部横向展示",
-    "新增画廊式机型浏览，简约模式支持横向切换",
-    "增加左右切换按钮，浏览机型更方便",
-    "简约模式改为大图优先展示",
-    "详细模式改为信息卡片展示",
-    "优化机型卡片选中效果与整体排版",
-    "减轻机型图片白底与背景突兀的问题",
-    "保留品牌和机型右键菜单功能",
-    "新增显示简称 / 显示全称切换",
-    "修复字母头像与恢复原图的状态判断",
-    "继续拆分首页相关代码，便于后续维护"
+    "0.2.9",
+    "默认关闭自动更新",
+    "默认改用小红点提示",
+    "再次修复热更新功能"
   ],
-  "releaseNotesMarkdown": "# 0.2.8\n\n- 重做首页机型选择布局，品牌改为顶部横向展示\n- 新增画廊式机型浏览，简约模式支持横向切换\n- 增加左右切换按钮，浏览机型更方便\n- 简约模式改为大图优先展示\n- 详细模式改为信息卡片展示\n- 优化机型卡片选中效果与整体排版\n- 减轻机型图片白底与背景突兀的问题\n- 保留品牌和机型右键菜单功能\n- 新增显示简称 / 显示全称切换\n- 修复字母头像与恢复原图的状态判断\n- 继续拆分首页相关代码，便于后续维护",
+  "releaseNotesMarkdown": "# 0.2.9\n\n- 默认关闭自动更新\n- 默认改用小红点提示\n- 再次修复热更新功能",
   "history": [
+    {
+      "version": "0.2.8",
+      "updateType": "hot_update",
+      "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.8.zip",
+      "releaseDate": "2026-03-14",
+      "shortDesc": "首页机型页重构与展示优化",
+      "canRollback": true,
+      "releaseNotes": [
+        "0.2.8",
+        "重做首页机型选择布局，品牌改为顶部横向展示",
+        "新增画廊式机型浏览，简约模式支持横向切换",
+        "增加左右切换按钮，浏览机型更方便",
+        "简约模式改为大图优先展示",
+        "详细模式改为信息卡片展示",
+        "优化机型卡片选中效果与整体排版",
+        "减轻机型图片白底与背景突兀的问题",
+        "保留品牌和机型右键菜单功能",
+        "新增显示简称 / 显示全称切换",
+        "修复字母头像与恢复原图的状态判断",
+        "继续拆分首页相关代码，便于后续维护"
+      ],
+      "releaseNotesMarkdown": "# 0.2.8\n\n- 重做首页机型选择布局，品牌改为顶部横向展示\n- 新增画廊式机型浏览，简约模式支持横向切换\n- 增加左右切换按钮，浏览机型更方便\n- 简约模式改为大图优先展示\n- 详细模式改为信息卡片展示\n- 优化机型卡片选中效果与整体排版\n- 减轻机型图片白底与背景突兀的问题\n- 保留品牌和机型右键菜单功能\n- 新增显示简称 / 显示全称切换\n- 修复字母头像与恢复原图的状态判断\n- 继续拆分首页相关代码，便于后续维护"
+    },
     {
       "version": "0.2.7",
       "updateType": "hot_update",
