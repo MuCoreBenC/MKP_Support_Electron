@@ -20,9 +20,15 @@ let currentZOffset = 0;
 let currentXOffset = 0;
 let currentYOffset = 0;
 let calibrationContextKey = '';
+let isUserConfigPersistenceSuspended = false;
+let isCrossWindowSyncBound = false;
+let lastPresetMutationSignalTs = 0;
+let presetMutationPromptInFlight = false;
 
 let APP_REAL_VERSION = '0.0.0';
 const ACTIVE_PRESET_UPDATED_EVENT = 'mkp:active-preset-updated';
+const PRESET_MUTATION_SIGNAL_KEY = 'mkp_preset_mutation_signal';
+const RENDERER_WINDOW_SYNC_ID = `renderer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const VERSION_THEMES = {
   standard: { title: '标准版', bg: 'var(--theme-standard-bg)', text: 'var(--theme-standard-text)' },
@@ -75,6 +81,26 @@ function emitActivePresetUpdated(detail = {}) {
 
 window.updatePresetCacheSnapshot = updatePresetCacheSnapshot;
 window.emitActivePresetUpdated = emitActivePresetUpdated;
+
+function normalizePresetPathForCompare(filePath) {
+  return String(filePath || '')
+    .replace(/\//g, '\\')
+    .replace(/\\+/g, '\\')
+    .trim()
+    .toLowerCase();
+}
+
+function broadcastPresetMutation(detail = {}) {
+  const payload = {
+    path: detail.path || null,
+    reason: detail.reason || 'unknown',
+    ts: Date.now(),
+    sourceId: RENDERER_WINDOW_SYNC_ID
+  };
+  localStorage.setItem(PRESET_MUTATION_SIGNAL_KEY, JSON.stringify(payload));
+}
+
+window.broadcastPresetMutation = broadcastPresetMutation;
 // ==========================================
 // 🚀 企业级网络请求引擎 (海陆空三线容灾)
 // ==========================================
@@ -457,7 +483,36 @@ window.bindFloatingTooltipSystem = bindFloatingTooltipSystem;
 window.bindFloatingSurfaceAutoDismiss = bindFloatingSurfaceAutoDismiss;
 
 function saveUserConfig() {
-  const config = { brand: selectedBrand, printer: selectedPrinter, version: selectedVersion, appliedReleases: appliedReleases };
+  if (isUserConfigPersistenceSuspended) {
+    return;
+  }
+
+  let previousConfig = {};
+  try {
+    previousConfig = JSON.parse(localStorage.getItem('mkp_user_config') || '{}') || {};
+  } catch (error) {
+    previousConfig = {};
+  }
+
+  const mergedAppliedReleases = {
+    ...(previousConfig.appliedReleases || {}),
+    ...appliedReleases
+  };
+  const resolvedPrinter = selectedPrinter || previousConfig.printer || null;
+  const resolvedBrand = selectedBrand || previousConfig.brand || null;
+  const resolvedVersion = resolvePersistedVersionForPrinter(
+    resolvedPrinter,
+    selectedVersion || previousConfig.version || null,
+    { appliedReleases: mergedAppliedReleases }
+  );
+
+  const config = {
+    brand: resolvedBrand,
+    printer: resolvedPrinter,
+    version: resolvedVersion,
+    appliedReleases: mergedAppliedReleases
+  };
+
   Logger.info("Write variable: mkp_user_config");
   localStorage.setItem('mkp_user_config', JSON.stringify(config));
 }
@@ -470,10 +525,369 @@ function loadUserConfig() {
       const config = JSON.parse(saved);
       if (config.brand) selectedBrand = config.brand;
       if (config.printer) selectedPrinter = config.printer;
-      if (config.version) selectedVersion = config.version;
       if (config.appliedReleases) appliedReleases = config.appliedReleases; 
+      selectedVersion = resolvePersistedVersionForPrinter(
+        config.printer || selectedPrinter,
+        config.version || selectedVersion,
+        config
+      );
     }
   } catch (e) { console.error("加载配置文件失败", e); }
+}
+
+function resolvePersistedVersionForPrinter(printerId, preferredVersion = null, config = {}) {
+  if (!printerId) return null;
+
+  const printer = getPrinterObj(printerId);
+  const supportedVersions = Array.isArray(printer?.supportedVersions) ? printer.supportedVersions : [];
+  if (supportedVersions.length === 0) {
+    return preferredVersion || null;
+  }
+
+  if (preferredVersion && supportedVersions.includes(preferredVersion)) {
+    return preferredVersion;
+  }
+
+  const appliedMap = (config && typeof config === 'object' && config.appliedReleases && typeof config.appliedReleases === 'object')
+    ? config.appliedReleases
+    : appliedReleases;
+
+  for (const version of supportedVersions) {
+    const currentKey = `${printerId}_${version}`;
+    if (localStorage.getItem(`mkp_current_script_${currentKey}`) || appliedMap?.[currentKey]) {
+      return version;
+    }
+  }
+
+  return null;
+}
+
+function hasRestorablePresetSession() {
+  const restoredVersion = resolvePersistedVersionForPrinter(selectedPrinter, selectedVersion, { appliedReleases });
+  if (!selectedPrinter || !restoredVersion) {
+    return false;
+  }
+  return !!localStorage.getItem(`mkp_current_script_${selectedPrinter}_${restoredVersion}`);
+}
+
+async function withSuspendedUserConfigPersistence(callback) {
+  const previousState = isUserConfigPersistenceSuspended;
+  isUserConfigPersistenceSuspended = true;
+  try {
+    return await callback();
+  } finally {
+    isUserConfigPersistenceSuspended = previousState;
+  }
+}
+
+function syncOnboardingSettingFromStorage() {
+  const nextValue = localStorage.getItem('showOnboarding') !== 'false';
+  GlobalState.onboarding = nextValue;
+
+  const checkbox = document.getElementById('showOnboarding');
+  if (checkbox) {
+    checkbox.checked = nextValue;
+  }
+  document.documentElement.toggleAttribute('data-hide-onboarding', !nextValue);
+
+  if (!nextValue && typeof skipOnboarding === 'function') {
+    skipOnboarding();
+  }
+}
+
+function syncDockSettingsFromStorage() {
+  const savedAnimState = localStorage.getItem('setting_dock_anim');
+  const wantsAnim = savedAnimState === null ? true : savedAnimState === 'true';
+  const animCheckbox = document.getElementById('settingMacAnim');
+  if (animCheckbox) {
+    animCheckbox.checked = wantsAnim;
+  }
+  toggleMacDockAnimation(wantsAnim, { persist: false });
+
+  const sizeValue = parseInt(localStorage.getItem('setting_dock_size'), 10);
+  if (Number.isFinite(sizeValue)) {
+    window.macDockBaseSize = sizeValue;
+    document.documentElement.style.setProperty('--dock-base-size', `${sizeValue}px`);
+    const sizeSlider = document.getElementById('settingDockSizeRange');
+    if (sizeSlider) {
+      sizeSlider.value = String(sizeValue);
+    }
+  }
+
+  const scaleValue = parseFloat(localStorage.getItem('setting_dock_scale'));
+  if (Number.isFinite(scaleValue)) {
+    window.macDockMaxScale = scaleValue;
+    const scaleSlider = document.getElementById('settingDockScaleRange');
+    if (scaleSlider) {
+      scaleSlider.value = String(scaleValue);
+    }
+  }
+}
+
+function syncThemeSettingsFromStorage() {
+  window.__mkpExternalStorageSyncApplying = true;
+  try {
+    if (typeof initTheme === 'function') {
+      initTheme();
+    }
+    if (selectedVersion && typeof updateSidebarVersionBadge === 'function') {
+      updateSidebarVersionBadge(selectedVersion);
+    }
+  } finally {
+    window.__mkpExternalStorageSyncApplying = false;
+  }
+}
+
+async function syncUserConfigFromStorage() {
+  const previousPrinter = selectedPrinter;
+  const previousVersion = selectedVersion;
+
+  loadUserConfig();
+
+  await withSuspendedUserConfigPersistence(async () => {
+    const printer = selectedPrinter ? getPrinterObj(selectedPrinter) : null;
+    if (printer) {
+      selectPrinter(selectedPrinter, true);
+      if (typeof window.renderDownloadVersions === 'function') {
+        window.renderDownloadVersions(printer);
+      }
+    } else {
+      renderBrands();
+      renderPrinters(selectedBrand);
+    }
+
+    if (typeof updateSidebarVersionBadge === 'function') {
+      updateSidebarVersionBadge(selectedVersion);
+    }
+
+    if (previousPrinter !== selectedPrinter || previousVersion !== selectedVersion) {
+      if (typeof updateScriptPathDisplay === 'function') {
+        updateScriptPathDisplay();
+      }
+    }
+
+    if (typeof refreshCalibrationAvailability === 'function') {
+      await refreshCalibrationAvailability();
+    }
+    if (typeof refreshCalibrationOffsets === 'function') {
+      await refreshCalibrationOffsets({ forceRefresh: true, keepSelections: false });
+    }
+  });
+}
+
+async function syncActivePresetFromStorage(changedKey) {
+  const currentKey = `${selectedPrinter || ''}_${selectedVersion || ''}`;
+  const shouldRefreshPresetLists = changedKey === `mkp_current_script_${currentKey}`;
+
+  if (shouldRefreshPresetLists) {
+    const printer = selectedPrinter ? getPrinterObj(selectedPrinter) : null;
+    if (printer && typeof window.renderDownloadVersions === 'function') {
+      await withSuspendedUserConfigPersistence(async () => {
+        window.renderDownloadVersions(printer);
+      });
+    }
+  }
+
+  if (typeof updateScriptPathDisplay === 'function') {
+    updateScriptPathDisplay();
+  }
+  if (typeof refreshCalibrationAvailability === 'function') {
+    await refreshCalibrationAvailability();
+  }
+  if (typeof refreshCalibrationOffsets === 'function') {
+    await refreshCalibrationOffsets({ forceRefresh: true, keepSelections: false });
+  }
+}
+
+async function refreshCurrentPresetViews(options = {}) {
+  if (typeof window.updatePresetCacheSnapshot === 'function') {
+    window.updatePresetCacheSnapshot(null, null);
+  } else {
+    window.presetCache = { path: null, data: null, timestamp: 0 };
+  }
+
+  const printer = selectedPrinter ? getPrinterObj(selectedPrinter) : null;
+
+  if (printer && typeof window.renderDownloadVersions === 'function') {
+    await withSuspendedUserConfigPersistence(async () => {
+      window.renderDownloadVersions(printer);
+    });
+  }
+
+  if (typeof updateScriptPathDisplay === 'function') {
+    updateScriptPathDisplay();
+  }
+
+  if (typeof refreshCalibrationAvailability === 'function') {
+    await refreshCalibrationAvailability();
+  }
+  if (typeof refreshCalibrationOffsets === 'function') {
+    await refreshCalibrationOffsets({ forceRefresh: true, keepSelections: false });
+  }
+
+  const paramsPageVisible = !document.getElementById('page-params')?.classList.contains('hidden');
+  if (paramsPageVisible && typeof window.renderDynamicParamsPage === 'function') {
+    await window.renderDynamicParamsPage();
+  }
+
+  if (typeof window.emitActivePresetUpdated === 'function' && options.emit !== false) {
+    window.emitActivePresetUpdated({
+      reason: options.reason || 'external-refresh',
+      path: options.path || null,
+      forceRefresh: true,
+      keepSelections: false
+    });
+  }
+}
+
+async function maybePromptExternalPresetRefresh(rawValue) {
+  let signal = null;
+  try {
+    signal = JSON.parse(rawValue || 'null');
+  } catch (error) {
+    return;
+  }
+
+  if (!signal?.path || !signal?.ts) {
+    return;
+  }
+  if (signal.sourceId === RENDERER_WINDOW_SYNC_ID) {
+    return;
+  }
+  if (signal.ts <= lastPresetMutationSignalTs) {
+    return;
+  }
+
+  const getActivePath = typeof window.getActivePresetPath === 'function'
+    ? window.getActivePresetPath
+    : null;
+  if (!getActivePath) {
+    return;
+  }
+
+  const activePresetPath = await getActivePath();
+  if (!activePresetPath) {
+    return;
+  }
+
+  if (normalizePresetPathForCompare(activePresetPath) !== normalizePresetPathForCompare(signal.path)) {
+    return;
+  }
+
+  lastPresetMutationSignalTs = signal.ts;
+  if (presetMutationPromptInFlight) {
+    return;
+  }
+
+  presetMutationPromptInFlight = true;
+  try {
+    const paramsPageVisible = !document.getElementById('page-params')?.classList.contains('hidden');
+    const hasUnsavedParamChanges = paramsPageVisible && typeof window.hasUnsavedParamChanges === 'function'
+      ? window.hasUnsavedParamChanges()
+      : false;
+    const fileName = activePresetPath.split('\\').pop();
+    const reasonMap = {
+      'save-z-offset': '另一个窗口修改了当前预设的 Z 偏移。',
+      'save-xy-offset': '另一个窗口修改了当前预设的 XY 偏移。',
+      'params-save': '另一个窗口保存了当前预设的参数。',
+      'params-restore-defaults': '另一个窗口恢复了当前预设的默认参数。'
+    };
+    const reasonText = reasonMap[signal.reason] || '另一个窗口修改了当前正在使用的预设。';
+    const dirtyText = hasUnsavedParamChanges
+      ? '<br><br><span class="text-red-500">当前页面还有未保存修改，刷新后会丢弃这些本地改动。</span>'
+      : '';
+
+    const confirmed = await MKPModal.confirm({
+      title: '检测到其他窗口修改了当前预设',
+      msg: `${reasonText}<br><br>文件：<span class="font-mono text-xs">${escapeHtml(fileName)}</span><br><br>是否立即刷新当前页面内容？${dirtyText}`,
+      type: 'info',
+      confirmText: '立即刷新',
+      cancelText: '稍后再说'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await refreshCurrentPresetViews({
+      reason: 'external-preset-refresh',
+      path: activePresetPath,
+      emit: false
+    });
+  } finally {
+    presetMutationPromptInFlight = false;
+  }
+}
+
+function bindCrossWindowStorageSync() {
+  if (isCrossWindowSyncBound) {
+    return;
+  }
+  isCrossWindowSyncBound = true;
+
+  window.addEventListener('storage', async (event) => {
+    if (!event.key) {
+      return;
+    }
+
+    try {
+      if (event.key === 'mkp_user_config') {
+        Logger.info('[Sync] 收到跨窗口配置同步: mkp_user_config');
+        await syncUserConfigFromStorage();
+        return;
+      }
+
+      if (event.key.startsWith('mkp_current_script_')) {
+        Logger.info(`[Sync] 收到跨窗口预设同步: ${event.key}`);
+        await syncActivePresetFromStorage(event.key);
+        return;
+      }
+
+      if (event.key === PRESET_MUTATION_SIGNAL_KEY) {
+        Logger.info('[Sync] 收到跨窗口预设内容变更信号');
+        await maybePromptExternalPresetRefresh(event.newValue);
+        return;
+      }
+
+      if (event.key === 'showOnboarding') {
+        Logger.info('[Sync] 收到跨窗口配置同步: showOnboarding');
+        syncOnboardingSettingFromStorage();
+        return;
+      }
+
+      if (event.key === 'update_mode' || event.key === 'update_mode_initialized_v2') {
+        Logger.info('[Sync] 收到跨窗口配置同步: update_mode');
+        if (typeof initUpdateModeSetting === 'function') {
+          initUpdateModeSetting();
+        }
+        return;
+      }
+
+      if (
+        event.key === 'setting_dock_anim'
+        || event.key === 'setting_dock_size'
+        || event.key === 'setting_dock_scale'
+      ) {
+        Logger.info(`[Sync] 收到跨窗口配置同步: ${event.key}`);
+        syncDockSettingsFromStorage();
+        return;
+      }
+
+      if (
+        event.key === 'themeMode'
+        || event.key === 'appThemeColor'
+        || event.key === 'customThemeRgb'
+        || event.key === 'customThemeHex'
+        || event.key === 'preferredDarkMode'
+        || event.key.startsWith('theme_ver_')
+      ) {
+        Logger.info(`[Sync] 收到跨窗口主题同步: ${event.key}`);
+        syncThemeSettingsFromStorage();
+      }
+    } catch (error) {
+      Logger.error(`[Sync] 跨窗口同步失败: ${error.message}`);
+    }
+  });
 }
 
 function getPrinterObj(printerId) {
@@ -1454,6 +1868,7 @@ function selectVersion(card, version) {
   if(dlHint) dlHint.style.opacity = '0';
   
   updateSidebarVersionBadge(version);
+  saveUserConfig();
 }
 
 
@@ -2125,6 +2540,9 @@ async function saveZOffset(btnElement) {
     updatePresetCacheSnapshot(preset.path, nextPresetData);
     applyCalibrationOffsetSnapshot(extractOffsetValues(nextPresetData), { keepSelections: false });
     emitActivePresetUpdated({ reason: 'save-z-offset', path: preset.path, forceRefresh: false });
+    if (typeof broadcastPresetMutation === 'function') {
+      broadcastPresetMutation({ reason: 'save-z-offset', path: preset.path });
+    }
 
     if (btnElement) {
       // 💡 核心修改：直接抹掉 resetLoading()，无缝呼叫新的状态！
@@ -2347,6 +2765,9 @@ async function saveXYOffset(btnElement) {
   updatePresetCacheSnapshot(preset.path, nextPresetData);
   applyCalibrationOffsetSnapshot(extractOffsetValues(nextPresetData), { keepSelections: false });
   emitActivePresetUpdated({ reason: 'save-xy-offset', path: preset.path, forceRefresh: false });
+  if (typeof broadcastPresetMutation === 'function') {
+    broadcastPresetMutation({ reason: 'save-xy-offset', path: preset.path });
+  }
 
   const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
   if (btnElement) {
@@ -2410,8 +2831,11 @@ async function switchPage(page) {
   }
 }
 
-function toggleMacDockAnimation(enable) {
-  Logger.info("Write variable: setting_dock_anim, v:" + enable);
+function toggleMacDockAnimation(enable, options = {}) {
+  const shouldPersist = options.persist !== false;
+  if (shouldPersist) {
+    Logger.info("Write variable: setting_dock_anim, v:" + enable);
+  }
   const zGrid = document.getElementById('zGrid');
   const scaleContainer = document.getElementById('dockScaleContainer');
   const scaleSlider = document.getElementById('settingDockScaleRange');
@@ -2431,23 +2855,35 @@ function toggleMacDockAnimation(enable) {
     }
   }
 
-  localStorage.setItem('setting_dock_anim', enable ? 'true' : 'false');
+  if (shouldPersist) {
+    localStorage.setItem('setting_dock_anim', enable ? 'true' : 'false');
+  }
 }
 
 window.macDockBaseSize = parseInt(localStorage.getItem('setting_dock_size')) || 38;
 window.macDockMaxScale = parseFloat(localStorage.getItem('setting_dock_scale')) || 1.5;
 
-function setMacDockSize(sizeValue) {
-  Logger.info("Write variable: setting_dock_size, v:" + sizeValue);
+function setMacDockSize(sizeValue, options = {}) {
+  const shouldPersist = options.persist !== false;
+  if (shouldPersist) {
+    Logger.info("Write variable: setting_dock_size, v:" + sizeValue);
+  }
   window.macDockBaseSize = parseInt(sizeValue);
-  localStorage.setItem('setting_dock_size', sizeValue);
+  if (shouldPersist) {
+    localStorage.setItem('setting_dock_size', sizeValue);
+  }
   document.documentElement.style.setProperty('--dock-base-size', `${sizeValue}px`);
 }
 
-function setMacDockScale(scaleValue) {
-  Logger.info("Write variable: setting_dock_scale, v:" + scaleValue);
+function setMacDockScale(scaleValue, options = {}) {
+  const shouldPersist = options.persist !== false;
+  if (shouldPersist) {
+    Logger.info("Write variable: setting_dock_scale, v:" + scaleValue);
+  }
   window.macDockMaxScale = parseFloat(scaleValue);
-  localStorage.setItem('setting_dock_scale', scaleValue);
+  if (shouldPersist) {
+    localStorage.setItem('setting_dock_scale', scaleValue);
+  }
 }
 
 // 全局防重复初始化锁
@@ -2471,6 +2907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   bindFloatingSurfaceAutoDismiss();
   bindFloatingTooltipSystem();
+  bindCrossWindowStorageSync();
 
   Logger.info("Read variable: setting_dock_anim");
   const savedAnimState = localStorage.getItem('setting_dock_anim');
@@ -2709,8 +3146,12 @@ async function init() {
   if (typeof initUpdateModeSetting === 'function') {
     initUpdateModeSetting();
   }
+  const hasSavedSession = hasRestorablePresetSession();
   if (!GlobalState.getOnboarding()) {
     Logger.info("用户设置了关闭引导页，直接跳过");
+    skipOnboarding();
+  } else if (hasSavedSession) {
+    Logger.info("检测到已保存的机型版本与预设，跳过新手引导");
     skipOnboarding();
   } else {
     Logger.info("进入新手引导页面");

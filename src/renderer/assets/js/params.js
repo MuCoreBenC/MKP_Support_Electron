@@ -186,6 +186,10 @@ function updateParamDirtyState(store = getActiveParamStore()) {
   return store.dirty;
 }
 
+function hasUnsavedParamChanges() {
+  return !!getActiveParamStore()?.dirty;
+}
+
 function ensureParamStore(path, flatState) {
   const existing = getParamStore(path);
   if (existing) return existing;
@@ -1166,6 +1170,9 @@ async function saveAllDynamicParams(options = {}) {
   if (typeof window.emitActivePresetUpdated === 'function') {
     window.emitActivePresetUpdated({ reason: 'params-save', path: preset.path, forceRefresh: false });
   }
+  if (typeof window.broadcastPresetMutation === 'function') {
+    window.broadcastPresetMutation({ reason: 'params-save', path: preset.path });
+  }
   const checkIcon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
   resetEngine = setButtonStatus(saveBtn, '118px', '保存成功', checkIcon, 'btn-expand-green');
   setTimeout(() => {
@@ -1244,6 +1251,9 @@ async function demoRestoreDefaults() {
 
     if (typeof window.emitActivePresetUpdated === 'function') {
       window.emitActivePresetUpdated({ reason: 'params-restore-defaults', path: preset.path, forceRefresh: false });
+    }
+    if (typeof window.broadcastPresetMutation === 'function') {
+      window.broadcastPresetMutation({ reason: 'params-restore-defaults', path: preset.path });
     }
     await renderDynamicParamsPage();
     await MKPModal.alert({ title: '已恢复', msg: `已按${sourceLabel}恢复为 ${defaultFileName} 的初始内容。`, type: 'success' });
@@ -1627,3 +1637,4 @@ window.saveAllDynamicParams = saveAllDynamicParams;
 window.demoRestoreDefaults = demoRestoreDefaults;
 window.toggleGcodeMode = toggleGcodeMode;
 window.canNavigateAwayFromParams = canNavigateAwayFromParams;
+window.hasUnsavedParamChanges = hasUnsavedParamChanges;

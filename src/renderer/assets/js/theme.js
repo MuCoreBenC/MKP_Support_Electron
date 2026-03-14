@@ -1,5 +1,6 @@
 // ==================== 外观主题三态控制系统 ====================
 let currentThemeMode = document.documentElement.getAttribute('data-theme-mode') || 'light';
+window.__mkpExternalStorageSyncApplying = window.__mkpExternalStorageSyncApplying === true;
 
 // 🚀 全局主色调数据字典 (已替换为 Bambu Lab 官方拓竹绿)
 const THEME_PALETTE = {
@@ -55,7 +56,9 @@ function initTheme() {
 function setGlobalThemeColor(colorKey) {
   const color = THEME_PALETTE[colorKey] || THEME_PALETTE.blue;
   document.documentElement.style.setProperty('--primary-rgb', color.rgb);
-  localStorage.setItem('appThemeColor', colorKey);
+  if (!window.__mkpExternalStorageSyncApplying) {
+    localStorage.setItem('appThemeColor', colorKey);
+  }
 
   document.querySelectorAll('.global-color-btn').forEach(btn => {
      if(btn.dataset.color === colorKey) btn.classList.add('active');
@@ -235,8 +238,10 @@ window.applyCustomColor = applyCustomColor;
 
 function setCustomThemeColorRaw(rgbStr) {
   document.documentElement.style.setProperty('--primary-rgb', rgbStr);
-  localStorage.setItem('appThemeColor', 'custom');
-  localStorage.setItem('customThemeRgb', rgbStr);
+  if (!window.__mkpExternalStorageSyncApplying) {
+    localStorage.setItem('appThemeColor', 'custom');
+    localStorage.setItem('customThemeRgb', rgbStr);
+  }
 
   document.querySelectorAll('.global-color-btn').forEach(btn => btn.classList.remove('active'));
   const customBtn = document.getElementById('customColorBtnWrapper');
@@ -248,7 +253,9 @@ function setVersionTheme(version, rgbValue, colorKey) {
   if (colorKey === 'follow') root.style.setProperty(`--ver-${version}-rgb`, `var(--primary-rgb)`);
   else root.style.setProperty(`--ver-${version}-rgb`, rgbValue);
 
-  localStorage.setItem(`theme_ver_${version}`, JSON.stringify({rgb: rgbValue, key: colorKey}));
+  if (!window.__mkpExternalStorageSyncApplying) {
+    localStorage.setItem(`theme_ver_${version}`, JSON.stringify({rgb: rgbValue, key: colorKey}));
+  }
 
   document.querySelectorAll(`.version-color-btn[data-version="${version}"]`).forEach(btn => {
      if(btn.dataset.color === colorKey) btn.classList.add('active');
@@ -262,11 +269,15 @@ function setVersionTheme(version, rgbValue, colorKey) {
 function setThemeMode(mode, event) {
   if (currentThemeMode === mode) return; 
   currentThemeMode = mode;
-  localStorage.setItem('themeMode', mode);
+  if (!window.__mkpExternalStorageSyncApplying) {
+    localStorage.setItem('themeMode', mode);
+  }
   
   // 💡 新增神级细节：只要用户点过 'dark' 或 'oled'，就把它记作“我最爱的黑夜模式”
   if (mode === 'dark' || mode === 'oled') {
-      localStorage.setItem('preferredDarkMode', mode);
+      if (!window.__mkpExternalStorageSyncApplying) {
+        localStorage.setItem('preferredDarkMode', mode);
+      }
   }
   
   const isDark = mode === 'dark' || mode === 'oled' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

@@ -1,19 +1,32 @@
 {
-  "latestVersion": "0.2.9",
+  "latestVersion": "0.2.10",
   "updateType": "hot_update",
-  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.9.zip",
-  "forceUpdate": true,
+  "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.10.zip",
+  "forceUpdate": false,
   "releaseDate": "2026-03-14",
-  "shortDesc": "修复更新功能小红点提示",
+  "shortDesc": "测试更新",
   "canRollback": true,
   "releaseNotes": [
-    "0.2.9",
-    "默认关闭自动更新",
-    "默认改用小红点提示",
-    "再次修复热更新功能"
+    "0.2.10",
+    "测试更新"
   ],
-  "releaseNotesMarkdown": "# 0.2.9\n\n- 默认关闭自动更新\n- 默认改用小红点提示\n- 再次修复热更新功能",
+  "releaseNotesMarkdown": "# 0.2.10\n\n- 测试更新",
   "history": [
+    {
+      "version": "0.2.9",
+      "updateType": "hot_update",
+      "downloadUrl": "https://gitee.com/MuCoreBenC/MKP_Support_Electron/raw/main/cloud_data/patch_v0.2.9.zip",
+      "releaseDate": "2026-03-14",
+      "shortDesc": "修复更新功能小红点提示",
+      "canRollback": true,
+      "releaseNotes": [
+        "0.2.9",
+        "默认关闭自动更新",
+        "默认改用小红点提示",
+        "再次修复热更新功能"
+      ],
+      "releaseNotesMarkdown": "# 0.2.9\n\n- 默认关闭自动更新\n- 默认改用小红点提示\n- 再次修复热更新功能"
+    },
     {
       "version": "0.2.8",
       "updateType": "hot_update",
