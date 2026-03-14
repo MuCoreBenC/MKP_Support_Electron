@@ -293,6 +293,12 @@ function clearAppliedPresetSelection(printerData, versionType, fileNames) {
     localStorage.removeItem(currentStorageKey);
     delete appliedReleases[currentKey];
     saveUserConfig();
+    if (typeof window.updatePresetCacheSnapshot === 'function') {
+      window.updatePresetCacheSnapshot(null, null);
+    }
+    if (typeof window.emitActivePresetUpdated === 'function') {
+      window.emitActivePresetUpdated({ reason: 'preset-cleared', path: null, forceRefresh: true });
+    }
   }
 }
 
@@ -379,34 +385,88 @@ function editAndApplyLocal(fileName, printerId, versionType) {
   }
 }
 
-async function fetchCloudPresetLogMap(printerData, versionType) {
-  const map = {};
+async function getManifestPresetsForPrinter(printerData, versionType) {
+  if (!printerData || !versionType) {
+    return [];
+  }
 
   try {
     if (!window.mkpAPI || typeof window.mkpAPI.readLocalPresetsManifest !== 'function') {
-      return map;
+      return [];
     }
 
     const localManifestRes = await window.mkpAPI.readLocalPresetsManifest();
-    if (!localManifestRes?.success || !localManifestRes?.data?.presets) {
-      return map;
+    if (!localManifestRes?.success || !Array.isArray(localManifestRes.data?.presets)) {
+      return [];
     }
 
-    const matchedPresets = localManifestRes.data.presets.filter((preset) => {
+    return localManifestRes.data.presets.filter((preset) => {
       return preset.id === printerData.id && (!preset.type || preset.type === versionType);
-    });
-
-    matchedPresets.forEach((preset) => {
-      if (!preset.file) return;
-      const changes = Array.isArray(preset.releaseNotes)
-        ? preset.releaseNotes
-        : (preset.releaseNotes ? [preset.releaseNotes] : (preset.description ? [preset.description] : ['General improvements and parameter updates']));
-      map[preset.file.toLowerCase()] = changes;
     });
   } catch (error) {
     Logger.warn('Read local preset manifest failed', { error: error.message });
+    return [];
+  }
+}
+
+function collectLocalPresetMatchers(printerData, versionType, manifestPresets = []) {
+  const acceptedPrefixes = new Set();
+  const acceptedFileNames = new Set();
+  const normalizedVersionType = String(versionType || '').trim().toLowerCase();
+
+  const registerFileName = (fileName) => {
+    const normalizedFileName = String(fileName || '').trim().toLowerCase();
+    if (!normalizedFileName) return;
+
+    acceptedFileNames.add(normalizedFileName);
+
+    const marker = `_${normalizedVersionType}_`;
+    const markerIndex = normalizedFileName.indexOf(marker);
+    if (markerIndex >= 0) {
+      acceptedPrefixes.add(normalizedFileName.slice(0, markerIndex + marker.length));
+    }
+  };
+
+  acceptedPrefixes.add(`${String(printerData?.id || '').trim().toLowerCase()}_${normalizedVersionType}_`);
+
+  const defaultPresetFile = printerData?.defaultPresets?.[versionType];
+  if (defaultPresetFile) {
+    registerFileName(defaultPresetFile);
   }
 
+  manifestPresets.forEach((preset) => {
+    registerFileName(preset?.file);
+  });
+
+  return {
+    acceptedPrefixes,
+    acceptedFileNames
+  };
+}
+
+function matchesLocalPresetForPrinter(fileName, matcher) {
+  const normalizedFileName = String(fileName || '').trim().toLowerCase();
+  if (!normalizedFileName || !matcher) {
+    return false;
+  }
+
+  if (matcher.acceptedFileNames.has(normalizedFileName)) {
+    return true;
+  }
+
+  return Array.from(matcher.acceptedPrefixes).some((prefix) => normalizedFileName.startsWith(prefix));
+}
+
+async function fetchCloudPresetLogMap(printerData, versionType) {
+  const map = {};
+  const matchedPresets = await getManifestPresetsForPrinter(printerData, versionType);
+  matchedPresets.forEach((preset) => {
+    if (!preset.file) return;
+    const changes = Array.isArray(preset.releaseNotes)
+      ? preset.releaseNotes
+      : (preset.releaseNotes ? [preset.releaseNotes] : (preset.description ? [preset.description] : ['General improvements and parameter updates']));
+    map[preset.file.toLowerCase()] = changes;
+  });
   return map;
 }
 
@@ -495,12 +555,16 @@ async function renderPresetList(printerData, versionType) {
 
   loadLocalSortMode(printerData.id, versionType);
 
+  const manifestPresets = await getManifestPresetsForPrinter(printerData, versionType);
   const cloudLogMap = await fetchCloudPresetLogMap(printerData, versionType);
+  const localPresetMatcher = collectLocalPresetMatchers(printerData, versionType, manifestPresets);
   const listResult = window.mkpAPI && typeof window.mkpAPI.listLocalPresetsDetailed === 'function'
-    ? await window.mkpAPI.listLocalPresetsDetailed({ printerId: printerData.id, versionType })
+    ? await window.mkpAPI.listLocalPresetsDetailed()
     : { success: false, data: [] };
 
-  let localData = (listResult.success ? listResult.data : []).map((item) => {
+  let localData = (listResult.success ? listResult.data : [])
+    .filter((item) => matchesLocalPresetForPrinter(item.fileName, localPresetMatcher))
+    .map((item) => {
     const displayTitle = item.customName || item.displayName || item.fileName.replace(/\.json$/i, '');
     const originalBaseName = `${printerData.id}_${versionType}_v${item.realVersion}.json`.toLowerCase();
     const changes = cloudLogMap[item.fileName.toLowerCase()]
@@ -607,7 +671,7 @@ function renderListItems(container, releases, printerData, versionType, isLocal)
       : '';
 
     const appliedBadge = isApplied
-      ? '<span class="px-2 py-0.5 rounded text-[10px] font-medium theme-btn-solid flex items-center gap-1 shadow-sm flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>当前使用</span>'
+      ? '<span class="applied-badge px-2 py-0.5 rounded text-[10px] font-medium theme-btn-solid flex items-center gap-1 shadow-sm flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>当前使用</span>'
       : '';
 
     const checkboxHtml = isLocal
@@ -785,12 +849,14 @@ function renderVersionCards(containerId, printerData, currentSelectedVersion, on
 
     const isSelected = currentSelectedVersion === versionType;
     const card = document.createElement('div');
-    card.className = `version-card group bg-white dark:bg-[#252526] rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${isSelected ? 'selected theme-border' : 'border-gray-200 dark:border-[#333333] hover:border-gray-300 dark:hover:border-[#444]'}`;
+    card.className = `version-card version-card-${versionType} group bg-white dark:bg-[#252526] rounded-xl border p-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${isSelected ? 'selected theme-border' : 'border-gray-200 dark:border-[#333333] hover:border-gray-300 dark:hover:border-[#444]'}`;
 
     card.innerHTML = `
       <div class="flex items-center gap-4">
-        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background:${escapeHtml(info.bg || 'rgba(59,130,246,0.12)')}; color:${escapeHtml(info.text || 'rgb(59,130,246)')}">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${info.iconPath}"/></svg>
+        <div class="version-card-icon-shell">
+          <div class="version-card-icon" style="background:${escapeHtml(info.bg || 'rgba(59,130,246,0.12)')}; color:${escapeHtml(info.text || 'rgb(59,130,246)')}">
+            <svg class="version-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${info.iconPath}"/></svg>
+          </div>
         </div>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
@@ -798,7 +864,7 @@ function renderVersionCards(containerId, printerData, currentSelectedVersion, on
           </div>
           <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">${escapeHtml(info.desc)}</p>
         </div>
-        <div class="check-indicator w-6 h-6 rounded-full border-2 ${isSelected ? 'border-transparent theme-bg-solid' : 'border-gray-200 dark:border-[#444]'} flex items-center justify-center flex-shrink-0 transition-all duration-200">
+        <div class="check-indicator version-card-choice w-6 h-6 rounded-full border-2 ${isSelected ? 'border-transparent theme-bg-solid' : 'border-gray-200 dark:border-[#444]'} flex items-center justify-center flex-shrink-0 transition-all duration-200">
           <svg class="w-3.5 h-3.5 text-white transition-opacity" style="opacity:${isSelected ? '1' : '0'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
         </div>
       </div>
@@ -819,6 +885,9 @@ function renderDownloadVersions(printerData) {
     renderDownloadVersions(printerData);
     updateSidebarVersionBadge(versionType);
     clearOnlineListUI();
+    if (typeof window.refreshCalibrationAvailability === 'function') {
+      window.refreshCalibrationAvailability();
+    }
   });
 
   if (!selectedVersion) {
@@ -831,6 +900,10 @@ function renderDownloadVersions(printerData) {
   } else {
     renderPresetList(printerData, selectedVersion);
   }
+
+  if (typeof window.refreshCalibrationAvailability === 'function') {
+    window.refreshCalibrationAvailability();
+  }
 }
 
 async function fetchCloudPresets(printerId, versionType) {
@@ -842,33 +915,104 @@ async function fetchCloudPresets(printerId, versionType) {
     `${CLOUD_BASES.github}/cloud_data/presets/presets_manifest.json?t=${Date.now()}`
   ];
 
+  const readLocalManifestFallback = async () => {
+    if (!window.mkpAPI) {
+      return null;
+    }
+
+    try {
+      if (typeof window.mkpAPI.readBundledPresetsManifest === 'function') {
+        const bundledManifest = await window.mkpAPI.readBundledPresetsManifest();
+        if (bundledManifest?.success && Array.isArray(bundledManifest.data?.presets)) {
+          return bundledManifest.data;
+        }
+      }
+
+      if (typeof window.mkpAPI.readLocalPresetsManifest === 'function') {
+        const localManifest = await window.mkpAPI.readLocalPresetsManifest();
+        if (localManifest?.success && Array.isArray(localManifest.data?.presets)) {
+          return localManifest.data;
+        }
+      }
+    } catch (error) {
+      Logger.warn('读取本地预设 manifest 失败', { error: error.message });
+    }
+
+    return null;
+  };
+
+  const inferPresetType = (preset) => {
+    const directType = String(preset?.type || '').trim().toLowerCase();
+    if (directType) return directType;
+
+    const fileName = String(preset?.file || '').toLowerCase();
+    const segments = fileName.replace(/\.json$/i, '').split('_');
+    return segments.length >= 2 ? segments[1] : '';
+  };
+
+  const normalizedRequestedType = String(versionType || '').trim().toLowerCase();
+  const normalizedPrinterId = String(printerId || '').trim().toLowerCase();
+
+  const toMatchedPresets = (manifestData) => (manifestData?.presets || [])
+    .filter((preset) => String(preset?.id || '').trim().toLowerCase() === normalizedPrinterId)
+    .map((preset) => {
+      const inferredType = inferPresetType(preset);
+      const fileName = String(preset?.file || '');
+      const normalizedFileName = fileName.toLowerCase();
+      const likelyMatchesRequestedType = normalizedRequestedType
+        ? inferredType === normalizedRequestedType
+          || normalizedFileName.includes(`_${normalizedRequestedType}_`)
+        : true;
+
+      return {
+        ...preset,
+        type: inferredType || preset?.type || '',
+        _matchesRequestedType: likelyMatchesRequestedType
+      };
+    })
+    .filter((preset) => preset._matchesRequestedType)
+    .sort((left, right) => compareVersionsFront(right.version, left.version));
+
+  let manifestData = null;
   let response = null;
   for (const url of manifestUrls) {
     try {
       response = await fetch(url);
-      if (response.ok) break;
+      if (!response.ok) continue;
+      manifestData = await response.json();
+      break;
     } catch (error) {
       Logger.warn('云端预设清单节点失败', { url, error: error.message });
     }
   }
 
-  if (!response || !response.ok) {
-    return { success: false, error: response ? `HTTP_${response.status}` : 'NetworkError' };
-  }
-
-  const cloudData = await response.json();
-
-  try {
-    if (window.mkpAPI && typeof window.mkpAPI.saveLocalPresetsManifest === 'function') {
-      await window.mkpAPI.saveLocalPresetsManifest(JSON.stringify(cloudData, null, 2));
+  if (manifestData) {
+    try {
+      if (window.mkpAPI && typeof window.mkpAPI.saveLocalPresetsManifest === 'function') {
+        await window.mkpAPI.saveLocalPresetsManifest(JSON.stringify(manifestData, null, 2));
+      }
+    } catch (error) {
+      Logger.warn('保存本地预设 manifest 失败', { error: error.message });
     }
-  } catch (error) {
-    Logger.warn('保存本地预设 manifest 失败', { error: error.message });
+  } else {
+    manifestData = await readLocalManifestFallback();
+    if (!manifestData) {
+      return { success: false, error: response ? `HTTP_${response.status}` : 'NetworkError' };
+    }
+    Logger.info('云端预设清单不可用，已回退到本地打包 manifest');
   }
 
-  const matchedPresets = (cloudData.presets || [])
-    .filter((preset) => preset.id === printerId && (!preset.type || preset.type === versionType))
-    .sort((left, right) => compareVersionsFront(right.version, left.version));
+  let matchedPresets = toMatchedPresets(manifestData);
+  if (matchedPresets.length === 0) {
+    const localFallback = await readLocalManifestFallback();
+    if (localFallback) {
+      const localMatchedPresets = toMatchedPresets(localFallback);
+      if (localMatchedPresets.length > 0) {
+        matchedPresets = localMatchedPresets;
+        Logger.info('云端没有匹配项，已回退到本地打包 manifest 的机型映射');
+      }
+    }
+  }
 
   const fallbackVersion = typeof APP_REAL_VERSION === 'string' ? APP_REAL_VERSION : '0.0.0';
   const today = new Date().toISOString().split('T')[0];
@@ -914,6 +1058,17 @@ async function handleDownloadOnline(releaseId, fileName, btnElement) {
       try {
         result = await window.mkpAPI.downloadFile(url, fileName);
         if (result.success) break;
+      } catch (error) {
+        result = { success: false, error: error.message };
+      }
+    }
+
+    if (!result.success && window.mkpAPI && typeof window.mkpAPI.copyBundledPreset === 'function') {
+      try {
+        result = await window.mkpAPI.copyBundledPreset(fileName);
+        if (result.success) {
+          Logger.info('远程预设下载失败，已改用本地打包资源', { fileName });
+        }
       } catch (error) {
         result = { success: false, error: error.message };
       }
@@ -1094,6 +1249,18 @@ function handleApplyLocal(releaseId, fileName, printerData, versionType = select
   const dlHint = document.getElementById('downloadHintWrapper');
   if (dlBtn) dlBtn.disabled = false;
   if (dlHint) dlHint.style.opacity = '0';
+  if (typeof window.updateScriptPathDisplay === 'function') {
+    window.updateScriptPathDisplay();
+  }
+  if (typeof window.refreshCalibrationAvailability === 'function') {
+    window.refreshCalibrationAvailability();
+  }
+  if (typeof window.updatePresetCacheSnapshot === 'function') {
+    window.updatePresetCacheSnapshot(null, null);
+  }
+  if (typeof window.emitActivePresetUpdated === 'function') {
+    window.emitActivePresetUpdated({ reason: 'apply-local-preset', path: null, forceRefresh: true });
+  }
 }
 
 async function handleDeleteLocal(releaseId, fileName, event, printerDataArg = null, versionTypeArg = null) {
@@ -1199,10 +1366,14 @@ function togglePinnedPreset() {
   renderPresetList(printerData, versionType);
 }
 
-function hidePresetContextMenu() {
+function hidePresetContextMenu(options = {}) {
   const menu = document.getElementById('fileContextMenu');
   if (menu) {
-    menu.classList.add('hidden');
+    if (typeof window.hideFloatingSurface === 'function') {
+      window.hideFloatingSurface(menu, options);
+    } else {
+      menu.classList.add('hidden');
+    }
   }
   presetContextMenuTarget = null;
 }
@@ -1227,25 +1398,31 @@ function openPresetContextMenu(event, release, printerData, versionType, cardEle
     pinText.textContent = pinnedSet.has(release.fileName) ? '取消置顶' : '置顶该配置';
   }
 
-  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-  const menuWidth = menu.offsetWidth || 224;
-  const menuHeight = menu.offsetHeight || 280;
-  const left = Math.min(event.clientX, Math.max(12, viewportWidth - menuWidth - 12));
-  const top = Math.min(event.clientY, Math.max(12, viewportHeight - menuHeight - 12));
-
-  menu.style.left = `${Math.max(12, left)}px`;
-  menu.style.top = `${Math.max(12, top)}px`;
-  menu.classList.remove('hidden');
+  if (typeof window.positionFloatingMenu === 'function') {
+    window.positionFloatingMenu(menu, event.clientX, event.clientY, { keepVisible: true, margin: 12, minWidth: 224 });
+  } else {
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const menuWidth = menu.offsetWidth || 224;
+    const menuHeight = menu.offsetHeight || 280;
+    const left = Math.min(event.clientX, Math.max(12, viewportWidth - menuWidth - 12));
+    const top = Math.min(event.clientY, Math.max(12, viewportHeight - menuHeight - 12));
+    menu.style.left = `${Math.max(12, left)}px`;
+    menu.style.top = `${Math.max(12, top)}px`;
+  }
+  if (typeof window.showFloatingSurface === 'function') {
+    window.showFloatingSurface(menu);
+  } else {
+    menu.classList.remove('hidden');
+  }
 }
 
 function bindPresetContextMenu() {
   if (window.__presetContextMenuBound) return;
   window.__presetContextMenuBound = true;
 
-  document.addEventListener('click', hidePresetContextMenu);
-  document.addEventListener('scroll', hidePresetContextMenu, true);
-  window.addEventListener('resize', hidePresetContextMenu);
+  document.addEventListener('click', () => hidePresetContextMenu({ immediate: true }));
+  window.addEventListener('resize', () => hidePresetContextMenu({ immediate: true }));
 
   const actionMap = {
     ctxBtnApply: (target) => {

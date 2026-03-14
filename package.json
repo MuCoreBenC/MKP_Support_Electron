@@ -1,14 +1,16 @@
 {
   "name": "mkp-support-e",
   "productName": "MKP SupportE",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "MKP Support Electron Application",
   "main": "src/main/main.js",
   "scripts": {
     "start": "chcp 65001 && electron .",
     "pack": "electron-builder --dir",
     "build": "electron-builder --win",
-    "dev": "npx tailwindcss -i ./src/input.css -o ./assets/css/tailwind-compiled.css --watch"
+    "dev": "npx tailwindcss -i ./src/input.css -o ./assets/css/tailwind-compiled.css --watch",
+    "build:hot-update": "node scripts/release-manager.js 2",
+    "release:center": "chcp 65001 && electron . --release-center"
   },
   "keywords": [],
   "author": "Your Name",

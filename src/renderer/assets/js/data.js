@@ -58,6 +58,12 @@ const printersByBrand = {
   ],
 };
 
+const s1cPrinter = printersByBrand.anycubic.find((printer) => printer.id === 's1c');
+if (s1cPrinter) {
+  s1cPrinter.supportedVersions = ['standard'];
+  s1cPrinter.defaultPresets = { standard: 's1c_lite_v1.2.0-r1.json' };
+}
+
 // ==========================================
 // ❓ FAQ 数据数组 (已适配最新版本逻辑)
 // ==========================================

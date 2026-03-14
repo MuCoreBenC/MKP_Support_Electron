@@ -2,6 +2,11 @@ function skipOnboarding() {
   const onboarding = document.getElementById('onboarding');
   if (!onboarding) return;
 
+  if (document.documentElement.hasAttribute('data-hide-onboarding')) {
+    onboarding.style.display = 'none';
+    return;
+  }
+
   onboarding.classList.add('animate-fade-out');
   setTimeout(() => {
     onboarding.style.display = 'none';

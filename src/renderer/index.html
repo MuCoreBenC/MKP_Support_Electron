@@ -43,6 +43,12 @@
           }
         });
       } catch (e) {}
+
+      try {
+        if (localStorage.getItem('showOnboarding') === 'false') {
+          document.documentElement.setAttribute('data-hide-onboarding', 'true');
+        }
+      } catch (e) {}
     })();
   </script>
 </head>
@@ -387,20 +393,20 @@
                 <div id="zGridSelector" class="hidden">
                   <div class="flex flex-col items-center">
                     <div class="flex items-center justify-center gap-1 mb-4" id="zGrid"></div>
-                    <div class="flex items-center justify-center gap-4 py-4">
-                      <div class="text-center">
+                    <div class="z-value-compare flex items-center justify-center gap-4 py-4">
+                      <div class="z-value-column text-center">
                         <div class="text-xs text-gray-400 mb-1">原始值</div>
-                        <div class="text-3xl font-semibold text-gray-400" id="zOriginal">3.3</div>
+                        <div class="z-value-number text-3xl font-semibold text-gray-400" id="zOriginal">3.3</div>
                       </div>
-                      <div class="flex flex-col items-center">
+                      <div class="z-value-arrow-column">
                         <div id="zBadge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full theme-bg-soft theme-text mb-1">-0.2</div>
-                        <svg class="w-8 h-8 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="z-value-arrow w-8 h-8 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
                         </svg>
                       </div>
-                      <div class="text-center">
+                      <div class="z-value-column text-center">
                         <div class="text-xs text-gray-400 mb-1">修改后</div>
-                        <div class="text-3xl font-bold theme-text" id="zNewValue">3.1</div>
+                        <div class="z-value-number text-3xl font-bold theme-text" id="zNewValue">3.1</div>
                       </div>
                     </div>
                     <div class="flex justify-center mt-4">
@@ -413,13 +419,18 @@
             <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow border border-transparent dark:border-[#333] p-5 transition-colors" id="xyCalibrationCard">
               <div class="flex items-center justify-between mb-4">
                 <div class="text-sm font-medium text-gray-700 dark:text-gray-300">XY轴偏移校准</div>
-                <button id="xyOpenBtn" onclick="openXYModel()" class="theme-btn-solid px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  <span>打开校准模型</span>
-                </button>
+                <div class="flex items-center gap-3">
+                  <button id="xyDirectEditBtn" onclick="openXYGridDirectly()" class="bg-white dark:bg-[#252526] border border-gray-200 dark:border-[#444] text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#2A2A2A] transition-all shadow-sm">
+                    不打开模型直接修改
+                  </button>
+                  <button id="xyOpenBtn" onclick="openXYModel()" class="theme-btn-solid px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>打开校准模型</span>
+                  </button>
+                </div>
               </div>
               <div id="xyCalibrationArea">
                 <div id="xyProgress" class="hidden mb-4">
@@ -435,10 +446,53 @@
                   <span class="text-sm text-gray-400 dark:text-gray-500">点击后请耐心等待3mf打开...</span>
                 </div>
                 <div id="xyGridSelector" class="hidden">
-                  <div class="flex items-end justify-center gap-2 py-8">
-                    <div id="xyGrid" class="flex-shrink-0"></div>
+                  <div class="xy-stage py-4">
+                    <div class="xy-y-axis" id="xyYGrid"></div>
+                    <div class="xy-summary-card">
+                      <div class="xy-summary-row">
+                        <div class="xy-summary-label">X</div>
+                        <div class="xy-summary-values">
+                          <div class="xy-summary-value">
+                            <div class="xy-summary-caption">原始值</div>
+                            <div class="xy-summary-number" id="xyOriginalX">0.00</div>
+                          </div>
+                          <div class="xy-summary-arrow-wrap">
+                            <div id="xyBadgeX" class="hidden text-xs font-medium px-2 py-0.5 rounded-full theme-bg-soft theme-text">+0.00</div>
+                            <svg class="xy-summary-arrow w-7 h-7 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                            </svg>
+                          </div>
+                          <div class="xy-summary-value">
+                            <div class="xy-summary-caption">修改后</div>
+                            <div class="xy-summary-number theme-text" id="xyNewX">0.00</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="xy-summary-divider"></div>
+                      <div class="xy-summary-row">
+                        <div class="xy-summary-label">Y</div>
+                        <div class="xy-summary-values">
+                          <div class="xy-summary-value">
+                            <div class="xy-summary-caption">原始值</div>
+                            <div class="xy-summary-number" id="xyOriginalY">0.00</div>
+                          </div>
+                          <div class="xy-summary-arrow-wrap">
+                            <div id="xyBadgeY" class="hidden text-xs font-medium px-2 py-0.5 rounded-full theme-bg-soft theme-text">+0.00</div>
+                            <svg class="xy-summary-arrow w-7 h-7 theme-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                            </svg>
+                          </div>
+                          <div class="xy-summary-value">
+                            <div class="xy-summary-caption">修改后</div>
+                            <div class="xy-summary-number theme-text" id="xyNewY">0.00</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="xy-axis-corner-label">X</div>
+                    <div class="xy-x-axis" id="xyXGrid"></div>
                   </div>
-                  <div class="flex justify-center mt-4 pb-2">
+                  <div class="flex justify-center mt-4">
                     <button onclick="saveXYOffset(this)" class="theme-btn-solid px-6 py-2.5 rounded-lg text-sm font-medium transition-all">保存并应用 XY 轴偏移</button>                  </div>
                 </div>
               </div>
@@ -467,12 +521,21 @@
         </div>
         <div class="page-content hide-scrollbar">
           <div class="max-w-6xl">
-            <div class="bg-white dark:bg-[#252526] rounded-xl card-shadow p-6 mb-5 border border-gray-100 dark:border-[#333] transition-colors">
-              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-6 flex items-center gap-2">
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
-                JSON 预设全参数概览
+            <div class="bg-white dark:bg-[#252526] rounded-[28px] card-shadow p-6 mb-5 border border-gray-100 dark:border-[#333] transition-colors">
+              <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
+                <div>
+                  <div class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
+                    JSON 预设参数工作台
+                  </div>
+                  <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-3xl">按模块查看和修改当前预设。常用参数会用中文名称展示，鼠标悬停问号可查看说明；G-code 会按行拆开，便于逐步微调。</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span class="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-[#1E1E1E]">右键支持复制 / 粘贴 / 剪切 / 撤销 / 删除</span>
+                  <span class="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-[#1E1E1E]">保存时自动回写 JSON</span>
+                </div>
               </div>
-              <div id="dynamicParamsContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4"></div>
+              <div id="dynamicParamsContainer" class="grid grid-cols-1 gap-6"></div>
             </div>
           </div>
         </div>
@@ -1148,7 +1211,7 @@
     </div>
   </div>
 
-  <div id="tooltip" class="tooltip"></div>
+  <div id="tooltip" class="tooltip hidden"></div>
 
   <script src="assets/js/data.js"></script>
   <script src="assets/js/theme.js"></script>
@@ -1156,29 +1219,12 @@
   <script src="assets/js/modal.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/updates.js"></script>
+  <script src="assets/js/params.js"></script>
   <script src="assets/js/home.js"></script>
   <script src="assets/js/wizard.js"></script>
   <script src="assets/js/presets.js"></script>
   <script src="assets/js/ui-text.js"></script>
 
-  <script>
-    async function demoRestoreDefaults() {
-      const isConfirmed = await MKPModal.confirm({
-        title: '还原默认参数？',
-        msg: '这将会覆盖您当前手动修改的所有参数，且无法撤销。您确定要继续吗？',
-        type: 'warning',
-        confirmText: '确认还原',
-        cancelText: '暂不还原'
-      });
-
-      if (isConfirmed) {
-        console.log("正在还原...");
-        await MKPModal.alert({ title: '成功', msg: '参数已还原为默认值！', type: 'success' });
-      } else {
-        console.log("用户取消了还原");
-      }
-    }
-  </script>
 <div id="mkp-color-modal" class="fixed inset-0 z-[10000] flex items-center justify-center px-4 transition-all duration-300 opacity-0 pointer-events-none">
   <div class="absolute inset-0 bg-black/40 dark:bg-black/40 transition-opacity" onclick="closeCustomColorPicker()"></div>
   

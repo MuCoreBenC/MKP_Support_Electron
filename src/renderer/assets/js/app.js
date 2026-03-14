@@ -21,6 +21,7 @@ let currentXOffset = 0;
 let currentYOffset = 0;
 
 let APP_REAL_VERSION = '0.0.0';
+const ACTIVE_PRESET_UPDATED_EVENT = 'mkp:active-preset-updated';
 
 const VERSION_THEMES = {
   standard: { title: '标准版', bg: 'var(--theme-standard-bg)', text: 'var(--theme-standard-text)' },
@@ -51,6 +52,28 @@ const CLOUD_BASES = {
   jsDelivr: 'https://cdn.jsdelivr.net/gh/MuCoreBenC/MKP_Support_Electron@main',
   github: 'https://raw.githubusercontent.com/MuCoreBenC/MKP_Support_Electron/main'
 };
+
+function updatePresetCacheSnapshot(path, data) {
+  window.presetCache = {
+    path: path || null,
+    data: data || null,
+    timestamp: Date.now()
+  };
+}
+
+function emitActivePresetUpdated(detail = {}) {
+  window.dispatchEvent(new CustomEvent(ACTIVE_PRESET_UPDATED_EVENT, {
+    detail: {
+      reason: detail.reason || 'unknown',
+      path: detail.path || null,
+      forceRefresh: detail.forceRefresh !== false,
+      keepSelections: detail.keepSelections === true
+    }
+  }));
+}
+
+window.updatePresetCacheSnapshot = updatePresetCacheSnapshot;
+window.emitActivePresetUpdated = emitActivePresetUpdated;
 // ==========================================
 // 🚀 企业级网络请求引擎 (海陆空三线容灾)
 // ==========================================
@@ -157,6 +180,280 @@ function unflattenObject(ob) {
   }
   return result;
 }
+
+function positionFloatingMenu(menu, x, y, options = {}) {
+  if (!menu) return;
+
+  const margin = Number.isFinite(options.margin) ? options.margin : 12;
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+  const wasHidden = menu.classList.contains('hidden');
+  const prevVisibility = menu.style.visibility;
+  const prevLeft = menu.style.left;
+  const prevTop = menu.style.top;
+
+  if (wasHidden) {
+    menu.classList.remove('hidden');
+    menu.style.visibility = 'hidden';
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+  }
+
+  const rect = menu.getBoundingClientRect();
+  const menuWidth = Math.max(rect.width || 0, options.minWidth || 0);
+  const menuHeight = Math.max(rect.height || 0, options.minHeight || 0);
+
+  let left = Number.isFinite(x) ? x : margin;
+  let top = Number.isFinite(y) ? y : margin;
+
+  if (left + menuWidth + margin > viewportWidth) {
+    left = Math.max(margin, viewportWidth - menuWidth - margin);
+  }
+  if (top + menuHeight + margin > viewportHeight) {
+    top = Math.max(margin, viewportHeight - menuHeight - margin);
+  }
+
+  menu.style.left = `${Math.max(margin, left)}px`;
+  menu.style.top = `${Math.max(margin, top)}px`;
+  menu.style.maxWidth = `${Math.max(180, viewportWidth - margin * 2)}px`;
+  menu.style.maxHeight = `${Math.max(120, viewportHeight - margin * 2)}px`;
+
+  if (wasHidden) {
+    menu.style.visibility = prevVisibility;
+  } else {
+    menu.style.visibility = '';
+  }
+
+  if (wasHidden && options.keepVisible !== true) {
+    menu.classList.add('hidden');
+    menu.style.left = prevLeft;
+    menu.style.top = prevTop;
+    menu.style.visibility = prevVisibility;
+  }
+}
+
+window.positionFloatingMenu = positionFloatingMenu;
+
+const floatingSurfaceHideTimers = new WeakMap();
+const floatingTooltipState = {
+  anchor: null
+};
+
+function escapeFloatingText(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function clearFloatingSurfaceHideTimer(element) {
+  const timer = floatingSurfaceHideTimers.get(element);
+  if (timer) {
+    clearTimeout(timer);
+    floatingSurfaceHideTimers.delete(element);
+  }
+}
+
+function showFloatingSurface(element) {
+  if (!element) return;
+  clearFloatingSurfaceHideTimer(element);
+  element.dataset.floatingSurface = 'true';
+  element.classList.remove('hidden', 'is-hiding');
+  requestAnimationFrame(() => {
+    element.classList.add('is-visible');
+  });
+}
+
+function hideFloatingSurface(element, options = {}) {
+  if (!element || element.classList.contains('hidden')) return;
+  clearFloatingSurfaceHideTimer(element);
+  element.classList.remove('is-visible');
+
+  if (element.id === 'tooltip') {
+    floatingTooltipState.anchor = null;
+  }
+
+  if (options.immediate) {
+    element.classList.remove('is-hiding');
+    element.classList.add('hidden');
+    return;
+  }
+
+  element.classList.add('is-hiding');
+  const timer = window.setTimeout(() => {
+    element.classList.remove('is-hiding');
+    element.classList.add('hidden');
+    floatingSurfaceHideTimers.delete(element);
+  }, 160);
+  floatingSurfaceHideTimers.set(element, timer);
+}
+
+function hideAllFloatingSurfaces(options = {}) {
+  document.querySelectorAll('[data-floating-surface="true"]:not(.hidden)').forEach((element) => {
+    hideFloatingSurface(element, options);
+  });
+}
+
+function ensureGlobalTooltip() {
+  const tooltip = document.getElementById('tooltip');
+  if (!tooltip) return null;
+  tooltip.dataset.floatingSurface = 'true';
+  tooltip.classList.add('app-floating-tooltip');
+  return tooltip;
+}
+
+function getFloatingTooltipContent(anchor) {
+  if (!anchor) return '';
+  if (anchor.dataset.tooltipHtml) return anchor.dataset.tooltipHtml;
+
+  const inlineTip = anchor.querySelector('.param-tip');
+  if (inlineTip) return inlineTip.innerHTML;
+
+  const title = anchor.dataset.tipTitle || '';
+  const body = anchor.dataset.tipBody || '';
+  if (!title && !body) return '';
+
+  const safeTitle = title ? `<div class="param-tip-title">${escapeFloatingText(title)}</div>` : '';
+  const safeBody = body ? `<div class="param-tip-body">${escapeFloatingText(body)}</div>` : '';
+  return `${safeTitle}${safeBody}`;
+}
+
+function positionFloatingTooltip(anchor, tooltip) {
+  if (!anchor || !tooltip) return;
+
+  const margin = 12;
+  const gap = 10;
+  const anchorRect = anchor.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+  tooltip.style.left = '0px';
+  tooltip.style.top = '0px';
+  tooltip.style.maxWidth = `${Math.max(220, viewportWidth - margin * 2)}px`;
+  tooltip.style.visibility = 'hidden';
+  tooltip.classList.remove('hidden');
+
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const tooltipWidth = tooltipRect.width || 280;
+  const tooltipHeight = tooltipRect.height || 120;
+
+  let left = anchorRect.left;
+  let top = anchorRect.bottom + gap;
+  let placement = 'bottom';
+
+  if (left + tooltipWidth + margin > viewportWidth) {
+    left = viewportWidth - tooltipWidth - margin;
+  }
+  if (left < margin) {
+    left = margin;
+  }
+
+  if (top + tooltipHeight + margin > viewportHeight) {
+    const topPlacement = anchorRect.top - tooltipHeight - gap;
+    if (topPlacement >= margin) {
+      top = topPlacement;
+      placement = 'top';
+    } else {
+      top = Math.max(margin, viewportHeight - tooltipHeight - margin);
+    }
+  }
+
+  tooltip.dataset.placement = placement;
+  tooltip.style.left = `${Math.round(left)}px`;
+  tooltip.style.top = `${Math.round(top)}px`;
+  tooltip.style.visibility = '';
+}
+
+function showFloatingTooltip(anchor) {
+  const tooltip = ensureGlobalTooltip();
+  const content = getFloatingTooltipContent(anchor);
+  if (!tooltip || !content) return;
+
+  floatingTooltipState.anchor = anchor;
+  tooltip.innerHTML = content;
+  positionFloatingTooltip(anchor, tooltip);
+  showFloatingSurface(tooltip);
+}
+
+function hideFloatingTooltip(options = {}) {
+  const tooltip = ensureGlobalTooltip();
+  if (!tooltip) return;
+  floatingTooltipState.anchor = null;
+  hideFloatingSurface(tooltip, options);
+}
+
+function bindFloatingTooltipSystem() {
+  if (window.__floatingTooltipSystemBound) return;
+  window.__floatingTooltipSystemBound = true;
+
+  document.addEventListener('mouseover', (event) => {
+    const anchor = event.target.closest('.param-tooltip-anchor, [data-floating-tip], [data-tooltip-html]');
+    if (!anchor || anchor.contains(event.relatedTarget)) return;
+    showFloatingTooltip(anchor);
+  }, true);
+
+  document.addEventListener('mouseout', (event) => {
+    const anchor = event.target.closest('.param-tooltip-anchor, [data-floating-tip], [data-tooltip-html]');
+    if (!anchor || anchor.contains(event.relatedTarget)) return;
+    if (floatingTooltipState.anchor === anchor) {
+      hideFloatingTooltip();
+    }
+  }, true);
+
+  document.addEventListener('focusin', (event) => {
+    const anchor = event.target.closest('.param-tooltip-anchor, [data-floating-tip], [data-tooltip-html]');
+    if (anchor) showFloatingTooltip(anchor);
+  });
+
+  document.addEventListener('focusout', (event) => {
+    const anchor = event.target.closest('.param-tooltip-anchor, [data-floating-tip], [data-tooltip-html]');
+    if (anchor && floatingTooltipState.anchor === anchor) {
+      hideFloatingTooltip();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (floatingTooltipState.anchor) {
+      const tooltip = ensureGlobalTooltip();
+      if (tooltip && !tooltip.classList.contains('hidden')) {
+        positionFloatingTooltip(floatingTooltipState.anchor, tooltip);
+      }
+    }
+  });
+}
+
+function bindFloatingSurfaceAutoDismiss() {
+  if (window.__floatingSurfaceAutoDismissBound) return;
+  window.__floatingSurfaceAutoDismissBound = true;
+
+  let pending = false;
+  const handleScrollDismiss = (event) => {
+    const target = event.target;
+    if (target?.closest?.('#tooltip, .param-context-menu, #fileContextMenu')) return;
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      hideAllFloatingSurfaces();
+    });
+  };
+
+  document.addEventListener('scroll', handleScrollDismiss, true);
+  window.addEventListener('resize', () => {
+    hideAllFloatingSurfaces({ immediate: true });
+  });
+}
+
+window.showFloatingSurface = showFloatingSurface;
+window.hideFloatingSurface = hideFloatingSurface;
+window.hideAllFloatingSurfaces = hideAllFloatingSurfaces;
+window.showFloatingTooltip = showFloatingTooltip;
+window.hideFloatingTooltip = hideFloatingTooltip;
+window.bindFloatingTooltipSystem = bindFloatingTooltipSystem;
+window.bindFloatingSurfaceAutoDismiss = bindFloatingSurfaceAutoDismiss;
 
 function saveUserConfig() {
   const config = { brand: selectedBrand, printer: selectedPrinter, version: selectedVersion, appliedReleases: appliedReleases };
@@ -1159,193 +1456,6 @@ function selectVersion(card, version) {
 }
 
 
-// 💡 性能优化：将版本生成函数提出来，避免闭包内存泄漏
-function createVersionCardHTML(version, type) {
-  let badgeClass = 'bg-gray-100 text-gray-800';
-  let btnText = '回退';
-  let btnClass = 'bg-gray-100 text-gray-700 hover:bg-gray-200';
-  let btnAction = ''; 
-  let isDisabled = false;
-
-  const isLegacy = (type === 'legacy');
-  const defaultOpenClass = isLegacy ? '' : 'is-open is-expanded';
-  
-  // 💡 核心修复：外层必须加上 expanded 状态，CSS 里的箭头才会自动向上翻转！
-  const defaultExpandedClass = isLegacy ? '' : 'expanded';
-
-  if (type === 'stable') {
-    badgeClass = 'theme-bg-soft';
-    btnText = version.current ? '已是最新' : '检查更新';
-    btnClass = 'theme-btn-solid';
-    if (version.current) isDisabled = true;
-    else btnAction = `onclick="event.stopPropagation(); manualCheckAppUpdate(this)"`;
-  } else if (type === 'beta') {
-    badgeClass = 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-400';
-    btnText = '立即尝鲜';
-    btnClass = 'theme-btn-soft';
-  } else {
-    if (version.canRollback === false || version.version.includes('-')) {
-      isDisabled = true;
-      btnText = '不可回退';
-      btnClass = 'bg-gray-50 text-gray-400 cursor-not-allowed dark:bg-[#1e1e1e] opacity-60';
-    } else {
-      btnAction = `onclick="event.stopPropagation(); handleRollback(this, '${version.version}')"`;
-    }
-  }
-
-return `
-    <div class="bg-white dark:bg-[#252526] rounded-xl border border-gray-200 dark:border-[#333] p-5 mb-4 shadow-sm transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-[#444] cursor-pointer group collapse-item ${defaultExpandedClass}" onclick="toggleCollapse(this)">
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-3">
-          <div class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}">${version.status}</div>
-          <div>
-            <div class="font-bold text-gray-900 dark:text-gray-100">${version.version}</div>
-            <div class="text-[10px] text-gray-400">${version.date}</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <button class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${btnClass}" 
-                  ${isDisabled ? 'disabled' : ''} ${btnAction}>
-            ${btnText}
-          </button>
-          <div class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-[#1e1e1e] group-hover:bg-gray-100 dark:group-hover:bg-[#2a2a2a] transition-colors flex-shrink-0">
-             <svg class="w-4 h-4 text-gray-500 transition-transform duration-300 toggle-arrow collapse-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </div>
-        </div>
-      </div>
-      <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">${version.desc}</p>
-      <div class="collapse-wrapper ${defaultOpenClass}">
-        <div class="collapse-inner">
-          <div class="space-y-1 pt-3 mt-2 border-t border-gray-100 dark:border-[#333]">
-            ${version.details.map(detail => `
-              <div class="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <svg class="w-3.5 h-3.5 theme-text mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span>${detail}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// ==========================================
-// 💡 优化版版本渲染引擎：完美适配 JSON 驱动与独立归档区
-// ==========================================
-function renderVersions() {
-  const versionList = document.getElementById('versionList');
-  if (!versionList) return;
-  
-  // 1. 渲染前，彻底清空
-  versionList.innerHTML = '';
-
-  // 💡 修复 Bug：正确的非空判断！
-  if (typeof globalVersions === 'undefined' || globalVersions.length === 0) {
-      console.warn("数据还未加载完毕，或者 globalVersions 为空");
-      return;
-  }
-
-  // 2. 智能分组逻辑
-  const latestVersion = globalVersions[0]; 
-  const runningVersion = globalVersions.find(v => v.current === true); 
-
-  const topVersions = [];
-  if (latestVersion) topVersions.push(latestVersion);
-  if (runningVersion && runningVersion.version !== latestVersion?.version) {
-      topVersions.push(runningVersion);
-  }
-
-  const legacyVersions = globalVersions.filter(v => !topVersions.includes(v));
-
-  // 3. 渲染常驻区
-  topVersions.forEach(v => {
-      versionList.innerHTML += createVersionCardHTML(v, 'stable'); 
-  });
-
-  // 4. 渲染历史区
-  if (legacyVersions.length > 0) {
-    const legacyContainer = document.createElement('div');
-    legacyContainer.id = 'legacyVersionsContainer';
-    
-    // 根据全局折叠状态决定初始是否隐藏
-    legacyContainer.style.display = (typeof isLegacyVisible !== 'undefined' && isLegacyVisible) ? 'block' : 'none';
-
-    let legacyHtml = `
-      <div class="py-4 text-xs font-bold text-gray-400 flex items-center gap-2">
-        <div class="h-px flex-1 bg-gray-100 dark:bg-[#333]"></div>
-        历史归档 (${legacyVersions.length})
-        <div class="h-px flex-1 bg-gray-100 dark:bg-[#333]"></div>
-      </div>
-    `;
-    
-    legacyVersions.forEach(v => { 
-        legacyHtml += createVersionCardHTML(v, 'legacy'); 
-    });
-
-    legacyContainer.innerHTML = legacyHtml;
-    versionList.appendChild(legacyContainer);
-  }
-}
-// ==========================================
-// 💡 优化版切换器：不再重新渲染 DOM，而是纯粹切换容器可见性
-// ==========================================
-function toggleExpandMore() {
-  isLegacyVisible = !isLegacyVisible;
-  Logger.info("Toggle UI: expand version history, active: " + isLegacyVisible);
-  
-  // 1. 改变按钮文字
-  const btnText = document.getElementById('expandBtnText');
-  if (btnText) btnText.innerText = isLegacyVisible ? '收起历史' : '历史版本';
-  
-  // 2. 🌟 核心修复：直接找到那个历史容器，控制它的显示隐藏！绝不碰上面的卡片！
-  const legacyContainer = document.getElementById('legacyVersionsContainer');
-  if (legacyContainer) {
-      legacyContainer.style.display = isLegacyVisible ? 'block' : 'none';
-  }
-}
-
-async function handleRollback(btnElement, targetVersion) {
-  const userConfirm = await MKPModal.confirm({
-    title: `确认回退至 ${targetVersion}?`,
-    msg: `回退后将覆盖当前版本的所有代码。<br><br><span class="text-red-500 font-bold">⚠️ 注意：</span> 旧版本可能缺少最新的功能或存在已知 Bug。您确定要继续吗？`,
-    confirmText: '确定回退', type: 'warning'
-  });
-
-  if (!userConfirm) return;
-
-  const SPIN_ICON = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-  const reset = setButtonStatus(btnElement, '100px', '请求中...', SPIN_ICON, 'btn-expand-blue');
-
-  try {
-    const url = `${CLOUD_BASES.gitee}/cloud_data/app_manifest.json?t=${Date.now()}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("无法连接到云端服务器验证补丁。");
-    const manifest = await res.json();
-
-    const pureVersion = targetVersion.replace('v', '');
-    const historyList = manifest.history || [];
-    const targetData = historyList.find(item => item.version === pureVersion);
-
-    if (!targetData || !targetData.downloadUrl) throw new Error(`云端暂未提供 ${targetVersion} 的回退补丁包，请联系开发者。`);
-
-    const result = await window.mkpAPI.applyHotUpdate(targetData.downloadUrl);
-
-    if (result.success) {
-      await MKPModal.alert({ title: '回退完成', msg: `已成功回退至 ${targetVersion}，软件即将自动重启。`, type: 'success' });
-      window.mkpAPI.restartApp();
-    } else {
-      throw new Error(`回退补丁应用失败: ${result.error}`);
-    }
-
-  } catch (error) {
-    Logger.error(`[回退失败] ${error.message}`);
-    await MKPModal.alert({ title: '回退失败', msg: error.message, type: 'error' ,confirmText: '确定'});
-  } finally {
-     reset();
-  }
-}
-
 async function copyPath() {
     Logger.info(`[O307] Copy script`); 
     const scriptPath = document.getElementById('scriptPath');
@@ -1540,138 +1650,11 @@ function initOnboardingSetting() {
   const showOnboardingCheckbox = document.getElementById('showOnboarding');
   if (showOnboardingCheckbox) {
     showOnboardingCheckbox.checked = GlobalState.getOnboarding();
+    document.documentElement.toggleAttribute('data-hide-onboarding', !showOnboardingCheckbox.checked);
     showOnboardingCheckbox.addEventListener('change', function() {
       GlobalState.setOnboarding(this.checked);
+      document.documentElement.toggleAttribute('data-hide-onboarding', !this.checked);
     });
-  }
-}
-
-// ==========================================
-// 9. 动态 JSON 参数引擎
-// ==========================================
-window.presetCache = { path: null, data: null, timestamp: 0 };
-
-async function getActivePresetPath() {
-  const currentKey = `${selectedPrinter}_${selectedVersion}`;
-  Logger.info("Read variable: mkp_current_script_" + currentKey);
-  const fileName = localStorage.getItem(`mkp_current_script_${currentKey}`);
-  if (!fileName) return null;
-  const userDataPath = await window.mkpAPI.getUserDataPath();
-  return `${userDataPath}\\${fileName}`;
-}
-
-async function loadActivePreset(forceRefresh = false) {
-  const path = await getActivePresetPath();
-  if (!path) return null;
-
-  const now = Date.now();
-  if (!forceRefresh && window.presetCache.path === path && (now - window.presetCache.timestamp < 2000)) {
-    return { path: path, data: window.presetCache.data };
-  }
-
-  Logger.info(`[O301] Read preset, path:${path}`); 
-  const result = await window.mkpAPI.readPreset(path);
-  if (result.success) {
-    window.presetCache = { path: path, data: result.data, timestamp: now };
-    return { path, data: result.data };
-  }
-  
-  Logger.error(`[E301] Preset not found: ${path}`);
-  return null;
-}
-
-async function renderDynamicParamsPage() {
-  const container = document.getElementById('dynamicParamsContainer');
-  if (!container) return;
-  
-  container.innerHTML = `<div class="col-span-2 py-10 text-center text-gray-500"><svg class="w-8 h-8 animate-spin mx-auto theme-text mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>正在读取 JSON 预设文件...</div>`;
-
-  const preset = await loadActivePreset();
-  if (!preset) {
-    container.innerHTML = `<div class="col-span-full w-full flex flex-col items-center justify-center min-h-[320px] bg-gray-50/50 dark:bg-[#1E1E1E]/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-[#333] transition-all p-8"><svg class="w-16 h-16 text-gray-300 dark:text-gray-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg><span class="text-lg font-semibold text-gray-500 dark:text-gray-400">当前未应用任何预设</span><span class="text-sm text-gray-400 dark:text-gray-500 mt-2 text-center">请先前往 <span onclick="navTo('page:download')" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer font-medium hover:underline transition-all">【下载预设】</span> 页面应用一个本地配置</span></div>`;
-    return;
-  }
-
-  const fileName = preset.path.split('\\').pop();
-  document.getElementById('currentEditingFile').textContent = fileName;
-
-  const flatData = flattenObject(preset.data);
-  let html = '';
-
-  for (const key in flatData) {
-    let val = flatData[key];
-    if (Array.isArray(val) || typeof val === 'object') val = JSON.stringify(val);
-    html += `<div class="bg-gray-50 dark:bg-[#1E1E1E] rounded-xl p-3 border border-gray-100 dark:border-[#333] flex flex-col justify-center"><label class="text-xs text-gray-500 block mb-1.5 break-all font-mono">${key}</label><input type="text" data-json-key="${key}" value='${val}' class="dynamic-param-input input-field theme-ring w-full px-3 py-2 rounded-lg text-sm bg-white dark:bg-[#252526] border border-gray-200 dark:border-[#444] transition-all"></div>`;
-  }
-  container.innerHTML = html;
-}
-
-// ==========================================
-// 🚀 全局参数保存引擎 (接入高级 Q 弹连招与防连点)
-// ==========================================
-async function saveAllDynamicParams() {
-  const preset = await loadActivePreset();
-  if (!preset) {
-    await MKPModal.alert({ title: '提示', msg: '当前未应用任何预设，无法保存。', type: 'warning' });
-    return;
-  }
-
-  const saveBtn = document.getElementById('saveParamsBtn');
-  if (!saveBtn) return;
-
-  // 💡 1. 防连点节流阀：如果在保存中，无视狂点
-  if (saveBtn.dataset.isSaving === 'true') return;
-  saveBtn.dataset.isSaving = 'true';
-
-  // 💡 2. 启动第一段连招：主题色转圈加载态
-  const SPIN_ICON = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-  let resetEngine = setButtonStatus(saveBtn, '105px', '保存中', SPIN_ICON, 'btn-expand-theme');
-
-  const inputs = document.querySelectorAll('.dynamic-param-input');
-  const flatUpdates = {};
-  
-  inputs.forEach(input => {
-     const key = input.getAttribute('data-json-key');
-     let val = input.value;
-     if (!isNaN(val) && val.trim() !== '') val = Number(val);
-     else if (val === 'true') val = true;
-     else if (val === 'false') val = false;
-     else if (val.startsWith('[') || val.startsWith('{')) { try { val = JSON.parse(val); } catch(e){} }
-     flatUpdates[key] = val;
-  });
-
-  const nestedUpdates = unflattenObject(flatUpdates);
-  Logger.info(`[O302] Write preset, path:${preset.path}`);
-  
-  // 记录开始时间
-  const startTime = Date.now();
-  const result = await window.mkpAPI.writePreset(preset.path, nestedUpdates);
-
-  // 💡 3. 极客细节：哪怕本地写硬盘只有 10 毫秒，也强制让它转够 0.6 秒，保证视觉的从容与优雅
-  const elapsed = Date.now() - startTime;
-  if (elapsed < 600) {
-      await new Promise(resolve => setTimeout(resolve, 600 - elapsed));
-  }
-  
-  if (result.success) {
-    Logger.info(`[O302] Write preset success`); 
-    if (window.presetCache) window.presetCache.timestamp = 0; 
-
-    // 💡 4. 第二段连招：无缝切入“保存成功”的翡翠绿打勾状态
-    const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
-    resetEngine = setButtonStatus(saveBtn, '110px', '保存成功', CHECK_ICON, 'btn-expand-green');
-    
-    // 2秒后恢复原样，并解锁
-    setTimeout(() => {
-      resetEngine();
-      saveBtn.dataset.isSaving = 'false';
-    }, 2000);
-
-  } else {
-    Logger.error(`[E303] Preset write err: ${result.error}`); 
-    resetEngine(); // 失败恢复原状
-    saveBtn.dataset.isSaving = 'false';
-    await MKPModal.alert({ title: '保存失败', msg: result.error, type: 'error' });
   }
 }
 
@@ -1733,32 +1716,153 @@ async function updateScriptPathDisplay() {
   }
 }
 
+function extractOffsetValues(jsonData = {}) {
+  const toolheadOffset = jsonData?.toolhead?.offset || {};
+  const x = Number(
+    toolheadOffset.x
+    ?? jsonData.x_offset
+    ?? jsonData.x
+    ?? 0
+  );
+  const y = Number(
+    toolheadOffset.y
+    ?? jsonData.y_offset
+    ?? jsonData.y
+    ?? 0
+  );
+  const z = Number(
+    toolheadOffset.z
+    ?? jsonData.z_offset
+    ?? jsonData.z
+    ?? 0
+  );
+
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    z: Number.isFinite(z) ? z : 0
+  };
+}
+
+function clearCalibrationSelections() {
+  selectedGridOffset = null;
+  selectedXYOffset = { x: 0, y: 0 };
+
+  const zBadge = document.getElementById('zBadge');
+  if (zBadge) zBadge.classList.add('hidden');
+}
+
+function applyCalibrationOffsetSnapshot(offsets = {}, options = {}) {
+  const nextOffsets = {
+    x: Number.isFinite(Number(offsets.x)) ? Number(offsets.x) : 0,
+    y: Number.isFinite(Number(offsets.y)) ? Number(offsets.y) : 0,
+    z: Number.isFinite(Number(offsets.z)) ? Number(offsets.z) : 0
+  };
+
+  window.currentXOffset = nextOffsets.x;
+  window.currentYOffset = nextOffsets.y;
+  window.currentZOffset = nextOffsets.z;
+
+  if (!options.keepSelections) {
+    clearCalibrationSelections();
+  }
+
+  [
+    ['zOriginal', nextOffsets.z],
+    ['zNewValue', nextOffsets.z],
+    ['currentZOffsetDisplay', nextOffsets.z]
+  ].forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = Number(value).toFixed(2);
+    }
+  });
+
+  if (typeof updateZGridSelection === 'function') {
+    updateZGridSelection();
+  }
+  if (typeof updateXYSummary === 'function') {
+    updateXYSummary();
+  }
+
+  const xGrid = document.getElementById('xyXGrid');
+  const yGrid = document.getElementById('xyYGrid');
+  if (xGrid && yGrid && (xGrid.children.length > 0 || yGrid.children.length > 0) && typeof generateXYGrid === 'function') {
+    generateXYGrid();
+  }
+}
+
+async function refreshCalibrationOffsets(options = {}) {
+  const preset = typeof loadActivePreset === 'function'
+    ? await loadActivePreset(options.forceRefresh === true)
+    : null;
+  const offsets = preset?.data ? extractOffsetValues(preset.data) : { x: 0, y: 0, z: 0 };
+  applyCalibrationOffsetSnapshot(offsets, { keepSelections: options.keepSelections === true });
+  return offsets;
+}
+
+async function getCalibrationAvailability() {
+  const activePresetPath = typeof getActivePresetPath === 'function'
+    ? await getActivePresetPath()
+    : null;
+
+  if (!selectedPrinter) {
+    return { ready: false, reason: '请先选择机型。' };
+  }
+  if (!selectedVersion) {
+    return { ready: false, reason: '请先选择版本。' };
+  }
+  if (!activePresetPath) {
+    return { ready: false, reason: '请先在【下载预设】页面应用一个本地配置。' };
+  }
+
+  return { ready: true, presetPath: activePresetPath };
+}
+
+function applyCalibrationButtonState(button, enabled) {
+  if (!button) return;
+  button.disabled = !enabled;
+  button.classList.toggle('calibration-action-disabled', !enabled);
+}
+
+async function refreshCalibrationAvailability() {
+  const availability = await getCalibrationAvailability();
+  const enabled = availability.ready;
+
+  [
+    document.getElementById('zDirectEditBtn'),
+    document.getElementById('zOpenBtn'),
+    document.getElementById('xyDirectEditBtn'),
+    document.getElementById('xyOpenBtn')
+  ].forEach((button) => {
+    applyCalibrationButtonState(button, enabled);
+    if (button) {
+      button.title = enabled ? '' : availability.reason;
+    }
+  });
+
+  document.querySelectorAll('button[onclick^="saveZOffset"], button[onclick^="saveXYOffset"]').forEach((button) => {
+    applyCalibrationButtonState(button, enabled);
+  });
+
+  return availability;
+}
+
+async function ensureCalibrationReady() {
+  const availability = await refreshCalibrationAvailability();
+  if (availability.ready) return true;
+
+  await MKPModal.alert({
+    title: '暂时不能校准',
+    msg: availability.reason,
+    type: 'warning'
+  });
+  return false;
+}
+
 async function fetchAndRenderZOffsetData() {
   try {
-    const preset = await loadActivePreset();
-    let fetchedOffset = 0;
-    
-    if (preset && preset.data) {
-      const jsonData = preset.data;
-      if (jsonData.toolhead && jsonData.toolhead.offset && jsonData.toolhead.offset.z !== undefined) {
-        fetchedOffset = parseFloat(jsonData.toolhead.offset.z);
-      } else if (jsonData.z_offset !== undefined) {
-        fetchedOffset = parseFloat(jsonData.z_offset);
-      } else if (jsonData.z !== undefined) {
-        fetchedOffset = parseFloat(jsonData.z);
-      }
-    }
-
-    window.currentZOffset = fetchedOffset;
-
-    const originalDisplays = [
-      document.getElementById('zOriginal'),
-      document.getElementById('zNewValue'),
-      document.getElementById('currentZOffsetDisplay')
-    ];
-    originalDisplays.forEach(el => {
-      if (el) el.textContent = fetchedOffset.toFixed(2);
-    });
+    await refreshCalibrationOffsets({ forceRefresh: false, keepSelections: false });
   } catch (error) {
     Logger.error(`[E302] Preset parse err: ${error.message}`); 
     console.error("读取 JSON 预设文件失败:", error);
@@ -1777,6 +1881,8 @@ function scrollToZCardWithPadding() {
 }
 
 async function openZGridDirectly() {
+  if (!(await ensureCalibrationReady())) return;
+
   const zPlaceholder = document.getElementById('zPlaceholder');
   const zGridSelector = document.getElementById('zGridSelector');
   const zProgress = document.getElementById('zProgress');
@@ -1791,6 +1897,8 @@ async function openZGridDirectly() {
 }
 
 async function openZModel() {
+  if (!(await ensureCalibrationReady())) return;
+
   const zProgress = document.getElementById('zProgress');
   const zPlaceholder = document.getElementById('zPlaceholder');
   const zGridSelector = document.getElementById('zGridSelector');
@@ -1948,17 +2056,24 @@ async function saveZOffset(btnElement) {
   const result = await window.mkpAPI.writePreset(preset.path, updatePayload);
   
   if (result.success) {
-    window.currentZOffset = newZ;
-    document.getElementById('zOriginal').textContent = newZ.toFixed(2);
-    const display = document.getElementById('currentZOffsetDisplay');
-    if (display) display.textContent = newZ.toFixed(2);
-
-    if (typeof selectedGridOffset !== 'undefined') {
-        selectedGridOffset = null;
-        if (typeof updateZGridSelection === 'function') updateZGridSelection();
-    }
-    const zBadge = document.getElementById('zBadge');
-    if (zBadge) zBadge.classList.add('hidden');
+    const nextPresetData = preset.data?.toolhead?.offset
+      ? {
+          ...preset.data,
+          toolhead: {
+            ...preset.data.toolhead,
+            offset: {
+              ...preset.data.toolhead.offset,
+              z: newZ
+            }
+          }
+        }
+      : {
+          ...preset.data,
+          z_offset: newZ
+        };
+    updatePresetCacheSnapshot(preset.path, nextPresetData);
+    applyCalibrationOffsetSnapshot(extractOffsetValues(nextPresetData), { keepSelections: false });
+    emitActivePresetUpdated({ reason: 'save-z-offset', path: preset.path, forceRefresh: false });
 
     if (btnElement) {
       // 💡 核心修改：直接抹掉 resetLoading()，无缝呼叫新的状态！
@@ -1978,16 +2093,226 @@ async function saveZOffset(btnElement) {
 // ==========================================
 // 🚀 XY 轴偏移保存引擎 (同步升级)
 // ==========================================
+let selectedXYOffset = { x: 0, y: 0 };
+
+function updateXYSummary() {
+  const baseX = Number(window.currentXOffset) || 0;
+  const baseY = Number(window.currentYOffset) || 0;
+  const nextX = Number((baseX + (selectedXYOffset.x || 0)).toFixed(2));
+  const nextY = Number((baseY + (selectedXYOffset.y || 0)).toFixed(2));
+
+  const mappings = [
+    ['xyOriginalX', baseX],
+    ['xyOriginalY', baseY],
+    ['xyNewX', nextX],
+    ['xyNewY', nextY]
+  ];
+
+  mappings.forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = Number(value).toFixed(2);
+    }
+  });
+
+  const badgeX = document.getElementById('xyBadgeX');
+  const badgeY = document.getElementById('xyBadgeY');
+  if (badgeX) {
+    badgeX.textContent = selectedXYOffset.x >= 0 ? `+${selectedXYOffset.x.toFixed(2)}` : selectedXYOffset.x.toFixed(2);
+    badgeX.classList.toggle('hidden', selectedXYOffset.x === 0);
+  }
+  if (badgeY) {
+    badgeY.textContent = selectedXYOffset.y >= 0 ? `+${selectedXYOffset.y.toFixed(2)}` : selectedXYOffset.y.toFixed(2);
+    badgeY.classList.toggle('hidden', selectedXYOffset.y === 0);
+  }
+}
+
+function buildXYAxisButton(axis, offset) {
+  const AXIS_SLOT = 28;
+  const AXIS_MAJOR = 74;
+  const selected = selectedXYOffset[axis] === offset;
+  const label = offset > 0 ? `+${offset.toFixed(1)}` : (offset === 0 ? '0' : offset.toFixed(1));
+  const distance = Math.min(Math.abs(offset), 1);
+  const scale = 1.08 - distance * 0.46;
+  const sizeStyle = axis === 'x'
+    ? `width:${AXIS_SLOT}px; height:${Math.round(AXIS_MAJOR * scale)}px;`
+    : `width:${Math.round(AXIS_MAJOR * scale)}px; height:${AXIS_SLOT}px;`;
+
+  return `
+    <button type="button" class="xy-axis-btn ${selected ? 'is-selected' : ''}" onclick="selectXYOffset('${axis}', ${offset})">
+      ${axis === 'y'
+        ? `<div class="xy-axis-label">${label}</div><div class="xy-axis-btn-inner" style="${sizeStyle}"></div>`
+        : `<div class="xy-axis-btn-inner" style="${sizeStyle}"></div><div class="xy-axis-label">${label}</div>`}
+    </button>
+  `;
+}
+
+function generateXYGrid() {
+  const xGrid = document.getElementById('xyXGrid');
+  const yGrid = document.getElementById('xyYGrid');
+  if (!xGrid || !yGrid) return;
+
+  const offsets = [-1.0, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0];
+  xGrid.innerHTML = offsets.map((offset) => buildXYAxisButton('x', offset)).join('');
+  yGrid.innerHTML = offsets.map((offset) => buildXYAxisButton('y', offset)).join('');
+  updateXYSummary();
+}
+
+function selectXYOffset(axis, offset) {
+  selectedXYOffset[axis] = offset;
+  generateXYGrid();
+}
+
+async function fetchAndRenderXYOffsetData() {
+  try {
+    await refreshCalibrationOffsets({ forceRefresh: false, keepSelections: false });
+  } catch (error) {
+    Logger.error(`[E303] XY preset parse err: ${error.message}`);
+    window.currentXOffset = 0;
+    window.currentYOffset = 0;
+  }
+
+  selectedXYOffset = { x: 0, y: 0 };
+  updateXYSummary();
+}
+
+async function openXYGridDirectly() {
+  if (!(await ensureCalibrationReady())) return;
+
+  const placeholder = document.getElementById('xyPlaceholder');
+  const selector = document.getElementById('xyGridSelector');
+  const progress = document.getElementById('xyProgress');
+
+  await fetchAndRenderXYOffsetData();
+  progress.classList.add('hidden');
+  placeholder.classList.add('hidden');
+  selector.classList.remove('hidden');
+  generateXYGrid();
+}
+
+async function openXYModel() {
+  if (!(await ensureCalibrationReady())) return;
+
+  const progress = document.getElementById('xyProgress');
+  const placeholder = document.getElementById('xyPlaceholder');
+  const selector = document.getElementById('xyGridSelector');
+
+  await fetchAndRenderXYOffsetData();
+
+  progress.classList.remove('hidden');
+  placeholder.classList.add('hidden');
+
+  try {
+    Logger.info('[O305] Open XY calibration model');
+    Logger.info('Read variable: hasOpenedModelBefore');
+    const hasOpened = localStorage.getItem('hasOpenedModelBefore');
+    const forceOpenWith = !hasOpened;
+    const result = await window.mkpAPI.openCalibrationModel('XY', forceOpenWith);
+
+    if (!result.success) {
+      throw new Error(result.error || '打开模型失败');
+    }
+
+    if (forceOpenWith) {
+      Logger.info('Write variable: hasOpenedModelBefore, v:true');
+      localStorage.setItem('hasOpenedModelBefore', 'true');
+    }
+
+    progress.classList.add('hidden');
+    selector.classList.remove('hidden');
+    generateXYGrid();
+  } catch (error) {
+    Logger.error(`[E602] XY model open err: ${error.message}`);
+    progress.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+    await MKPModal.alert({
+      title: '打开模型失败',
+      msg: error.message,
+      type: 'error'
+    });
+  }
+}
+
 async function saveXYOffset(btnElement) {
+  if (!(await ensureCalibrationReady())) return;
   if (!btnElement) btnElement = document.querySelector('button[onclick^="saveXYOffset"]');
-  
-  // 目前 XY 功能还没接底层，先给它把动画安排上
+
+  const preset = await loadActivePreset(true);
+  if (!preset) {
+    await MKPModal.alert({ title: '提示', msg: '请先在左侧菜单的【下载预设】页面应用一个配置！', type: 'warning' });
+    return;
+  }
+
+  const nextX = Number((window.currentXOffset + (selectedXYOffset.x || 0)).toFixed(2));
+  const nextY = Number((window.currentYOffset + (selectedXYOffset.y || 0)).toFixed(2));
+
+  const SPIN_ICON = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+  let resetLoading = () => {};
+  if (btnElement) resetLoading = setButtonStatus(btnElement, '126px', '保存中...', SPIN_ICON, 'btn-expand-theme');
+
+  let updatePayload = {};
+  if (preset.data?.toolhead?.offset) {
+    updatePayload = {
+      toolhead: {
+        ...preset.data.toolhead,
+        offset: {
+          ...preset.data.toolhead.offset,
+          x: nextX,
+          y: nextY
+        }
+      }
+    };
+  } else {
+    updatePayload = {
+      x_offset: nextX,
+      y_offset: nextY
+    };
+  }
+
+  const result = await window.mkpAPI.writePreset(preset.path, updatePayload);
+  if (!result.success) {
+    if (btnElement) resetLoading();
+    await MKPModal.alert({ title: '保存失败', msg: result.error, type: 'error' });
+    return;
+  }
+
+  const nextPresetData = preset.data?.toolhead?.offset
+    ? {
+        ...preset.data,
+        toolhead: {
+          ...preset.data.toolhead,
+          offset: {
+            ...preset.data.toolhead.offset,
+            x: nextX,
+            y: nextY
+          }
+        }
+      }
+    : {
+        ...preset.data,
+        x_offset: nextX,
+        y_offset: nextY
+      };
+  updatePresetCacheSnapshot(preset.path, nextPresetData);
+  applyCalibrationOffsetSnapshot(extractOffsetValues(nextPresetData), { keepSelections: false });
+  emitActivePresetUpdated({ reason: 'save-xy-offset', path: preset.path, forceRefresh: false });
+
   const CHECK_ICON = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
   if (btnElement) {
     const reset = setButtonStatus(btnElement, '110px', '已保存', CHECK_ICON, 'btn-expand-green');
-    setTimeout(reset, 2000);
+    setTimeout(reset, 1000);
   }
 }
+
+window.updateScriptPathDisplay = updateScriptPathDisplay;
+window.refreshCalibrationAvailability = refreshCalibrationAvailability;
+window.openZGridDirectly = openZGridDirectly;
+window.openZModel = openZModel;
+window.openXYGridDirectly = openXYGridDirectly;
+window.openXYModel = openXYModel;
+window.selectXYOffset = selectXYOffset;
+window.saveXYOffset = saveXYOffset;
+window.refreshCalibrationOffsets = refreshCalibrationOffsets;
 
 
 function bindNavigation() {
@@ -1996,10 +2321,15 @@ function bindNavigation() {
   window._isNavBound = true;
   
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', async () => {
       const page = item.getAttribute('data-page');
       if (page) {
-        switchPage(page);
+        if (typeof window.canNavigateAwayFromParams === 'function') {
+          const allowSwitch = await window.canNavigateAwayFromParams(page);
+          if (!allowSwitch) return;
+        }
+
+        await switchPage(page);
         document.querySelectorAll('.nav-item').forEach(navItem => {
           navItem.classList.remove('active');
         });
@@ -2009,7 +2339,7 @@ function bindNavigation() {
   });
 }
 
-function switchPage(page) {
+async function switchPage(page) {
   Logger.info(`[UI] Switch tab, page:${page}`);
   document.querySelectorAll('.page').forEach(p => {
     p.classList.add('hidden');
@@ -2017,9 +2347,12 @@ function switchPage(page) {
   document.getElementById(`page-${page}`).classList.remove('hidden');
 
   if (page === 'params') {
-    if (typeof renderDynamicParamsPage === 'function') renderDynamicParamsPage();
+    if (typeof renderDynamicParamsPage === 'function') await renderDynamicParamsPage();
   } else if (page === 'calibrate') {
     if (typeof updateScriptPathDisplay === 'function') updateScriptPathDisplay();
+    if (typeof refreshCalibrationAvailability === 'function') {
+      await refreshCalibrationAvailability();
+    }
   }
 }
 
@@ -2069,6 +2402,21 @@ let _isAppInitialized = false;
 document.addEventListener('DOMContentLoaded', async () => {
   if (_isAppInitialized) return;
   _isAppInitialized = true;
+
+  window.addEventListener(ACTIVE_PRESET_UPDATED_EVENT, async (event) => {
+    const detail = event?.detail || {};
+    await refreshCalibrationAvailability();
+    await refreshCalibrationOffsets({
+      forceRefresh: detail.forceRefresh !== false,
+      keepSelections: detail.keepSelections === true
+    });
+    if (typeof updateScriptPathDisplay === 'function') {
+      updateScriptPathDisplay();
+    }
+  });
+
+  bindFloatingSurfaceAutoDismiss();
+  bindFloatingTooltipSystem();
 
   Logger.info("Read variable: setting_dock_anim");
   const savedAnimState = localStorage.getItem('setting_dock_anim');
@@ -2184,6 +2532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
   await init();
+  await refreshCalibrationAvailability();
 });
 
 // 🚀 高级复制 QQ 群号功能 (稳定容器版，绝对不闪)
@@ -2284,7 +2633,11 @@ async function init() {
     }
   }
   
-  renderVersions();
+  if (typeof loadLocalManifest === 'function') {
+    await loadLocalManifest();
+  } else {
+    renderVersions();
+  }
   bindNavigation();
   bindContextMenu();
   renderWizardBrands();
@@ -2295,7 +2648,9 @@ async function init() {
   if (typeof initSystemThemeListener === 'function') initSystemThemeListener();
   if (typeof initOnboardingSetting === 'function') initOnboardingSetting();
 
-  initUpdateModeSetting();
+  if (typeof initUpdateModeSetting === 'function') {
+    initUpdateModeSetting();
+  }
   if (!GlobalState.getOnboarding()) {
     Logger.info("用户设置了关闭引导页，直接跳过");
     skipOnboarding();

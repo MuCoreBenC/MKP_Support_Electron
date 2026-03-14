@@ -26,30 +26,38 @@ const MKPModal = {
       titleEl.textContent = options.title || '提示';
       msgEl.innerHTML = finalMsg;
 
+      card.dataset.modalTone = options.type || 'info';
       iconBox.className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0';
-      confirmBtn.className = 'px-5 py-2 rounded-xl text-sm font-medium transition-all shadow-sm active:scale-95 text-white';
+      confirmBtn.className = 'mkp-modal-btn mkp-modal-btn-confirm';
+      cancelBtn.className = 'mkp-modal-btn mkp-modal-btn-cancel';
+      confirmBtn.dataset.tone = options.type || 'info';
+      confirmBtn.style.background = '';
+      confirmBtn.style.color = '';
+      confirmBtn.style.border = '';
 
       const type = options.type || 'info';
       if (type === 'error') {
         iconBox.classList.add('bg-red-50', 'dark:bg-red-900/20');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
         iconSvg.className = 'w-5 h-5 text-red-500';
-        confirmBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+        confirmBtn.style.background = '#ef4444';
+        confirmBtn.style.color = '#ffffff';
       } else if (type === 'success') {
         iconBox.classList.add('bg-green-50', 'dark:bg-green-900/20');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>';
         iconSvg.className = 'w-5 h-5 text-green-500';
-        confirmBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+        confirmBtn.style.background = '#16a34a';
+        confirmBtn.style.color = '#ffffff';
       } else if (type === 'warning') {
         iconBox.classList.add('bg-amber-50', 'dark:bg-amber-900/20');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m0 3.75h.01M10.29 3.86l-7.5 13A1.5 1.5 0 004.08 19.5h15.84a1.5 1.5 0 001.3-2.24l-7.5-13a1.5 1.5 0 00-2.6 0z"/>';
         iconSvg.className = 'w-5 h-5 text-amber-500';
-        confirmBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+        confirmBtn.style.background = '#f59e0b';
+        confirmBtn.style.color = '#ffffff';
       } else {
         iconBox.classList.add('theme-bg-soft');
         iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
         iconSvg.className = 'w-5 h-5 theme-text';
-        confirmBtn.classList.add('theme-btn-solid');
       }
 
       confirmBtn.textContent = options.confirmText || (this._mode === 'prompt' ? '保存' : '确定');

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme-mode="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MKP SupportE 发布中心</title>
+  <link rel="stylesheet" href="assets/css/tailwind-compiled.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script>
+    (function() {
+      document.documentElement.setAttribute('data-theme-mode', 'light');
+      document.documentElement.classList.remove('dark', 'oled');
+      document.documentElement.style.setProperty('--primary-rgb', '59, 130, 246');
+    })();
+  </script>
+</head>
+<body class="release-center-page min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)]">
+  <div class="max-w-[1480px] mx-auto px-6 py-6">
+    <header class="mb-6 rounded-[28px] border border-gray-200 bg-white shadow-sm px-7 py-6">
+      <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-gray-500">
+            DEV ONLY
+          </div>
+          <h1 class="mt-4 text-3xl font-bold tracking-tight text-gray-900">发布中心</h1>
+          <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-500">
+            这个窗口不会出现在用户主界面。只负责编辑版本信息、生成补丁和整理上传目录，最终上传仍由你自己完成。
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <div id="releaseStatusPill" class="rounded-full bg-gray-100 px-4 py-2 text-xs font-medium text-gray-500">
+            正在读取发版信息...
+          </div>
+          <button id="btnReloadReleaseInfo" class="btn-secondary rounded-xl px-4 py-2 text-sm font-medium transition-all">重新读取</button>
+          <button id="btnOpenManifest" class="btn-secondary rounded-xl px-4 py-2 text-sm font-medium transition-all">打开 manifest</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.22fr)_430px]">
+      <section class="space-y-6">
+        <div class="rounded-[28px] border border-gray-200 bg-white shadow-sm p-6">
+          <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">发版信息</h2>
+              <p class="mt-1 text-sm text-gray-500">保存时会自动写回 `package.json` 和 `cloud_data/app_manifest.json`。</p>
+            </div>
+            <div class="rounded-2xl bg-gray-50 px-4 py-3 text-xs text-gray-500">
+              标准热更新对应模式 2
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label class="block">
+              <div class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">版本号</div>
+              <input id="releaseVersionInput" type="text" class="input-field w-full rounded-2xl px-4 py-3 text-sm" placeholder="例如 0.2.8">
+            </label>
+            <label class="block">
+              <div class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">发布日期</div>
+              <input id="releaseDateInput" type="date" class="input-field w-full rounded-2xl px-4 py-3 text-sm">
+            </label>
+          </div>
+
+          <div class="mt-4">
+            <label class="block">
+              <div class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">版本简介</div>
+              <input id="releaseShortDescInput" type="text" class="input-field w-full rounded-2xl px-4 py-3 text-sm" placeholder="一句话概括这次更新">
+            </label>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label class="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div>
+                <div class="text-sm font-medium text-gray-900">强制更新</div>
+                <div class="mt-1 text-xs text-gray-500">仅在必要时开启</div>
+              </div>
+              <input id="releaseForceUpdateInput" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-500">
+            </label>
+            <label class="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div>
+                <div class="text-sm font-medium text-gray-900">允许回退</div>
+                <div class="mt-1 text-xs text-gray-500">是否允许从版本页回退</div>
+              </div>
+              <input id="releaseCanRollbackInput" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-500" checked>
+            </label>
+          </div>
+        </div>
+
+        <div id="releaseEditorCard" class="release-editor-card rounded-[28px] border border-gray-200 bg-white shadow-sm p-6">
+          <div class="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">更新内容</h2>
+              <p class="mt-1 text-sm text-gray-500">支持常见 Markdown。保存时会自动生成版本页使用的条目列表。</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button id="btnToggleEditorSize" class="btn-secondary rounded-xl px-4 py-2 text-sm font-medium transition-all">展开编辑区</button>
+              <div class="inline-flex rounded-2xl border border-gray-200 bg-gray-50 p-1">
+                <button id="btnMarkdownEditMode" class="release-segment-btn active rounded-xl px-4 py-2 text-sm font-medium transition-all">编辑</button>
+                <button id="btnMarkdownPreviewMode" class="release-segment-btn rounded-xl px-4 py-2 text-sm font-medium transition-all">预览</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4 flex flex-wrap gap-2 text-xs text-gray-500">
+            <span class="rounded-full bg-gray-100 px-3 py-1.5">`# 标题`</span>
+            <span class="rounded-full bg-gray-100 px-3 py-1.5">`- 列表`</span>
+            <span class="rounded-full bg-gray-100 px-3 py-1.5">`**加粗**`</span>
+            <span class="rounded-full bg-gray-100 px-3 py-1.5">`` `代码` ``</span>
+          </div>
+
+          <div id="releaseEditorSurface" class="release-editor-surface rounded-[24px] border border-gray-200 bg-gray-50 p-3">
+            <textarea id="releaseNotesInput" class="release-editor release-editor-size w-full resize-y rounded-[20px] border-0 bg-white px-4 py-4 text-sm leading-7 text-gray-800 outline-none placeholder:text-gray-400" placeholder="# 0.2.8&#10;&#10;- 修复 ...&#10;- 优化 ..."></textarea>
+            <div id="releaseMarkdownPreview" class="release-preview release-editor-size hidden rounded-[20px] border border-gray-200 bg-white px-5 py-5 text-sm leading-7 text-gray-700"></div>
+          </div>
+
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <button id="btnSaveReleaseInfo" class="btn-secondary rounded-xl px-5 py-3 text-sm font-medium transition-all">保存发版信息</button>
+            <span class="text-xs text-gray-500">只保存版本信息，不执行打包。</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="space-y-6">
+        <div class="rounded-[28px] border border-gray-200 bg-white shadow-sm p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-gray-900">打包模式</h2>
+            <div id="selectedReleaseModeLabel" class="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-600">已选择: 标准热更新</div>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <button class="release-mode-btn w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-left transition-all" data-release-mode="1">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900">模式 1 最小热更新</div>
+                  <div class="mt-1 text-xs text-gray-500">只打包和上一个补丁相比真正变化的核心文件</div>
+                </div>
+                <span class="release-mode-check mt-1 h-5 w-5 rounded-full border border-gray-300 bg-white"></span>
+              </div>
+            </button>
+
+            <button class="release-mode-btn w-full rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-4 text-left transition-all" data-release-mode="2">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900">模式 2 标准热更新</div>
+                  <div class="mt-1 text-xs text-gray-500">包含 `src + package.json + preload.js + app_manifest + presets_manifest`</div>
+                </div>
+                <span class="release-mode-check mt-1 h-5 w-5 rounded-full border border-blue-500 bg-white"></span>
+              </div>
+            </button>
+
+            <button class="release-mode-btn w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-left transition-all" data-release-mode="3">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900">模式 3 完整热更新</div>
+                  <div class="mt-1 text-xs text-gray-500">额外带上 3mf 与预设资源，适合较大版本变更</div>
+                </div>
+                <span class="release-mode-check mt-1 h-5 w-5 rounded-full border border-gray-300 bg-white"></span>
+              </div>
+            </button>
+
+            <button class="release-mode-btn w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-left transition-all" data-release-mode="4">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900">模式 4 全量安装包</div>
+                  <div class="mt-1 text-xs text-gray-500">执行 `npm run build`，输出到 `dist`</div>
+                </div>
+                <span class="release-mode-check mt-1 h-5 w-5 rounded-full border border-gray-300 bg-white"></span>
+              </div>
+            </button>
+          </div>
+
+          <div class="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+            <div class="text-sm font-medium text-gray-900">确认执行</div>
+            <div class="mt-1 text-xs text-gray-500">先选择模式，再点击下面按钮执行。不会因为点到卡片就直接开始打包。</div>
+            <button id="btnRunSelectedMode" class="theme-btn-solid mt-4 w-full rounded-xl px-5 py-3 text-sm font-medium transition-all">执行已选模式</button>
+          </div>
+        </div>
+
+        <div class="rounded-[28px] border border-gray-200 bg-white shadow-sm p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-gray-900">输出结果</h2>
+            <div id="releaseBuildBadge" class="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-medium text-gray-500">待执行</div>
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <button id="btnOpenCloudOutput" class="btn-secondary rounded-xl px-4 py-2.5 text-sm font-medium transition-all">打开上传目录</button>
+            <button id="btnOpenDistOutput" class="btn-secondary rounded-xl px-4 py-2.5 text-sm font-medium transition-all">打开 dist</button>
+            <button id="btnOpenReleaseReadme" class="btn-secondary rounded-xl px-4 py-2.5 text-sm font-medium transition-all">打开说明</button>
+            <button id="btnCopyReleaseSummary" class="btn-secondary rounded-xl px-4 py-2.5 text-sm font-medium transition-all">复制结果摘要</button>
+          </div>
+          <pre id="releaseConsoleOutput" class="release-console mt-4 min-h-[280px] overflow-auto rounded-[22px] bg-[#0F172A] px-4 py-4 text-xs leading-6 text-slate-100"></pre>
+        </div>
+
+        <div class="rounded-[28px] border border-gray-200 bg-white shadow-sm p-6">
+          <h2 class="text-lg font-semibold text-gray-900">当前环境</h2>
+          <div id="releasePathsInfo" class="mt-4 space-y-3 text-xs text-gray-500"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="assets/js/release.js"></script>
+</body>
+</html>

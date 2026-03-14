@@ -79,6 +79,9 @@ function selectPrinter(printerId, keepVersion = false) {
   renderBrands();
   renderPrinters(selectedBrand);
   renderDownloadVersions(selectedPrinterObj);
+  if (typeof window.refreshCalibrationAvailability === 'function') {
+    window.refreshCalibrationAvailability();
+  }
 }
 
 function renderBrands() {

@@ -47,7 +47,7 @@
       "lastModified": "2026-03-01"
     },
     {
-      "id": "p1",
+      "id": "p1s",
       "type": "lite",
       "file": "p1_lite_v2.4.2-r1.json",
       "version": "2.4.2",
@@ -71,7 +71,7 @@
     {
       "id": "s1c",
       "type": "standard",
-      "file": "s1c_standard_v1.2.0-r1.json",
+      "file": "s1c_lite_v1.2.0-r1.json",
       "version": "1.2.0",
       "description": "标准版初始参数",
       "releaseNotes": [

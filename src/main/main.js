@@ -3,18 +3,105 @@ const { app, BrowserWindow, Notification, ipcMain, nativeTheme, shell } = requir
 const path = require('path');
 const fs = require('fs');
 const { processGcode } = require('./mkp_engine');
+const { readReleaseEditorState, saveReleaseEditorState, runReleaseMode } = require('./release-ops');
 const { exec } = require('child_process');
+const http = require('http');
+const https = require('https');
 const isCliMode = process.argv.includes('--Gcode');
+const isReleaseCenterMode = process.argv.includes('--release-center');
 const AdmZip = require('adm-zip');
+
+function getProjectRootPath() {
+  return path.join(__dirname, '../../');
+}
+
+function getResourcesRootPath() {
+  return app.isPackaged ? process.resourcesPath : getProjectRootPath();
+}
+
+function getAppContentRootPath() {
+  return app.isPackaged ? path.join(process.resourcesPath, 'app') : getProjectRootPath();
+}
+
+function getBundledCloudDataPath() {
+  return path.join(getResourcesRootPath(), 'cloud_data');
+}
+
+function getBundledAppManifestPath() {
+  return path.join(getBundledCloudDataPath(), 'app_manifest.json');
+}
+
+function getReleaseRuntimeOptions() {
+  return {
+    projectRoot: getAppContentRootPath(),
+    cloudDataDir: getBundledCloudDataPath(),
+    releaseRoot: path.join(getAppContentRootPath(), 'release_upload'),
+    packageJsonPath: path.join(getAppContentRootPath(), 'package.json'),
+    preloadPath: path.join(getAppContentRootPath(), 'preload.js'),
+    srcDir: path.join(getAppContentRootPath(), 'src'),
+    defaultModelsDir: path.join(getAppContentRootPath(), 'src', 'default_models'),
+    presetsDir: path.join(getBundledCloudDataPath(), 'presets'),
+    manifestPath: getBundledAppManifestPath(),
+    presetsManifestPath: path.join(getBundledCloudDataPath(), 'presets', 'presets_manifest.json')
+  };
+}
+
+function resolveManifestCandidatesForAppRoot(targetAppPath) {
+  const candidates = [];
+  const normalizedAppRoot = path.resolve(targetAppPath);
+  const resourcesRoot = path.basename(normalizedAppRoot).toLowerCase() === 'app'
+    ? path.dirname(normalizedAppRoot)
+    : normalizedAppRoot;
+
+  candidates.push(path.join(resourcesRoot, 'cloud_data', 'app_manifest.json'));
+  candidates.push(path.join(normalizedAppRoot, 'cloud_data', 'app_manifest.json'));
+  candidates.push(path.join(normalizedAppRoot, 'app_manifest.json'));
+
+  return Array.from(new Set(candidates));
+}
 
 // ==========================================
 // 🚀 增量热更新引擎 (ZIP 下载与智能解压覆盖)
 // ==========================================
 // 🛠️ 内部工具：智能解压防呆函数
-function extractPatch(tempFilePath, targetAppPath) {
+function classifyPatchLayout(zipEntries) {
+  const normalizedNames = zipEntries
+    .filter((entry) => !entry.isDirectory)
+    .map((entry) => entry.entryName.replace(/\\/g, '/'));
+
+  const topLevelNames = new Set(
+    normalizedNames
+      .map((name) => name.split('/')[0])
+      .filter(Boolean)
+  );
+
+  if (topLevelNames.has('app') || topLevelNames.has('cloud_data')) {
+    return 'resources-root';
+  }
+
+  if (topLevelNames.has('src') || topLevelNames.has('package.json') || topLevelNames.has('preload.js')) {
+    return 'app-root';
+  }
+
+  if (topLevelNames.has('main') || topLevelNames.has('renderer') || topLevelNames.has('default_models') || topLevelNames.has('input.css')) {
+    return 'legacy-src-root';
+  }
+
+  return 'app-root';
+}
+
+function extractPatch(tempFilePath, targetResourcesPath) {
   const zip = new AdmZip(tempFilePath);
   const zipEntries = zip.getEntries();
-  
+  const layout = classifyPatchLayout(zipEntries);
+  const appBasePath = app.isPackaged ? path.join(targetResourcesPath, 'app') : targetResourcesPath;
+  const srcBasePath = app.isPackaged ? path.join(targetResourcesPath, 'app', 'src') : path.join(targetResourcesPath, 'src');
+  const extractBasePath = layout === 'resources-root'
+    ? targetResourcesPath
+    : layout === 'legacy-src-root'
+      ? srcBasePath
+      : appBasePath;
+
   if (zipEntries.length === 0) throw new Error("下载的补丁包是空的！");
 
   // 💡 智能判断：检测压缩包是不是多套了一层文件夹
@@ -28,7 +115,7 @@ function extractPatch(tempFilePath, targetAppPath) {
     zipEntries.forEach(entry => {
       if (!entry.isDirectory) {
         // 算出剥离外层文件夹后的真实目标路径
-        const targetPath = path.join(targetAppPath, entry.entryName.replace(wrapperFolderName, ''));
+        const targetPath = path.join(extractBasePath, entry.entryName.replace(wrapperFolderName, ''));
         // 确保目标文件夹存在
         fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         // 单个文件覆盖提取
@@ -37,7 +124,7 @@ function extractPatch(tempFilePath, targetAppPath) {
     });
   } else {
     console.log("[热更新] 压缩包层级正确，直接覆盖解压...");
-    zip.extractAllTo(targetAppPath, true); // true 表示允许覆盖已有文件
+    zip.extractAllTo(extractBasePath, true); // true 表示允许覆盖已有文件
   }
 }
 
@@ -125,24 +212,98 @@ function inspectPatchArchive(tempFilePath) {
     packageVersion = normalizeVersionValue(packageJson.version);
   }
 
+  const manifestEntries = zipEntries
+    .filter((entry) => !entry.isDirectory && /(^|\/)(app_manifest|cloud_data\/app_manifest)\.json$/i.test(entry.entryName.replace(/\\/g, '/')))
+    .sort((left, right) => left.entryName.split('/').length - right.entryName.split('/').length);
+
+  let manifestVersion = null;
+  for (const manifestEntry of manifestEntries) {
+    try {
+      const manifestJson = JSON.parse(manifestEntry.getData().toString('utf8'));
+      manifestVersion = normalizeVersionValue(
+        manifestJson.latestVersion
+        || manifestJson.version
+        || findVersionInJsonData(manifestJson)
+      );
+      if (manifestVersion) {
+        break;
+      }
+    } catch (error) {}
+  }
+
   return {
     zipEntries,
-    packageVersion
+    packageVersion,
+    manifestVersion
   };
 }
 
-function readAppPackageVersion(targetAppPath) {
+function readInstalledAppVersion(targetAppPath) {
   try {
-    const packageJsonPath = path.join(targetAppPath, 'package.json');
-    if (!fs.existsSync(packageJsonPath)) {
-      return null;
+    const manifestCandidates = resolveManifestCandidatesForAppRoot(targetAppPath);
+
+    for (const manifestPath of manifestCandidates) {
+      if (!fs.existsSync(manifestPath)) continue;
+      const manifestJson = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      const manifestVersion = normalizeVersionValue(
+        manifestJson.latestVersion
+        || manifestJson.version
+        || findVersionInJsonData(manifestJson)
+      );
+      if (manifestVersion) {
+        return manifestVersion;
+      }
     }
 
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    return normalizeVersionValue(packageJson.version);
+    const packageJsonPath = path.join(targetAppPath, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      const packageVersion = normalizeVersionValue(packageJson.version);
+      if (packageVersion) {
+        return packageVersion;
+      }
+    }
+
+    return null;
   } catch (error) {
     return null;
   }
+}
+
+function readAppPackageVersion(targetAppPath) {
+  return readInstalledAppVersion(targetAppPath);
+}
+
+function downloadPatchBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const transport = String(url).startsWith('https://') ? https : http;
+    const request = transport.get(url, {
+      headers: {
+        'User-Agent': 'MKP-Support-Electron',
+        'Accept': '*/*'
+      }
+    }, (response) => {
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        response.resume();
+        resolve(downloadPatchBuffer(response.headers.location));
+        return;
+      }
+
+      if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
+        response.resume();
+        reject(new Error(`HTTP ${response.statusCode || 0}`));
+        return;
+      }
+
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+      response.on('error', reject);
+    });
+
+    request.on('error', reject);
+    request.setTimeout(15000, () => request.destroy(new Error('请求超时')));
+  });
 }
 
 
@@ -188,6 +349,11 @@ ipcMain.handle('duplicate-preset', (event, payload) => {
 
     // 重新写入硬盘
     fs.writeFileSync(destPath, JSON.stringify(jsonData, null, 2), 'utf-8');
+    try {
+      savePresetBackupSync(destPath, jsonData);
+    } catch (backupError) {
+      console.warn('[PresetBackup] 复制预设后创建备份失败:', backupError.message);
+    }
 
     return { success: true, newFileName };
   } catch (error) {
@@ -200,11 +366,9 @@ ipcMain.handle('save-local-manifest', async (event, jsonStr) => {
   try {
     // 💡 这里的路径必须和你的热更新解压目录保持绝对一致！
     // 这样它才能真正覆盖软件里的旧数据，确保下次断网启动时读到的是新数据
-    const targetPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app', 'app_manifest.json') 
-      : path.join(__dirname, '../../app_manifest.json'); // 这里根据你开发环境的相对路径微调
+    const targetPath = getBundledAppManifestPath();
 
-    // 覆盖写入
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, jsonStr, 'utf-8');
     console.log('[版本引擎] 本地 app_manifest.json 已成功覆盖为最新云端版本');
     
@@ -215,12 +379,48 @@ ipcMain.handle('save-local-manifest', async (event, jsonStr) => {
   }
 });
 
+ipcMain.handle('copy-bundled-preset', async (event, fileName) => {
+  try {
+    const bundledDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'cloud_data', 'presets')
+      : path.join(__dirname, '../../cloud_data/presets');
+    const sourcePath = path.join(bundledDir, fileName);
+    if (!fs.existsSync(sourcePath)) {
+      return { success: false, error: '打包资源中不存在该预设文件' };
+    }
+
+    const userDataPath = path.join(app.getPath('userData'), 'Presets');
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath, { recursive: true });
+    }
+
+    const targetPath = path.join(userDataPath, fileName);
+    if (!fs.existsSync(targetPath)) {
+      fs.copyFileSync(sourcePath, targetPath);
+      try {
+        const presetData = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
+        savePresetBackupSync(targetPath, presetData);
+      } catch (backupError) {
+        console.warn('[PresetBackup] copy bundled preset backup failed:', backupError.message);
+      }
+    }
+
+    return { success: true, path: targetPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 // ==========================================
 // 🚀 预设清单 (Manifest) 本地读写引擎
 // ==========================================
 ipcMain.handle('read-local-presets-manifest', async () => {
   try {
-    const manifestPath = path.join(app.getPath('userData'), 'Presets', 'presets_manifest.json');
+    const userManifestPath = path.join(app.getPath('userData'), 'Presets', 'presets_manifest.json');
+    const bundledManifestPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'cloud_data', 'presets', 'presets_manifest.json')
+      : path.join(__dirname, '../../cloud_data/presets/presets_manifest.json');
+    const manifestPath = fs.existsSync(userManifestPath) ? userManifestPath : bundledManifestPath;
     if (fs.existsSync(manifestPath)) {
       const data = fs.readFileSync(manifestPath, 'utf-8');
       return { success: true, data: JSON.parse(data) };
@@ -243,11 +443,25 @@ ipcMain.handle('save-local-presets-manifest', async (event, jsonStr) => {
 
 
 // 📡 IPC 接收器：前端呼叫强行读取本地 manifest (绕过 fetch 限制)
+ipcMain.handle('read-bundled-presets-manifest', async () => {
+  try {
+    const manifestPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'cloud_data', 'presets', 'presets_manifest.json')
+      : path.join(__dirname, '../../cloud_data/presets/presets_manifest.json');
+    if (!fs.existsSync(manifestPath)) {
+      return { success: false, error: '打包 manifest 不存在' };
+    }
+
+    const data = fs.readFileSync(manifestPath, 'utf-8');
+    return { success: true, data: JSON.parse(data) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('read-local-manifest', async () => {
   try {
-    const manifestPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app', 'app_manifest.json') 
-      : path.join(__dirname, '../../app_manifest.json');
+    const manifestPath = getBundledAppManifestPath();
       
     if (fs.existsSync(manifestPath)) {
       const data = fs.readFileSync(manifestPath, 'utf-8');
@@ -263,6 +477,47 @@ ipcMain.handle('read-local-manifest', async () => {
 });
 
 // 📡 IPC 接收器：前端呼叫热更新
+ipcMain.handle('read-release-info', async () => {
+  try {
+    return { success: true, data: readReleaseEditorState(getReleaseRuntimeOptions()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-release-info', async (event, payload) => {
+  try {
+    return { success: true, data: saveReleaseEditorState(payload || {}, getReleaseRuntimeOptions()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('run-release-build', async (event, mode) => {
+  try {
+    return { success: true, data: runReleaseMode(String(mode || '2'), getReleaseRuntimeOptions()) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-release-path', async (event, target) => {
+  try {
+    const options = getReleaseRuntimeOptions();
+    const mapping = {
+      cloud: path.join(options.releaseRoot, 'cloud_data'),
+      dist: path.join(options.projectRoot, 'dist'),
+      readme: path.join(options.releaseRoot, 'release_readme.txt'),
+      manifest: options.manifestPath
+    };
+    const targetPath = mapping[String(target || 'cloud')] || mapping.cloud;
+    await shell.openPath(targetPath);
+    return { success: true, path: targetPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('apply-hot-update', async (event, payload) => {
   const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
   try {
@@ -279,9 +534,7 @@ ipcMain.handle('apply-hot-update', async (event, payload) => {
     console.log(`[热更新] 补丁下载完成，保存在: ${tempZipPath}`);
 
     // 2. 确定要覆盖的本地代码老巢 (resources/app)
-    const targetExtractPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app') 
-      : path.join(__dirname, '../../');
+    const targetExtractPath = getResourcesRootPath();
 
     // 3. 呼叫智能解压工具
     extractPatch(tempZipPath, targetExtractPath);
@@ -430,9 +683,10 @@ ipcMain.handle('init-default-presets', async () => {
       if (file.endsWith('.json')) {
         const sourceFile = path.join(bundledPresetsPath, file);
         const targetFile = path.join(userDataPath, file);
+        const shouldForceRefresh = file.toLowerCase() === 'presets_manifest.json';
 
         // 💡 核心优化：因为新版文件名自带版本号(如 v3.0.0-r1)，只要文件不存在直接复制即可
-        if (!fs.existsSync(targetFile)) {
+        if (shouldForceRefresh || !fs.existsSync(targetFile)) {
           fs.copyFileSync(sourceFile, targetFile);
           console.log(`[O103] Default preset release, file:${file}`);
           copiedCount++;
@@ -495,6 +749,46 @@ if (isCliMode) {
     }
   });
 
+} else if (isReleaseCenterMode) {
+  function createReleaseCenterWindow() {
+    const releaseWindow = new BrowserWindow({
+      width: 1280,
+      height: 860,
+      minWidth: 1120,
+      minHeight: 760,
+      autoHideMenuBar: true,
+      backgroundColor: '#101317',
+      show: false,
+      icon: path.join(__dirname, '../renderer/assets/icons/logo-main.ico'),
+      webPreferences: {
+        preload: path.join(__dirname, '../../preload.js'),
+        contextIsolation: true
+      }
+    });
+
+    releaseWindow.once('ready-to-show', () => {
+      releaseWindow.show();
+    });
+
+    releaseWindow.loadFile(path.join(__dirname, '../renderer/release_center.html'));
+  }
+
+  app.whenReady().then(() => {
+    app.commandLine.appendSwitch('no-proxy-server');
+    app.commandLine.appendSwitch('disable-features', 'ProxyConfig');
+    ipcMain.on('set-native-theme', (event, mode) => {
+      nativeTheme.themeSource = mode;
+    });
+
+    createReleaseCenterWindow();
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createReleaseCenterWindow();
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
 } else {
   // ==========================================
   // 🌞 显性人格：正常 GUI 界面
@@ -567,7 +861,8 @@ if (isCliMode) {
 // 获取软件真实版本号 (自动读取 package.json)
 // ==========================================
 ipcMain.handle('get-app-version', () => {
-  return app.getVersion(); 
+  const targetAppPath = getAppContentRootPath();
+  return readInstalledAppVersion(targetAppPath) || app.getVersion();
 });
 // ==========================================
 // 🔄 基础系统控制 API (重启与外部跳转)
@@ -595,6 +890,28 @@ ipcMain.handle('read-preset', async (event, filePath) => {
     if (!fs.existsSync(filePath)) return { success: false, error: '文件不存在' };
     const content = fs.readFileSync(filePath, 'utf-8');
     return { success: true, data: JSON.parse(content) }; // 原生秒解
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('ensure-preset-backup', async (event, filePath) => {
+  try {
+    const backupPath = ensurePresetBackupSync(filePath);
+    return { success: true, path: backupPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('read-preset-backup', async (event, filePath) => {
+  try {
+    const backupPath = getPresetBackupPath(filePath);
+    if (!fs.existsSync(backupPath)) {
+      return { success: false, error: '备份不存在' };
+    }
+    const content = fs.readFileSync(backupPath, 'utf-8');
+    return { success: true, data: JSON.parse(content) };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -635,6 +952,38 @@ function mergeDeep(target, source) {
 
 function getPresetsDirectory() {
   return path.join(app.getPath('userData'), 'Presets');
+}
+
+function getPresetBackupDirectory() {
+  return path.join(getPresetsDirectory(), '_backup');
+}
+
+function getPresetBackupPath(filePath) {
+  return path.join(getPresetBackupDirectory(), path.basename(filePath));
+}
+
+function ensurePresetBackupSync(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    throw new Error('源文件不存在，无法创建备份');
+  }
+
+  const backupDir = getPresetBackupDirectory();
+  const backupPath = getPresetBackupPath(filePath);
+  if (fs.existsSync(backupPath)) {
+    return backupPath;
+  }
+
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.copyFileSync(filePath, backupPath);
+  return backupPath;
+}
+
+function savePresetBackupSync(filePath, data) {
+  const backupDir = getPresetBackupDirectory();
+  const backupPath = getPresetBackupPath(filePath);
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.writeFileSync(backupPath, JSON.stringify(data, null, 2), 'utf-8');
+  return backupPath;
 }
 
 function extractPresetVersion(fileName, jsonData = null) {
@@ -679,6 +1028,16 @@ ipcMain.handle('get-local-presets', () => {
   }
 });
 
+ipcMain.handle('overwrite-preset', async (event, filePath, data) => {
+  try {
+    if (!fs.existsSync(filePath)) return { success: false, error: '文件不存在' };
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.removeHandler('apply-hot-update');
 ipcMain.handle('apply-hot-update', async (event, payload) => {
   const tempZipPath = path.join(app.getPath('temp'), 'mkp_patch.zip');
@@ -699,15 +1058,13 @@ ipcMain.handle('apply-hot-update', async (event, payload) => {
 
     for (const zipUrl of urls) {
       try {
-        const response = await fetch(zipUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(tempZipPath, Buffer.from(arrayBuffer));
+        const zipBuffer = await downloadPatchBuffer(zipUrl);
+        fs.writeFileSync(tempZipPath, zipBuffer);
 
         archiveInfo = inspectPatchArchive(tempZipPath);
+        if (!archiveInfo.packageVersion && archiveInfo.manifestVersion) {
+          archiveInfo.packageVersion = archiveInfo.manifestVersion;
+        }
         if (expectedVersion) {
           if (!archiveInfo.packageVersion) {
             throw new Error('补丁包缺少 package.json，无法校验目标版本。');
@@ -728,13 +1085,11 @@ ipcMain.handle('apply-hot-update', async (event, payload) => {
       throw lastError || new Error('所有补丁下载线路都失败了。');
     }
 
-    const targetExtractPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'app')
-      : path.join(__dirname, '../../');
+    const targetExtractPath = getResourcesRootPath();
 
     extractPatch(tempZipPath, targetExtractPath);
 
-    const installedVersion = readAppPackageVersion(targetExtractPath);
+    const installedVersion = readAppPackageVersion(getAppContentRootPath());
     if (expectedVersion && installedVersion !== expectedVersion) {
       throw new Error(`补丁已解压，但当前程序版本仍是 ${installedVersion || 'unknown'}，未达到预期版本 ${expectedVersion}。`);
     }
@@ -831,6 +1186,11 @@ ipcMain.handle('download-file', async (event, fileUrl, fileName) => {
     // 获取文本内容并写入文件
     const textContent = await response.text();
     fs.writeFileSync(targetPath, textContent, 'utf-8');
+    try {
+      savePresetBackupSync(targetPath, JSON.parse(textContent));
+    } catch (backupError) {
+      console.warn('[PresetBackup] 下载后创建备份失败:', backupError.message);
+    }
 
     return { success: true };
   } catch (error) {
@@ -945,6 +1305,11 @@ ipcMain.handle('open-calibration-model', async (event, modelType, forceOpenWith 
       return { success: true, path: targetPath };
     } else {
       const openError = await shell.openPath(targetPath);
+      if (openError && process.platform === 'win32') {
+        exec(`cmd /c start "" "${targetPath}"`);
+        exec(`rundll32 shell32.dll,OpenAs_RunDLL "${targetPath}"`);
+        return { success: true, path: targetPath, openWithFallback: true };
+      }
       if (openError) return { success: false, error: `无法打开模型: ${openError}` };
       return { success: true, path: targetPath };
     }

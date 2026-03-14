@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist-electron/
 dist/
+release_upload/
 
 # Backup files
 _backup/
